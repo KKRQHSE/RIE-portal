@@ -28,6 +28,12 @@ const PRIO_STYLE: Record<string, string> = {
   Hoog:   'bg-red-100 text-red-800',
 }
 
+const STATUS_BADGE: Record<string, string> = {
+  'Open':           'bg-gray-100 text-gray-700',
+  'In behandeling': 'bg-blue-100 text-blue-800',
+  'Afgerond':       'bg-green-100 text-green-800',
+}
+
 const STATUS_OPTS = ['Open', 'In behandeling', 'Afgerond']
 
 export default function GastClient({ token, persoonNaam, bedrijfNaam, acties }: Props) {
@@ -63,34 +69,37 @@ export default function GastClient({ token, persoonNaam, bedrijfNaam, acties }: 
 }
 
 function GastActieKaart({ token, actie }: { token: string; actie: GastActie }) {
-  const [status, setStatus] = useState(actie.concept_status ?? actie.status ?? 'Open')
+  // De echte status is read-only; de gast levert alleen een concept (voorstel).
+  const [voorstel, setVoorstel] = useState(actie.concept_status ?? actie.status ?? 'Open')
   const [opm, setOpm] = useState(actie.concept_opm ?? '')
   const [bezig, setBezig] = useState(false)
-  const [opgeslagen, setOpgeslagen] = useState(false)
+  const [ingediendStatus, setIngediendStatus] = useState<string | null>(actie.concept_status)
+  const [netIngediend, setNetIngediend] = useState(false)
 
-  async function bewaar(nieuweStatus: string, nieuweOpm: string) {
+  async function bewaar(nieuwVoorstel: string, nieuweOpm: string) {
     setBezig(true)
     const supabase = createClient()
-    // Gast muteert uitsluitend via deze RPC (token is de toegang).
+    // Gast muteert uitsluitend via deze RPC (token is de toegang); logt zelf historie.
     const { error } = await supabase.rpc('deellink_concept_update', {
       p_token: token,
       p_actie_id: actie.id,
-      p_status: nieuweStatus,
+      p_status: nieuwVoorstel,
       p_opm: nieuweOpm,
     })
     setBezig(false)
     if (error) return
-    setOpgeslagen(true)
-    setTimeout(() => setOpgeslagen(false), 2000)
+    setIngediendStatus(nieuwVoorstel)
+    setNetIngediend(true)
+    setTimeout(() => setNetIngediend(false), 4000)
   }
 
-  function changeStatus(val: string) {
-    setStatus(val)
+  function changeVoorstel(val: string) {
+    setVoorstel(val)
     bewaar(val, opm)
   }
 
   function ditHebIkGedaan() {
-    setStatus('Afgerond')
+    setVoorstel('Afgerond')
     bewaar('Afgerond', opm)
   }
 
@@ -114,12 +123,25 @@ function GastActieKaart({ token, actie }: { token: string; actie: GastActie }) {
       </div>
 
       <div className="mt-3 pt-3 border-t border-surface space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Echte status (read-only) + huidige voorstel */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <div className="flex items-center gap-2">
             <span className="text-xs text-ink/40">Status</span>
+            <span className={`text-sm font-medium px-2 py-0.5 rounded ${STATUS_BADGE[actie.status ?? ''] ?? 'bg-gray-100 text-gray-700'}`}>
+              {actie.status ?? 'Open'}
+            </span>
+          </div>
+          {ingediendStatus && (
+            <span className="text-xs text-accent">Jouw voorstel: {ingediendStatus}</span>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-ink/40">Jouw voorstel</span>
             <select
-              value={status}
-              onChange={e => changeStatus(e.target.value)}
+              value={voorstel}
+              onChange={e => changeVoorstel(e.target.value)}
               disabled={bezig}
               className="text-sm border border-ink/20 rounded px-2 py-1 bg-white"
             >
@@ -128,25 +150,30 @@ function GastActieKaart({ token, actie }: { token: string; actie: GastActie }) {
           </div>
           <button
             onClick={ditHebIkGedaan}
-            disabled={bezig || status === 'Afgerond'}
+            disabled={bezig || voorstel === 'Afgerond'}
             className="text-sm px-4 py-1.5 rounded-full bg-accent text-white font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
           >
             Dit heb ik gedaan
           </button>
-          {opgeslagen && <span className="text-xs text-green-600 font-medium">✓ Opgeslagen</span>}
         </div>
 
         <div>
           <textarea
             value={opm}
             onChange={e => setOpm(e.target.value)}
-            onBlur={() => bewaar(status, opm)}
+            onBlur={() => bewaar(voorstel, opm)}
             placeholder="Opmerking (optioneel)…"
             rows={2}
             disabled={bezig}
             className="w-full text-sm border border-ink/20 rounded px-3 py-2 resize-none bg-white"
           />
         </div>
+
+        {netIngediend && (
+          <p className="text-xs text-green-600 font-medium">
+            Concept ingediend — je KAM-coördinator geeft het vrij.
+          </p>
+        )}
       </div>
     </div>
   )

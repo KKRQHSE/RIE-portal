@@ -55,3 +55,22 @@ export type Foto = {
   betekenis: string | null
   refs: string[]
 }
+
+export type Persoon = {
+  id: string
+  company_id: string
+  naam: string
+  email: string | null
+  status: string
+  voorgesteld_door: string | null
+  archived_at: string | null
+}
+
+export type Deellink = {
+  id: string
+  company_id: string
+  persoon_id: string
+  token: string
+  vervalt_op: string | null
+  ingetrokken: boolean
+}

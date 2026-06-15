@@ -39,5 +39,5 @@ export default async function PvaPage({
   // Sorteer op nummer als integer (nr is text, bijv. "1".."20")
   const sorted = (items ?? []).sort((a, b) => parseInt(a.nr) - parseInt(b.nr))
 
-  return <PvaClient company={company} initialItems={sorted} />
+  return <PvaClient company={company} initialItems={sorted} isAdmin={profile.role === 'admin'} />
 }

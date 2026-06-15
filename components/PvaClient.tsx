@@ -12,9 +12,10 @@ import LogoutButton from './LogoutButton'
 type Props = {
   company: Company
   initialItems: PvaItem[]
+  isAdmin?: boolean
 }
 
-export default function PvaClient({ company, initialItems }: Props) {
+export default function PvaClient({ company, initialItems, isAdmin = false }: Props) {
   const [items, setItems] = useState<PvaItem[]>(initialItems)
   const [filterStatus, setFilterStatus] = useState('Alle')
   const [filterPrio, setFilterPrio] = useState('Alle')
@@ -86,6 +87,14 @@ export default function PvaClient({ company, initialItems }: Props) {
           >
             Volledige RI&amp;E
           </Link>
+          {isAdmin && (
+            <Link
+              href={`/${company.id}/personen`}
+              className="text-sm px-4 py-2 rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
+            >
+              Personen
+            </Link>
+          )}
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6 flex items-center gap-5">

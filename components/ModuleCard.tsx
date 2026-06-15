@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import type { Module, Vraag, Foto } from '@/lib/types'
 
 const ANTWOORD_STYLE: Record<string, string> = {
@@ -17,14 +18,34 @@ const KLASSE_STYLE: Record<string, string> = {
 }
 
 type Props = {
+  companyId: string
   module: Module
   vragen: Vraag[]
   fotos: Foto[]
   filter: 'Alle' | 'Nee'
+  highlightVraag: string | null
 }
 
-export default function ModuleCard({ module, vragen, fotos, filter }: Props) {
+export default function ModuleCard({ companyId, module, vragen, fotos, filter, highlightVraag }: Props) {
+  // Bevat deze module de aangewezen vraag? Zo ja: standaard open zodat het
+  // anker-element bestaat en de scroll/highlight kan plaatsvinden.
+  const hasTarget = highlightVraag != null && vragen.some(v => v.nr === highlightVraag)
   const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (hasTarget) setOpen(true)
+  }, [hasTarget])
+
+  // Pas scrollen+markeren als de module daadwerkelijk open is en het anker bestaat.
+  useEffect(() => {
+    if (!open || !hasTarget) return
+    const el = document.getElementById(`vraag-${highlightVraag}`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.classList.add('rie-flash')
+    const t = setTimeout(() => el.classList.remove('rie-flash'), 2000)
+    return () => clearTimeout(t)
+  }, [open, hasTarget, highlightVraag])
 
   const shown = filter === 'Nee' ? vragen.filter(v => v.antwoord === 'Nee') : vragen
   const neeInModule = vragen.filter(v => v.antwoord === 'Nee').length
@@ -62,7 +83,7 @@ export default function ModuleCard({ module, vragen, fotos, filter }: Props) {
             {shown.map(v => {
               const vraagFotos = fotos.filter(f => f.refs?.includes(v.nr))
               return (
-                <div key={v.id} className="px-4 py-3">
+                <div key={v.id} id={`vraag-${v.nr}`} className="px-4 py-3 scroll-mt-20">
                   <div className="flex items-start gap-2">
                     <span className="font-mono text-xs text-ink/40 mt-1 shrink-0">{v.nr}</span>
                     <div className="flex-1 min-w-0">
@@ -80,7 +101,12 @@ export default function ModuleCard({ module, vragen, fotos, filter }: Props) {
                           </span>
                         )}
                         {v.pva && (
-                          <span className="text-xs text-ink/40 font-mono">→ actie {v.pva}</span>
+                          <Link
+                            href={`/${companyId}/pva#actie-${v.pva}`}
+                            className="text-xs text-accent font-mono hover:underline"
+                          >
+                            → actie {v.pva}
+                          </Link>
                         )}
                       </div>
 

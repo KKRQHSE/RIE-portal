@@ -12,3 +12,14 @@
   *, *::before, *::after { box-sizing: border-box; }
   body { background-color: #F1F2F4; color: #14161B; }
 }
+
+/* Tijdelijke markering na het volgen van een PvA<->RI&E-koppeling.
+   Achtergrond accent/10 die na ~2s vervaagt. */
+@keyframes rie-flash {
+  0%, 35%  { background-color: rgba(255, 82, 0, 0.10); }
+  100%     { background-color: transparent; }
+}
+.rie-flash {
+  animation: rie-flash 2s ease-out;
+  border-radius: 0.5rem;
+}

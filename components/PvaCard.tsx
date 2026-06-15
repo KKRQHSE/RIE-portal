@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { PvaItem } from '@/lib/types'
 
@@ -17,12 +18,16 @@ const STATUS_STYLE: Record<string, string> = {
 }
 
 type Props = {
+  companyId: string
   item: PvaItem
   onUpdate: (id: string, updates: Partial<PvaItem>) => void
 }
 
-export default function PvaCard({ item, onUpdate }: Props) {
+export default function PvaCard({ companyId, item, onUpdate }: Props) {
   const [open, setOpen]       = useState(false)
+
+  // ref bevat vraagnummers gescheiden door "/", bv "F1-1 / F1-2".
+  const refNums = (item.ref ?? '').split('/').map(s => s.trim()).filter(Boolean)
   const [status, setStatus]   = useState(item.status)
   const [verantw, setVerantw] = useState(item.verantw ?? '')
   const [opm, setOpm]         = useState(item.opm ?? '')
@@ -55,7 +60,7 @@ export default function PvaCard({ item, onUpdate }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div id={`actie-${item.nr}`} className="bg-white rounded-lg shadow-sm overflow-hidden scroll-mt-20">
 
       {/* Klikbare kopregel */}
       <button
@@ -72,12 +77,28 @@ export default function PvaCard({ item, onUpdate }: Props) {
             <span className="font-mono text-xs text-ink/40">{item.nr}</span>
             <span className="font-medium text-ink">{item.onderwerp}</span>
           </div>
-          <p className="text-xs text-ink/50 font-mono mt-0.5 truncate">
-            {item.ref} · {item.termijn}
-          </p>
+          {item.termijn && (
+            <p className="text-xs text-ink/50 font-mono mt-0.5 truncate">{item.termijn}</p>
+          )}
         </div>
         <span className="text-ink/30 text-xs mt-1 shrink-0">{open ? '▲' : '▼'}</span>
       </button>
+
+      {/* Koppeling naar de bijbehorende RI&E-vragen (buiten de toggle-knop) */}
+      {refNums.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pb-1">
+          <span className="text-xs text-ink/40">RI&amp;E:</span>
+          {refNums.map(nr => (
+            <Link
+              key={nr}
+              href={`/${companyId}/rie#vraag-${nr}`}
+              className="text-xs font-mono text-accent hover:underline"
+            >
+              {nr}
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* Bewerkbare velden */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-3 border-t border-surface">

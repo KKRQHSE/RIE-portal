@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import type { PvaItem, Company } from '@/lib/types'
@@ -22,6 +22,23 @@ export default function PvaClient({ company, initialItems }: Props) {
   function handleUpdate(id: string, updates: Partial<PvaItem>) {
     setItems(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item))
   }
+
+  // Scroll+highlight PAS nadat de acties gerenderd zijn (afhankelijk van items).
+  // Eénmalig: niet opnieuw scrollen wanneer items muteren door een edit.
+  const didScroll = useRef(false)
+  useEffect(() => {
+    if (didScroll.current || items.length === 0) return
+    const m = window.location.hash.match(/^#actie-(.+)$/)
+    if (!m) return
+    const nr = decodeURIComponent(m[1])
+    didScroll.current = true
+    const el = document.getElementById(`actie-${nr}`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.classList.add('rie-flash')
+    const t = setTimeout(() => el.classList.remove('rie-flash'), 2000)
+    return () => clearTimeout(t)
+  }, [items])
 
   const filtered = items.filter(item => {
     const statusOk = filterStatus === 'Alle' || item.status === filterStatus
@@ -91,7 +108,7 @@ export default function PvaClient({ company, initialItems }: Props) {
 
         <div className="space-y-3 mt-4">
           {filtered.map(item => (
-            <PvaCard key={item.id} item={item} onUpdate={handleUpdate} />
+            <PvaCard key={item.id} companyId={company.id} item={item} onUpdate={handleUpdate} />
           ))}
           {filtered.length === 0 && (
             <p className="text-center text-ink/40 py-10 text-sm">Geen acties voor deze filter.</p>

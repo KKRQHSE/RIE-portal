@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import type { Company, Module, Vraag, Foto } from '@/lib/types'
@@ -16,6 +16,13 @@ type Props = {
 
 export default function RieClient({ company, modules, vragen, fotos }: Props) {
   const [filter, setFilter] = useState<'Alle' | 'Nee'>('Alle')
+  const [highlightVraag, setHighlightVraag] = useState<string | null>(null)
+
+  // Lees het hash-doel PAS nadat de data geladen/gerenderd is.
+  useEffect(() => {
+    const m = window.location.hash.match(/^#vraag-(.+)$/)
+    setHighlightVraag(m ? decodeURIComponent(m[1]) : null)
+  }, [vragen])
 
   const neeCount = vragen.filter(v => v.antwoord === 'Nee').length
 
@@ -68,10 +75,12 @@ export default function RieClient({ company, modules, vragen, fotos }: Props) {
           {modules.map(mod => (
             <ModuleCard
               key={mod.id}
+              companyId={company.id}
               module={mod}
               vragen={vragen.filter(v => v.module_id === mod.id)}
               fotos={fotos}
               filter={filter}
+              highlightVraag={highlightVraag}
             />
           ))}
           {modules.length === 0 && (

@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 import type { PvaItem, Company, Persoon } from '@/lib/types'
 import PvaCard from './PvaCard'
 import ProgressRing from './ProgressRing'
@@ -24,44 +23,8 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
   const [filterStatus, setFilterStatus] = useState('Alle')
   const [filterPrio, setFilterPrio] = useState('Alle')
 
-  // Toewijs-modus: checkboxes verschijnen alleen hierin (anders blijft de lijst rustig).
-  const [toewijsModus, setToewijsModus] = useState(false)
-  const [selectie, setSelectie] = useState<Set<string>>(new Set())
-  const [doelPersoon, setDoelPersoon] = useState('')
-  const [toewijsBezig, setToewijsBezig] = useState(false)
-
   function handleUpdate(id: string, updates: Partial<PvaItem>) {
     setItems(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item))
-  }
-
-  function toggleSelect(id: string) {
-    setSelectie(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  function sluitToewijzen() {
-    setToewijsModus(false)
-    setSelectie(new Set())
-    setDoelPersoon('')
-  }
-
-  async function wijsToe() {
-    if (!doelPersoon || selectie.size === 0 || toewijsBezig) return
-    setToewijsBezig(true)
-    const ids = [...selectie]
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('pva_items')
-      .update({ persoon_id: doelPersoon })
-      .in('id', ids)
-    setToewijsBezig(false)
-    if (error) return
-    setItems(prev => prev.map(item => ids.includes(item.id) ? { ...item, persoon_id: doelPersoon } : item))
-    sluitToewijzen()
   }
 
   // Scroll+highlight PAS nadat de acties gerenderd zijn (afhankelijk van items).
@@ -150,58 +113,12 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
           </div>
         </div>
 
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <FilterBar
-            filterStatus={filterStatus}
-            filterPrio={filterPrio}
-            onStatusChange={setFilterStatus}
-            onPrioChange={setFilterPrio}
-          />
-          {magBeheren && (
-            toewijsModus ? (
-              <button
-                onClick={sluitToewijzen}
-                className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors"
-              >
-                Klaar met toewijzen
-              </button>
-            ) : (
-              <button
-                onClick={() => setToewijsModus(true)}
-                className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-accent hover:text-accent transition-colors"
-              >
-                Acties toewijzen
-              </button>
-            )
-          )}
-        </div>
-
-        {/* Toewijs-balk */}
-        {magBeheren && toewijsModus && (
-          <div className="bg-white rounded-lg shadow-sm p-3 mt-3 flex flex-wrap items-center gap-3">
-            <span className="text-sm text-ink/60">{selectie.size} geselecteerd</span>
-            <select
-              value={doelPersoon}
-              onChange={e => setDoelPersoon(e.target.value)}
-              className="text-sm border border-ink/20 rounded px-2 py-1.5 bg-white"
-            >
-              <option value="">Kies persoon…</option>
-              {personen.map(p => (
-                <option key={p.id} value={p.id}>{p.naam}</option>
-              ))}
-            </select>
-            <button
-              onClick={wijsToe}
-              disabled={!doelPersoon || selectie.size === 0 || toewijsBezig}
-              className="text-sm px-4 py-1.5 rounded-full bg-accent text-white font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
-            >
-              {toewijsBezig ? 'Bezig…' : `Wijs toe${selectie.size > 0 ? ` (${selectie.size})` : ''}`}
-            </button>
-            {personen.length === 0 && (
-              <span className="text-xs text-ink/40">Nog geen personen — voeg ze toe bij Personen.</span>
-            )}
-          </div>
-        )}
+        <FilterBar
+          filterStatus={filterStatus}
+          filterPrio={filterPrio}
+          onStatusChange={setFilterStatus}
+          onPrioChange={setFilterPrio}
+        />
 
         <div className="space-y-3 mt-4">
           {filtered.map(item => (
@@ -212,9 +129,6 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
               onUpdate={handleUpdate}
               personen={personen}
               magBeheren={magBeheren}
-              toewijsModus={magBeheren && toewijsModus}
-              geselecteerd={selectie.has(item.id)}
-              onToggleSelect={toggleSelect}
             />
           ))}
           {filtered.length === 0 && (

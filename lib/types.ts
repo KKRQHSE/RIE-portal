@@ -13,6 +13,12 @@ export type PvaItem = {
   opm: string | null
   updated_at: string
   updated_by: string | null
+  persoon_id: string | null
+  concept_status: string | null
+  concept_opm: string | null
+  concept_at: string | null
+  vrijgegeven_op: string | null
+  vrijgegeven_door: string | null
 }
 
 export type Company = {

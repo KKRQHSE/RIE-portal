@@ -39,5 +39,24 @@ export default async function PvaPage({
   // Sorteer op nummer als integer (nr is text, bijv. "1".."20")
   const sorted = (items ?? []).sort((a, b) => parseInt(a.nr) - parseInt(b.nr))
 
-  return <PvaClient company={company} initialItems={sorted} isAdmin={profile.role === 'admin'} />
+  const isAdmin = profile.role === 'admin'
+
+  // Personen alleen nodig (en zichtbaar) voor de beheerder die toewijst.
+  const { data: personen } = isAdmin
+    ? await supabase
+        .from('personen')
+        .select('id, company_id, naam, email, status, voorgesteld_door, archived_at')
+        .eq('company_id', company_id)
+        .is('archived_at', null)
+        .order('naam', { ascending: true })
+    : { data: [] }
+
+  return (
+    <PvaClient
+      company={company}
+      initialItems={sorted}
+      isAdmin={isAdmin}
+      personen={personen ?? []}
+    />
+  )
 }

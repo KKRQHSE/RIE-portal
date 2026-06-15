@@ -21,9 +21,21 @@ type Props = {
   companyId: string
   item: PvaItem
   onUpdate: (id: string, updates: Partial<PvaItem>) => void
+  toewijsModus?: boolean
+  geselecteerd?: boolean
+  onToggleSelect?: (id: string) => void
+  houderNaam?: string | null
 }
 
-export default function PvaCard({ companyId, item, onUpdate }: Props) {
+export default function PvaCard({
+  companyId,
+  item,
+  onUpdate,
+  toewijsModus = false,
+  geselecteerd = false,
+  onToggleSelect,
+  houderNaam = null,
+}: Props) {
   const [open, setOpen]       = useState(false)
 
   // ref bevat vraagnummers gescheiden door "/", bv "F1-1 / F1-2".
@@ -62,27 +74,42 @@ export default function PvaCard({ companyId, item, onUpdate }: Props) {
   return (
     <div id={`actie-${item.nr}`} className="bg-white rounded-lg shadow-sm overflow-hidden scroll-mt-20">
 
-      {/* Klikbare kopregel */}
-      <button
-        className="w-full flex items-start gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
-        onClick={() => setOpen(o => !o)}
-        aria-expanded={open}
-      >
-        <span className={`shrink-0 inline-block font-mono text-xs font-medium px-2 py-1 rounded mt-0.5
-          ${PRIO_STYLE[item.prio] ?? 'bg-gray-100 text-gray-700'}`}>
-          {item.prio}
-        </span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="font-mono text-xs text-ink/40">{item.nr}</span>
-            <span className="font-medium text-ink">{item.onderwerp}</span>
+      {/* Kopregel: in toewijs-modus links een checkbox, ernaast de klikbare knop */}
+      <div className="flex items-stretch">
+        {toewijsModus && (
+          <label className="flex items-center pl-4 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={geselecteerd}
+              onChange={() => onToggleSelect?.(item.id)}
+              className="w-4 h-4 accent-accent"
+            />
+          </label>
+        )}
+        <button
+          className="flex-1 min-w-0 flex items-start gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
+          onClick={() => setOpen(o => !o)}
+          aria-expanded={open}
+        >
+          <span className={`shrink-0 inline-block font-mono text-xs font-medium px-2 py-1 rounded mt-0.5
+            ${PRIO_STYLE[item.prio] ?? 'bg-gray-100 text-gray-700'}`}>
+            {item.prio}
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="font-mono text-xs text-ink/40">{item.nr}</span>
+              <span className="font-medium text-ink">{item.onderwerp}</span>
+            </div>
+            {item.termijn && (
+              <p className="text-xs text-ink/50 font-mono mt-0.5 truncate">{item.termijn}</p>
+            )}
+            {houderNaam && (
+              <p className="text-xs text-ink/50 mt-0.5">Toegewezen aan {houderNaam}</p>
+            )}
           </div>
-          {item.termijn && (
-            <p className="text-xs text-ink/50 font-mono mt-0.5 truncate">{item.termijn}</p>
-          )}
-        </div>
-        <span className="text-ink/30 text-xs mt-1 shrink-0">{open ? '▲' : '▼'}</span>
-      </button>
+          <span className="text-ink/30 text-xs mt-1 shrink-0">{open ? '▲' : '▼'}</span>
+        </button>
+      </div>
 
       {/* Koppeling naar de bijbehorende RI&E-vragen (buiten de toggle-knop) */}
       {refNums.length > 0 && (

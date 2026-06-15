@@ -2,7 +2,8 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Pagina's die je zonder inloggen mag zien.
-const PUBLIC_PATHS = ['/login', '/auth', '/reset-wachtwoord', '/set-wachtwoord']
+// '/a' = gast-deellinkpagina (actiehouders zonder account).
+const PUBLIC_PATHS = ['/login', '/auth', '/reset-wachtwoord', '/set-wachtwoord', '/a']
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })

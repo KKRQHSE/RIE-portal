@@ -1,24 +1,26 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import type { PvaItem, Company, Persoon } from '@/lib/types'
+import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import PvaCard from './PvaCard'
 import ProgressRing from './ProgressRing'
 import FilterBar from './FilterBar'
 import LogoutButton from './LogoutButton'
 import NaamVragen from './NaamVragen'
+import HuisstijlLogo from './HuisstijlLogo'
 
 type Props = {
   company: Company
   initialItems: PvaItem[]
   magBeheren?: boolean
   personen?: Persoon[]
+  huisstijl?: HuisstijlView
   toonNaamVragen?: boolean
 }
 
-export default function PvaClient({ company, initialItems, magBeheren = false, personen = [], toonNaamVragen = false }: Props) {
+export default function PvaClient({ company, initialItems, magBeheren = false, personen = [], huisstijl = VEILIGE_HUISSTIJL, toonNaamVragen = false }: Props) {
   const [items, setItems] = useState<PvaItem[]>(initialItems)
   const [filterStatus, setFilterStatus] = useState('Alle')
   const [filterPrio, setFilterPrio] = useState('Alle')
@@ -55,7 +57,7 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
   const pct = items.length > 0 ? Math.round((afgerond / items.length) * 100) : 0
 
   return (
-    <main className="min-h-screen bg-surface">
+    <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-3xl mx-auto px-4 py-8">
 
         <div className="flex justify-end mb-2">
@@ -66,7 +68,7 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
 
         <div className="flex items-start justify-between mb-6">
           <div>
-            <Image src="/logo.jpg" alt="QHSE Totaal" width={140} height={46} className="object-contain mb-2" />
+            <HuisstijlLogo huisstijl={huisstijl} className="mb-2" />
             <h1 className="text-xl font-semibold text-ink">{company.name}</h1>
             <p className="text-sm text-ink/50 mt-0.5">Plan van Aanpak</p>
           </div>

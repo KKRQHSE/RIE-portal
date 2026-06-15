@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import RieClient from '@/components/RieClient'
+import { haalHuisstijl } from '@/lib/huisstijl-data'
 
 export default async function RiePage({
   params,
@@ -50,12 +51,15 @@ export default async function RiePage({
     .is('archived_at', null)
     .order('nr', { ascending: true })
 
+  const huisstijl = await haalHuisstijl(company_id)
+
   return (
     <RieClient
       company={company}
       modules={modules ?? []}
       vragen={vragen ?? []}
       fotos={fotos ?? []}
+      huisstijl={huisstijl}
     />
   )
 }

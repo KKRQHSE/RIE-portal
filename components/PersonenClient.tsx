@@ -1,18 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { voorspelEmail } from '@/lib/email'
 import type { Company, Persoon, Deellink } from '@/lib/types'
+import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import LogoutButton from './LogoutButton'
 import NaamVragen from './NaamVragen'
+import HuisstijlLogo from './HuisstijlLogo'
 
 type Props = {
   company: Company
   initialPersonen: Persoon[]
   initialDeellinks: Deellink[]
+  huisstijl?: HuisstijlView
   toonNaamVragen?: boolean
 }
 
@@ -27,7 +29,7 @@ function isActief(link: Deellink | undefined): link is Deellink {
   return true
 }
 
-export default function PersonenClient({ company, initialPersonen, initialDeellinks, toonNaamVragen = false }: Props) {
+export default function PersonenClient({ company, initialPersonen, initialDeellinks, huisstijl = VEILIGE_HUISSTIJL, toonNaamVragen = false }: Props) {
   const [personen, setPersonen] = useState<Persoon[]>(initialPersonen)
   const [links, setLinks] = useState<Record<string, Deellink>>(() =>
     Object.fromEntries(initialDeellinks.map(l => [l.persoon_id, l]))
@@ -125,7 +127,7 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
   }
 
   return (
-    <main className="min-h-screen bg-surface">
+    <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-3xl mx-auto px-4 py-8">
 
         <div className="flex justify-end mb-2">
@@ -135,7 +137,7 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
         {toonNaamVragen && <NaamVragen />}
 
         <div className="mb-6">
-          <Image src="/logo.jpg" alt="QHSE Totaal" width={140} height={46} className="object-contain mb-2" />
+          <HuisstijlLogo huisstijl={huisstijl} className="mb-2" />
           <h1 className="text-xl font-semibold text-ink">{company.name}</h1>
           <p className="text-sm text-ink/50 mt-0.5">Personen &amp; deellinks</p>
         </div>

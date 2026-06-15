@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import PvaClient from '@/components/PvaClient'
+import { haalHuisstijl } from '@/lib/huisstijl-data'
 
 export default async function PvaPage({
   params,
@@ -65,12 +66,15 @@ export default async function PvaPage({
         .order('naam', { ascending: true })
     : { data: [] }
 
+  const huisstijl = await haalHuisstijl(company_id)
+
   return (
     <PvaClient
       company={company}
       initialItems={sorted}
       magBeheren={magBeheren}
       personen={personen ?? []}
+      huisstijl={huisstijl}
       toonNaamVragen={isClient && !heeftNaam}
     />
   )

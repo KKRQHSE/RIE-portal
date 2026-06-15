@@ -1,20 +1,22 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import type { Company, Module, Vraag, Foto } from '@/lib/types'
+import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import LogoutButton from './LogoutButton'
 import ModuleCard from './ModuleCard'
+import HuisstijlLogo from './HuisstijlLogo'
 
 type Props = {
   company: Company
   modules: Module[]
   vragen: Vraag[]
   fotos: Foto[]
+  huisstijl?: HuisstijlView
 }
 
-export default function RieClient({ company, modules, vragen, fotos }: Props) {
+export default function RieClient({ company, modules, vragen, fotos, huisstijl = VEILIGE_HUISSTIJL }: Props) {
   const [filter, setFilter] = useState<'Alle' | 'Nee'>('Alle')
   const [highlightVraag, setHighlightVraag] = useState<string | null>(null)
 
@@ -27,7 +29,7 @@ export default function RieClient({ company, modules, vragen, fotos }: Props) {
   const neeCount = vragen.filter(v => v.antwoord === 'Nee').length
 
   return (
-    <main className="min-h-screen bg-surface">
+    <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-3xl mx-auto px-4 py-8">
 
         <div className="flex justify-end mb-2">
@@ -35,7 +37,7 @@ export default function RieClient({ company, modules, vragen, fotos }: Props) {
         </div>
 
         <div className="mb-6">
-          <Image src="/logo.jpg" alt="QHSE Totaal" width={140} height={46} className="object-contain mb-2" />
+          <HuisstijlLogo huisstijl={huisstijl} className="mb-2" />
           <h1 className="text-xl font-semibold text-ink">{company.name}</h1>
           <p className="text-sm text-ink/50 mt-0.5">Risico-inventarisatie &amp; -evaluatie</p>
         </div>

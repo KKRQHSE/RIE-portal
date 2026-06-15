@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import PersonenClient from '@/components/PersonenClient'
+import { haalHuisstijl } from '@/lib/huisstijl-data'
 
 export default async function PersonenPage({
   params,
@@ -56,11 +57,14 @@ export default async function PersonenPage({
     .select('id, company_id, persoon_id, token, vervalt_op, ingetrokken')
     .eq('company_id', company_id)
 
+  const huisstijl = await haalHuisstijl(company_id)
+
   return (
     <PersonenClient
       company={company}
       initialPersonen={personen ?? []}
       initialDeellinks={deellinks ?? []}
+      huisstijl={huisstijl}
       toonNaamVragen={isClient && !heeftNaam}
     />
   )

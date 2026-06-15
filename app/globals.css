@@ -16,7 +16,7 @@
 /* Tijdelijke markering na het volgen van een PvA<->RI&E-koppeling.
    Achtergrond accent/10 die na ~2s vervaagt. */
 @keyframes rie-flash {
-  0%, 35%  { background-color: rgba(255, 82, 0, 0.10); }
+  0%, 35%  { background-color: color-mix(in srgb, var(--color-accent, #FF5200) 10%, transparent); }
   100%     { background-color: transparent; }
 }
 .rie-flash {

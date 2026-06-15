@@ -19,6 +19,18 @@ export type PvaItem = {
   concept_at: string | null
   vrijgegeven_op: string | null
   vrijgegeven_door: string | null
+  vrijgave_opmerking: string | null
+  vrijgave_bewijs: string | null
+}
+
+export type HistorieRegel = {
+  gebeurtenis: string
+  van_status: string | null
+  naar_status: string | null
+  opmerking: string | null
+  actor_naam: string | null
+  actor_type: string | null
+  created_at: string
 }
 
 export type Company = {

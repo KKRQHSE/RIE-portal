@@ -28,8 +28,6 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
   const [doelPersoon, setDoelPersoon] = useState('')
   const [toewijsBezig, setToewijsBezig] = useState(false)
 
-  const naamById = new Map(personen.map(p => [p.id, p.naam]))
-
   function handleUpdate(id: string, updates: Partial<PvaItem>) {
     setItems(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item))
   }
@@ -208,10 +206,11 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
               companyId={company.id}
               item={item}
               onUpdate={handleUpdate}
+              personen={personen}
+              magBeheren={magBeheren}
               toewijsModus={magBeheren && toewijsModus}
               geselecteerd={selectie.has(item.id)}
               onToggleSelect={toggleSelect}
-              houderNaam={item.persoon_id ? naamById.get(item.persoon_id) ?? null : null}
             />
           ))}
           {filtered.length === 0 && (

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import type { PvaItem } from '@/lib/types'
+import type { PvaItem, Persoon } from '@/lib/types'
 
 const PRIO_STYLE: Record<string, string> = {
   Laag:   'bg-yellow-100 text-yellow-800',
@@ -21,29 +21,33 @@ type Props = {
   companyId: string
   item: PvaItem
   onUpdate: (id: string, updates: Partial<PvaItem>) => void
+  personen?: Persoon[]
+  magBeheren?: boolean
   toewijsModus?: boolean
   geselecteerd?: boolean
   onToggleSelect?: (id: string) => void
-  houderNaam?: string | null
 }
 
 export default function PvaCard({
   companyId,
   item,
   onUpdate,
+  personen = [],
+  magBeheren = false,
   toewijsModus = false,
   geselecteerd = false,
   onToggleSelect,
-  houderNaam = null,
 }: Props) {
   const [open, setOpen]       = useState(false)
 
   // ref bevat vraagnummers gescheiden door "/", bv "F1-1 / F1-2".
   const refNums = (item.ref ?? '').split('/').map(s => s.trim()).filter(Boolean)
-  const [status, setStatus]   = useState(item.status)
-  const [verantw, setVerantw] = useState(item.verantw ?? '')
-  const [opm, setOpm]         = useState(item.opm ?? '')
-  const [saved, setSaved]     = useState(false)
+  const [status, setStatus]     = useState(item.status)
+  const [persoonId, setPersoonId] = useState<string | null>(item.persoon_id)
+  const [opm, setOpm]           = useState(item.opm ?? '')
+  const [saved, setSaved]       = useState(false)
+
+  const houderNaam = personen.find(p => p.id === persoonId)?.naam ?? null
 
   async function save(updates: Partial<PvaItem>) {
     const supabase = createClient()
@@ -61,9 +65,11 @@ export default function PvaCard({
     save({ status: val })
   }
 
-  function blurVerantw() {
-    onUpdate(item.id, { verantw })
-    save({ verantw })
+  function changePersoon(val: string) {
+    const id = val === '' ? null : val
+    setPersoonId(id)
+    onUpdate(item.id, { persoon_id: id })
+    save({ persoon_id: id })
   }
 
   function blurOpm() {
@@ -103,9 +109,6 @@ export default function PvaCard({
             {item.termijn && (
               <p className="text-xs text-ink/50 font-mono mt-0.5 truncate">{item.termijn}</p>
             )}
-            {houderNaam && (
-              <p className="text-xs text-ink/50 mt-0.5">Toegewezen aan {houderNaam}</p>
-            )}
           </div>
           <span className="text-ink/30 text-xs mt-1 shrink-0">{open ? '▲' : '▼'}</span>
         </button>
@@ -144,14 +147,21 @@ export default function PvaCard({
         </div>
 
         <div className="flex items-center gap-2 mt-2 flex-1 min-w-[160px]">
-          <span className="text-xs text-ink/40 shrink-0">Verantw.</span>
-          <input
-            value={verantw}
-            onChange={e => setVerantw(e.target.value)}
-            onBlur={blurVerantw}
-            placeholder="Naam"
-            className="text-sm border border-ink/20 rounded px-2 py-1 flex-1 min-w-0 bg-white"
-          />
+          <span className="text-xs text-ink/40 shrink-0">Toegewezen aan</span>
+          {magBeheren ? (
+            <select
+              value={persoonId ?? ''}
+              onChange={e => changePersoon(e.target.value)}
+              className="text-sm border border-ink/20 rounded px-2 py-1 flex-1 min-w-0 bg-white"
+            >
+              <option value="">Niemand</option>
+              {personen.map(p => (
+                <option key={p.id} value={p.id}>{p.naam}</option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-sm text-ink/70">{houderNaam ?? '—'}</span>
+          )}
         </div>
 
         {saved && (

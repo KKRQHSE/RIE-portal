@@ -6,6 +6,7 @@ import type { PvaItem, Company } from '@/lib/types'
 import PvaCard from './PvaCard'
 import ProgressRing from './ProgressRing'
 import FilterBar from './FilterBar'
+import LogoutButton from './LogoutButton'
 
 type Props = {
   company: Company
@@ -34,6 +35,11 @@ export default function PvaClient({ company, initialItems }: Props) {
   return (
     <main className="min-h-screen bg-surface">
       <div className="max-w-3xl mx-auto px-4 py-8">
+
+        {/* Bovenbalk met uitlogknop */}
+        <div className="flex justify-end mb-2">
+          <LogoutButton />
+        </div>
 
         {/* Header */}
         <div className="flex items-start justify-between mb-6">

@@ -1,7 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_PATHS = ['/login', '/auth/callback']
+// Pagina's die je zonder inloggen mag zien.
+const PUBLIC_PATHS = ['/login', '/auth', '/reset-wachtwoord', '/set-wachtwoord']
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -25,13 +26,13 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Sessie vernieuwen (altijd doen, ook op publieke pagina's)
+  // Sessie verversen bij ELKE request. Dit voorkomt willekeurig uitloggen.
   const { data: { user } } = await supabase.auth.getUser()
 
   const path = request.nextUrl.pathname
-  const isPublic = PUBLIC_PATHS.some(p => path.startsWith(p))
+  const isPublic = PUBLIC_PATHS.some(p => path === p || path.startsWith(p + '/'))
 
-  // Niet ingelogd + beveiligde route → naar login
+  // Niet ingelogd + beveiligde route → naar login.
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))
   }

@@ -1,5 +1,8 @@
 import { redirect } from 'next/navigation'
+import { getSessionProfile, homePathFor } from '@/lib/auth'
 
-export default function Home() {
-  redirect('/login')
+export default async function Home() {
+  const profile = await getSessionProfile()
+  if (!profile) redirect('/login')
+  redirect(homePathFor(profile))
 }

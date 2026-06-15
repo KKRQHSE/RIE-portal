@@ -34,7 +34,7 @@ type Props = {
   magBeheren?: boolean
 }
 
-type Paneel = null | 'direct' | 'vrijgeven' | 'terugsturen'
+type Paneel = null | 'vrijgeven' | 'terugsturen'
 
 export default function PvaCard({
   companyId,
@@ -59,7 +59,6 @@ export default function PvaCard({
   const [paneel, setPaneel] = useState<Paneel>(null)
   const [vOpm, setVOpm] = useState('')
   const [vBewijs, setVBewijs] = useState('')
-  const [directStatus, setDirectStatus] = useState(item.status)
 
   const [histOpen, setHistOpen] = useState(false)
   const [historie, setHistorie] = useState<HistorieRegel[] | null>(null)
@@ -113,22 +112,11 @@ export default function PvaCard({
     setPaneel(prev => (prev === p ? null : p))
     setVOpm('')
     setVBewijs('')
-    if (p === 'direct') setDirectStatus(item.status)
   }
 
   async function voorstelConcept(val: string) {
     if (!val) return
     await callJson('zet_concept_beheerder', { p_actie_id: item.id, p_status: val, p_opm: null })
-  }
-
-  async function doeDirect() {
-    const ok = await callJson('zet_status_beheerder', {
-      p_actie_id: item.id,
-      p_status: directStatus,
-      p_opmerking: vOpm.trim() || null,
-      p_bewijs: vBewijs.trim() || null,
-    })
-    if (ok) setPaneel(null)
   }
 
   async function doeVrijgeven() {
@@ -274,13 +262,6 @@ export default function PvaCard({
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => openPaneel('direct')}
-                disabled={bezig}
-                className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
-              >
-                Direct vrijgeven
-              </button>
               {heeftConcept && (
                 <>
                   <button
@@ -306,42 +287,6 @@ export default function PvaCard({
                 Geschiedenis {histOpen ? '▲' : '▼'}
               </button>
             </div>
-
-            {/* Inline paneel: direct vrijgeven (zet echte status) */}
-            {paneel === 'direct' && (
-              <div className="rounded border border-surface bg-surface/40 p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-ink/40">Nieuwe status</span>
-                  <select
-                    value={directStatus}
-                    onChange={e => setDirectStatus(e.target.value)}
-                    className="text-sm border border-ink/20 rounded px-2 py-1 bg-white"
-                  >
-                    {STATUS_OPTS.map(s => <option key={s}>{s}</option>)}
-                  </select>
-                </div>
-                <input
-                  value={vOpm}
-                  onChange={e => setVOpm(e.target.value)}
-                  placeholder="Opmerking (optioneel)"
-                  className="w-full text-sm border border-ink/20 rounded px-3 py-2 bg-white"
-                />
-                <input
-                  value={vBewijs}
-                  onChange={e => setVBewijs(e.target.value)}
-                  placeholder="bv. https://... of 'foto in dossier map X'"
-                  className="w-full text-sm border border-ink/20 rounded px-3 py-2 bg-white"
-                />
-                <p className="text-[11px] text-ink/40 -mt-1">Bewijs (link of korte verwijzing)</p>
-                <button
-                  onClick={doeDirect}
-                  disabled={bezig}
-                  className="text-sm px-4 py-1.5 rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
-                >
-                  {bezig ? 'Bezig…' : 'Vastleggen'}
-                </button>
-              </div>
-            )}
 
             {/* Inline paneel: concept vrijgeven */}
             {paneel === 'vrijgeven' && (

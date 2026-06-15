@@ -7,11 +7,13 @@ import { createClient } from '@/lib/supabase/client'
 import { voorspelEmail } from '@/lib/email'
 import type { Company, Persoon, Deellink } from '@/lib/types'
 import LogoutButton from './LogoutButton'
+import NaamVragen from './NaamVragen'
 
 type Props = {
   company: Company
   initialPersonen: Persoon[]
   initialDeellinks: Deellink[]
+  toonNaamVragen?: boolean
 }
 
 const STATUS_STYLE: Record<string, string> = {
@@ -25,7 +27,7 @@ function isActief(link: Deellink | undefined): link is Deellink {
   return true
 }
 
-export default function PersonenClient({ company, initialPersonen, initialDeellinks }: Props) {
+export default function PersonenClient({ company, initialPersonen, initialDeellinks, toonNaamVragen = false }: Props) {
   const [personen, setPersonen] = useState<Persoon[]>(initialPersonen)
   const [links, setLinks] = useState<Record<string, Deellink>>(() =>
     Object.fromEntries(initialDeellinks.map(l => [l.persoon_id, l]))
@@ -129,6 +131,8 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
         <div className="flex justify-end mb-2">
           <LogoutButton />
         </div>
+
+        {toonNaamVragen && <NaamVragen />}
 
         <div className="mb-6">
           <Image src="/logo.jpg" alt="QHSE Totaal" width={140} height={46} className="object-contain mb-2" />

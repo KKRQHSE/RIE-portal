@@ -9,15 +9,17 @@ import PvaCard from './PvaCard'
 import ProgressRing from './ProgressRing'
 import FilterBar from './FilterBar'
 import LogoutButton from './LogoutButton'
+import NaamVragen from './NaamVragen'
 
 type Props = {
   company: Company
   initialItems: PvaItem[]
   magBeheren?: boolean
   personen?: Persoon[]
+  toonNaamVragen?: boolean
 }
 
-export default function PvaClient({ company, initialItems, magBeheren = false, personen = [] }: Props) {
+export default function PvaClient({ company, initialItems, magBeheren = false, personen = [], toonNaamVragen = false }: Props) {
   const [items, setItems] = useState<PvaItem[]>(initialItems)
   const [filterStatus, setFilterStatus] = useState('Alle')
   const [filterPrio, setFilterPrio] = useState('Alle')
@@ -96,6 +98,8 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
         <div className="flex justify-end mb-2">
           <LogoutButton />
         </div>
+
+        {toonNaamVragen && <NaamVragen />}
 
         <div className="flex items-start justify-between mb-6">
           <div>

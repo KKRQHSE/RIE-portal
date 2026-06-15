@@ -15,7 +15,7 @@ export default async function PersonenPage({
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role, company_id')
+    .select('role, company_id, naam')
     .eq('id', user.id)
     .single()
 
@@ -32,6 +32,14 @@ export default async function PersonenPage({
     .eq('id', company_id)
     .single()
   if (!company) notFound()
+
+  const heeftNaam = !!profile.naam?.trim()
+
+  // Beheerder met naam wordt gegarandeerd zelf een persoon in dit bedrijf
+  // (idempotent: de RPC matcht op e-mail). Pas daarna de lijst ophalen.
+  if (heeftNaam) {
+    await supabase.rpc('koppel_mij_als_persoon', { p_company_id: company_id })
+  }
 
   const { data: personen } = await supabase
     .from('personen')
@@ -50,6 +58,7 @@ export default async function PersonenPage({
       company={company}
       initialPersonen={personen ?? []}
       initialDeellinks={deellinks ?? []}
+      toonNaamVragen={!heeftNaam}
     />
   )
 }

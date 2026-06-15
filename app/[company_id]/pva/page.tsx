@@ -15,7 +15,7 @@ export default async function PvaPage({
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role, company_id')
+    .select('role, company_id, naam')
     .eq('id', user.id)
     .single()
 
@@ -44,6 +44,14 @@ export default async function PvaPage({
     profile.role === 'admin' ||
     (profile.role === 'client' && profile.company_id === company_id)
 
+  const heeftNaam = !!profile.naam?.trim()
+
+  // Beheerder met naam wordt gegarandeerd zelf een persoon in dit bedrijf
+  // (idempotent: de RPC matcht op e-mail). Pas daarna de lijst ophalen.
+  if (magBeheren && heeftNaam) {
+    await supabase.rpc('koppel_mij_als_persoon', { p_company_id: company_id })
+  }
+
   // Personen alleen nodig (en zichtbaar) voor wie mag beheren.
   const { data: personen } = magBeheren
     ? await supabase
@@ -60,6 +68,7 @@ export default async function PvaPage({
       initialItems={sorted}
       magBeheren={magBeheren}
       personen={personen ?? []}
+      toonNaamVragen={magBeheren && !heeftNaam}
     />
   )
 }

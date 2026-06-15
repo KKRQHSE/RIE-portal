@@ -5,6 +5,7 @@ export type Profile = {
   role: string
   company_id: string | null
   email: string | null
+  naam: string | null
 }
 
 // De enige plek die bepaalt: wie is deze gebruiker, welke rol, welk bedrijf.
@@ -15,14 +16,14 @@ export async function getSessionProfile(): Promise<Profile | null> {
 
   const { data } = await supabase
     .from('users')
-    .select('id, role, company_id, email')
+    .select('id, role, company_id, email, naam')
     .eq('id', user.id)
     .single()
 
   // Ingelogd maar geen profielrij: geef een herkenbare 'none'-rol terug
   // i.p.v. crashen. De /geen-toegang pagina vangt dit netjes op.
   if (!data) {
-    return { id: user.id, role: 'none', company_id: null, email: user.email ?? null }
+    return { id: user.id, role: 'none', company_id: null, email: user.email ?? null, naam: null }
   }
   return data as Profile
 }

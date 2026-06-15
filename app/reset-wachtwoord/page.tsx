@@ -31,10 +31,16 @@ export default function ResetWachtwoord() {
         <h1 className="text-xl font-semibold text-ink mb-6">Wachtwoord vergeten</h1>
 
         {sent ? (
-          <p className="text-sm text-ink/60 leading-relaxed">
-            Als dit e-mailadres bekend is, ontvang je een link om een nieuw
-            wachtwoord in te stellen. De link is 60 minuten geldig.
-          </p>
+          <div className="space-y-3">
+            <p className="text-sm text-ink/60 leading-relaxed">
+              Als dit e-mailadres bekend is, ontvang je een link om een nieuw
+              wachtwoord in te stellen. De link is 60 minuten geldig.
+            </p>
+            <p className="text-sm text-ink/50 bg-surface rounded px-3 py-2 leading-relaxed">
+              Geen mail ontvangen? Controleer je <strong>spam-map</strong>. Mail
+              van een nieuw adres belandt daar soms.
+            </p>
+          </div>
         ) : (
           <form onSubmit={submit} className="space-y-4">
             <div>

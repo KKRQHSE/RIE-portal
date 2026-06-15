@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import type { PvaItem, Company } from '@/lib/types'
 import PvaCard from './PvaCard'
 import ProgressRing from './ProgressRing'
@@ -36,12 +37,10 @@ export default function PvaClient({ company, initialItems }: Props) {
     <main className="min-h-screen bg-surface">
       <div className="max-w-3xl mx-auto px-4 py-8">
 
-        {/* Bovenbalk met uitlogknop */}
         <div className="flex justify-end mb-2">
           <LogoutButton />
         </div>
 
-        {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
             <Image src="/logo.jpg" alt="QHSE Totaal" width={140} height={46} className="object-contain mb-2" />
@@ -60,7 +59,18 @@ export default function PvaClient({ company, initialItems }: Props) {
           )}
         </div>
 
-        {/* Voortgang */}
+        <div className="flex gap-2 mb-6">
+          <span className="text-sm px-4 py-2 rounded-full bg-ink text-white">
+            Plan van Aanpak
+          </span>
+          <Link
+            href={`/${company.id}/rie`}
+            className="text-sm px-4 py-2 rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
+          >
+            Volledige RI&amp;E
+          </Link>
+        </div>
+
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6 flex items-center gap-5">
           <ProgressRing value={afgerond} total={items.length} />
           <div>
@@ -72,7 +82,6 @@ export default function PvaClient({ company, initialItems }: Props) {
           </div>
         </div>
 
-        {/* Filters */}
         <FilterBar
           filterStatus={filterStatus}
           filterPrio={filterPrio}
@@ -80,7 +89,6 @@ export default function PvaClient({ company, initialItems }: Props) {
           onPrioChange={setFilterPrio}
         />
 
-        {/* Kaarten */}
         <div className="space-y-3 mt-4">
           {filtered.map(item => (
             <PvaCard key={item.id} item={item} onUpdate={handleUpdate} />

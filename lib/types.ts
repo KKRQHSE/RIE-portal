@@ -21,3 +21,37 @@ export type Company = {
   approved_at: string | null
   approved_by: string | null
 }
+
+export type Module = {
+  id: string
+  company_id: string
+  code: string
+  titel: string | null
+  intro: string | null
+  volgorde: number | null
+}
+
+export type Vraag = {
+  id: string
+  company_id: string
+  module_id: string
+  nr: string
+  vraag: string | null
+  antwoord: string | null
+  bevinding: string | null
+  brf: string | null
+  klasse: string | null
+  pva: string | null
+  volgorde: number | null
+}
+
+export type Foto = {
+  id: string
+  company_id: string
+  nr: number
+  bestand: string | null
+  locatie: string | null
+  zie: string | null
+  betekenis: string | null
+  refs: string[]
+}

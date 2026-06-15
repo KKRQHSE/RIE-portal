@@ -40,6 +40,23 @@ export type Company = {
   approved_by: string | null
 }
 
+export type Merk = {
+  id: string
+  naam: string
+  logo_pad: string | null
+  accent_kleur: string
+  lettertype: string
+}
+
+export type BedrijfHuisstijl = {
+  id: string
+  name: string
+  merk_id: string | null
+  huisstijl_modus: string
+  klant_logo_pad: string | null
+  accent_kleur_override: string | null
+}
+
 export type Module = {
   id: string
   company_id: string

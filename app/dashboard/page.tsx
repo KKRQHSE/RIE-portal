@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { getSessionProfile } from '@/lib/auth'
 import LogoutButton from '@/components/LogoutButton'
 
@@ -18,6 +19,13 @@ export default async function DashboardPage() {
           <p className="text-sm text-ink/50 font-mono">Dashboard komt in fase 2.</p>
           <p className="text-sm text-ink/40 mt-2">Ingelogd als {profile.email}</p>
         </div>
+
+        <Link
+          href="/admin/huisstijl"
+          className="mt-4 inline-block text-sm px-4 py-2 rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors"
+        >
+          Huisstijl beheren
+        </Link>
       </div>
     </main>
   )

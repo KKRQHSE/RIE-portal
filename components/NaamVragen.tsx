@@ -11,18 +11,27 @@ export default function NaamVragen() {
   const router = useRouter()
   const [naam, setNaam] = useState('')
   const [bezig, setBezig] = useState(false)
+  const [fout, setFout] = useState<string | null>(null)
 
   async function opslaan(e: React.FormEvent) {
     e.preventDefault()
     if (!naam.trim() || bezig) return
     setBezig(true)
-    const supabase = createClient()
-    const { error } = await supabase.rpc('zet_mijn_naam', { p_naam: naam.trim() })
-    if (error) {
+    setFout(null)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.rpc('zet_mijn_naam', { p_naam: naam.trim() })
+      if (error) {
+        setBezig(false)
+        setFout(`Opslaan mislukt: ${error.message}`)
+        return
+      }
+      router.refresh()
+    } catch {
+      // Bv. als de client niet kan worden opgebouwd (ontbrekende config).
       setBezig(false)
-      return
+      setFout('Opslaan mislukt. Controleer je verbinding en probeer het opnieuw.')
     }
-    router.refresh()
   }
 
   return (
@@ -44,6 +53,7 @@ export default function NaamVragen() {
           {bezig ? 'Bezig…' : 'Opslaan'}
         </button>
       </div>
+      {fout && <p className="text-xs text-red-600 mt-2">{fout}</p>}
     </form>
   )
 }

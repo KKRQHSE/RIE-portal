@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# persoonlijk naslag (geen projectcode)
+/RIE-portaal-overdracht.md

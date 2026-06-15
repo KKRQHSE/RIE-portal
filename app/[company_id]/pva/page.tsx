@@ -39,10 +39,13 @@ export default async function PvaPage({
   // Sorteer op nummer als integer (nr is text, bijv. "1".."20")
   const sorted = (items ?? []).sort((a, b) => parseInt(a.nr) - parseInt(b.nr))
 
-  const isAdmin = profile.role === 'admin'
+  // Beheer (personen + toewijzen): admin overal, client voor zijn eigen bedrijf.
+  const magBeheren =
+    profile.role === 'admin' ||
+    (profile.role === 'client' && profile.company_id === company_id)
 
-  // Personen alleen nodig (en zichtbaar) voor de beheerder die toewijst.
-  const { data: personen } = isAdmin
+  // Personen alleen nodig (en zichtbaar) voor wie mag beheren.
+  const { data: personen } = magBeheren
     ? await supabase
         .from('personen')
         .select('id, company_id, naam, email, status, voorgesteld_door, archived_at')
@@ -55,7 +58,7 @@ export default async function PvaPage({
     <PvaClient
       company={company}
       initialItems={sorted}
-      isAdmin={isAdmin}
+      magBeheren={magBeheren}
       personen={personen ?? []}
     />
   )

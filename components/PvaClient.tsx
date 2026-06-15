@@ -13,11 +13,11 @@ import LogoutButton from './LogoutButton'
 type Props = {
   company: Company
   initialItems: PvaItem[]
-  isAdmin?: boolean
+  magBeheren?: boolean
   personen?: Persoon[]
 }
 
-export default function PvaClient({ company, initialItems, isAdmin = false, personen = [] }: Props) {
+export default function PvaClient({ company, initialItems, magBeheren = false, personen = [] }: Props) {
   const [items, setItems] = useState<PvaItem[]>(initialItems)
   const [filterStatus, setFilterStatus] = useState('Alle')
   const [filterPrio, setFilterPrio] = useState('Alle')
@@ -127,7 +127,7 @@ export default function PvaClient({ company, initialItems, isAdmin = false, pers
           >
             Volledige RI&amp;E
           </Link>
-          {isAdmin && (
+          {magBeheren && (
             <Link
               href={`/${company.id}/personen`}
               className="text-sm px-4 py-2 rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
@@ -155,7 +155,7 @@ export default function PvaClient({ company, initialItems, isAdmin = false, pers
             onStatusChange={setFilterStatus}
             onPrioChange={setFilterPrio}
           />
-          {isAdmin && (
+          {magBeheren && (
             toewijsModus ? (
               <button
                 onClick={sluitToewijzen}
@@ -175,7 +175,7 @@ export default function PvaClient({ company, initialItems, isAdmin = false, pers
         </div>
 
         {/* Toewijs-balk */}
-        {isAdmin && toewijsModus && (
+        {magBeheren && toewijsModus && (
           <div className="bg-white rounded-lg shadow-sm p-3 mt-3 flex flex-wrap items-center gap-3">
             <span className="text-sm text-ink/60">{selectie.size} geselecteerd</span>
             <select
@@ -208,7 +208,7 @@ export default function PvaClient({ company, initialItems, isAdmin = false, pers
               companyId={company.id}
               item={item}
               onUpdate={handleUpdate}
-              toewijsModus={isAdmin && toewijsModus}
+              toewijsModus={magBeheren && toewijsModus}
               geselecteerd={selectie.has(item.id)}
               onToggleSelect={toggleSelect}
               houderNaam={item.persoon_id ? naamById.get(item.persoon_id) ?? null : null}

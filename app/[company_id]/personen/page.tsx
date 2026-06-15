@@ -20,8 +20,11 @@ export default async function PersonenPage({
     .single()
 
   if (!profile) redirect('/login')
-  // Adresboek is alleen voor de beheerder (admin). Admins mogen elk bedrijf zien.
-  if (profile.role !== 'admin') notFound()
+  // Beheer: admin mag elk bedrijf; een client uitsluitend zijn eigen bedrijf.
+  const magBeheren =
+    profile.role === 'admin' ||
+    (profile.role === 'client' && profile.company_id === company_id)
+  if (!magBeheren) notFound()
 
   const { data: company } = await supabase
     .from('companies')

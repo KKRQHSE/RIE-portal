@@ -34,10 +34,13 @@ export default async function PersonenPage({
   if (!company) notFound()
 
   const heeftNaam = !!profile.naam?.trim()
+  // Alleen de client (KAM) is actiehouder; de admin is systeembeheerder en
+  // hoort niet in het adresboek/de dropdown — dus geen koppeling/naamvraag.
+  const isClient = profile.role === 'client'
 
-  // Beheerder met naam wordt gegarandeerd zelf een persoon in dit bedrijf
+  // Client met naam wordt gegarandeerd zelf een persoon in dit bedrijf
   // (idempotent: de RPC matcht op e-mail). Pas daarna de lijst ophalen.
-  if (heeftNaam) {
+  if (isClient && heeftNaam) {
     await supabase.rpc('koppel_mij_als_persoon', { p_company_id: company_id })
   }
 
@@ -58,7 +61,7 @@ export default async function PersonenPage({
       company={company}
       initialPersonen={personen ?? []}
       initialDeellinks={deellinks ?? []}
-      toonNaamVragen={!heeftNaam}
+      toonNaamVragen={isClient && !heeftNaam}
     />
   )
 }

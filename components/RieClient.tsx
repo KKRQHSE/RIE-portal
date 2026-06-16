@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import type { Company, Module, Vraag, Foto } from '@/lib/types'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
@@ -18,13 +18,16 @@ type Props = {
 
 export default function RieClient({ company, modules, vragen, fotos, huisstijl = VEILIGE_HUISSTIJL }: Props) {
   const [filter, setFilter] = useState<'Alle' | 'Nee'>('Alle')
-  const [highlightVraag, setHighlightVraag] = useState<string | null>(null)
 
-  // Lees het hash-doel PAS nadat de data geladen/gerenderd is.
-  useEffect(() => {
-    const m = window.location.hash.match(/^#vraag-(.+)$/)
-    setHighlightVraag(m ? decodeURIComponent(m[1]) : null)
-  }, [vragen])
+  // Lees de URL-hash client-side uit zonder hydration-mismatch of setState in
+  // een effect: server-snapshot is leeg, na hydratie volgt de echte hash.
+  const hash = useSyncExternalStore(
+    () => () => {},
+    () => window.location.hash,
+    () => ''
+  )
+  const m = hash.match(/^#vraag-(.+)$/)
+  const highlightVraag = m ? decodeURIComponent(m[1]) : null
 
   const neeCount = vragen.filter(v => v.antwoord === 'Nee').length
 

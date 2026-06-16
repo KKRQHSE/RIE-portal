@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { voorspelEmail } from '@/lib/email'
@@ -42,11 +42,16 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
 
-  const [origin, setOrigin] = useState('')
   const [gekopieerd, setGekopieerd] = useState<string | null>(null)
   const [linkBezig, setLinkBezig] = useState<string | null>(null)
 
-  useEffect(() => { setOrigin(window.location.origin) }, [])
+  // Browser-only origin voor de deellink-URL's; server-snapshot is leeg zodat
+  // er geen hydration-mismatch of setState in een effect nodig is.
+  const origin = useSyncExternalStore(
+    () => () => {},
+    () => window.location.origin,
+    () => ''
+  )
 
   const paren = personen.map(p => ({ naam: p.naam, email: p.email }))
 

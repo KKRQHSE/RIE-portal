@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
+import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
+import HuisstijlLogo from './HuisstijlLogo'
 
 export type GastActie = {
   id: string
@@ -20,6 +21,7 @@ type Props = {
   persoonNaam: string | null
   bedrijfNaam: string | null
   acties: GastActie[]
+  huisstijl?: HuisstijlView
 }
 
 const PRIO_STYLE: Record<string, string> = {
@@ -36,12 +38,12 @@ const STATUS_BADGE: Record<string, string> = {
 
 const STATUS_OPTS = ['Open', 'In behandeling', 'Afgerond']
 
-export default function GastClient({ token, persoonNaam, bedrijfNaam, acties }: Props) {
+export default function GastClient({ token, persoonNaam, bedrijfNaam, acties, huisstijl = VEILIGE_HUISSTIJL }: Props) {
   return (
-    <main className="min-h-screen bg-surface">
+    <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="mb-6">
-          <Image src="/logo.jpg" alt="QHSE Totaal" width={140} height={46} className="object-contain mb-3" />
+          <HuisstijlLogo huisstijl={huisstijl} className="mb-3" />
           {bedrijfNaam && <p className="text-sm text-ink/50">{bedrijfNaam}</p>}
           <h1 className="text-xl font-semibold text-ink">Hoi {persoonNaam ?? 'daar'}</h1>
           <p className="text-sm text-ink/50 mt-0.5">Dit zijn de acties die aan jou zijn toegewezen.</p>

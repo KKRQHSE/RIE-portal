@@ -1,11 +1,21 @@
 import { createClient } from '@/lib/supabase/server'
 import GastClient, { type GastActie } from '@/components/GastClient'
+import {
+  VEILIGE_HUISSTIJL,
+  normaliseerLettertype,
+  normaliseerModus,
+  type HuisstijlView,
+} from '@/lib/huisstijl'
 
-// Ruwe vorm van deellink_data(token) -> jsonb {persoon, bedrijf, acties[]}.
+// Zelfde bucket als de ingelogde kant (lib/huisstijl-data.ts).
+const HUISSTIJL_BUCKET = 'merk-assets'
+
+// Ruwe vorm van deellink_data(token) -> jsonb {persoon, bedrijf, acties[], huisstijl}.
 type RawData = {
   persoon?: { naam?: string | null } | null
   bedrijf?: { naam?: string | null; name?: string | null } | null
   acties?: Array<Record<string, unknown>> | null
+  huisstijl?: Record<string, unknown> | null
 }
 
 function str(v: unknown): string | null {
@@ -41,6 +51,26 @@ export default async function GastPage({
   const persoonNaam = str(raw.persoon?.naam)
   const bedrijfNaam = str(raw.bedrijf?.naam) ?? str(raw.bedrijf?.name)
 
+  // Huisstijl-paden (storage) -> publieke URL's, net als lib/huisstijl-data.ts.
+  // Ontbreekt de huisstijl of is hij 'default'/leeg → veilige standaard (geen regressie).
+  const h = raw.huisstijl
+  const publiekeUrl = (pad: unknown): string | null =>
+    typeof pad === 'string' && pad
+      ? supabase.storage.from(HUISSTIJL_BUCKET).getPublicUrl(pad).data.publicUrl
+      : null
+
+  const huisstijl: HuisstijlView = h
+    ? {
+        modus: normaliseerModus(h.modus),
+        merkNaam: typeof h.merk_naam === 'string' ? h.merk_naam : null,
+        merkLogoUrl: publiekeUrl(h.merk_logo),
+        klantLogoUrl: publiekeUrl(h.klant_logo),
+        accentKleur:
+          typeof h.accent_kleur === 'string' && h.accent_kleur ? h.accent_kleur : '#FF5200',
+        lettertype: normaliseerLettertype(h.lettertype),
+      }
+    : VEILIGE_HUISSTIJL
+
   const acties: GastActie[] = (raw.acties ?? []).map(a => ({
     id: String(a.id),
     nr: str(a.nr),
@@ -58,6 +88,7 @@ export default async function GastPage({
       persoonNaam={persoonNaam}
       bedrijfNaam={bedrijfNaam}
       acties={acties}
+      huisstijl={huisstijl}
     />
   )
 }

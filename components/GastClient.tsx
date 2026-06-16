@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import type { HistorieRegel } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
+import BewijsBlok from './BewijsBlok'
 
 export type GastActie = {
   id: string
@@ -52,6 +53,8 @@ const GEBEURTENIS_LABEL: Record<string, string> = {
   concept_teruggestuurd: 'Teruggestuurd',
   vrijgegeven:           'Vrijgegeven',
   status_gezet:          'Status gewijzigd',
+  bewijs_toegevoegd:     'Bewijs toegevoegd',
+  bewijs_verwijderd:     'Bewijs verwijderd',
 }
 function gebeurtenisLabel(g: string): string {
   return GEBEURTENIS_LABEL[g] ?? g
@@ -249,6 +252,12 @@ function GastActieKaart({ token, actie }: { token: string; actie: GastActie }) {
             Concept ingediend — je KAM-coördinator geeft het vrij.
           </p>
         )}
+
+        {/* Bewijs (foto's/pdf) — extra blok, los van de voorstel-flow */}
+        <div className="space-y-2">
+          <span className="text-xs text-ink/40">Bewijs</span>
+          <BewijsBlok modus="gast" token={token} actieId={actie.id} />
+        </div>
 
         {/* Geschiedenis-uitklap van deze eigen actie (zelfde stijl als ingelogde kant) */}
         <div>

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { PvaItem, Persoon, HistorieRegel } from '@/lib/types'
+import BewijsBlok from './BewijsBlok'
 
 const PRIO_STYLE: Record<string, string> = {
   Laag:   'bg-yellow-100 text-yellow-800',
@@ -19,6 +20,19 @@ const STATUS_BADGE: Record<string, string> = {
 
 // Zelfde statusset als de (voormalige) echte status-dropdown.
 const STATUS_OPTS = ['Open', 'In behandeling', 'Afgerond']
+
+// Leesbare labels voor gelogde gebeurtenissen (gelijk aan de gast-kant).
+const GEBEURTENIS_LABEL: Record<string, string> = {
+  concept_gewijzigd:     'Voorstel ingediend',
+  concept_teruggestuurd: 'Teruggestuurd',
+  vrijgegeven:           'Vrijgegeven',
+  status_gezet:          'Status gewijzigd',
+  bewijs_toegevoegd:     'Bewijs toegevoegd',
+  bewijs_verwijderd:     'Bewijs verwijderd',
+}
+function gebeurtenisLabel(g: string): string {
+  return GEBEURTENIS_LABEL[g] ?? g
+}
 
 function formatDatum(iso: string | null): string {
   if (!iso) return ''
@@ -350,7 +364,7 @@ export default function PvaCard({
                       <li key={i} className="text-xs text-ink/60 border-l-2 border-ink/10 pl-2">
                         <span className="font-medium text-ink/80">{h.actor_naam ?? 'Onbekend'}</span>
                         {h.actor_type ? <span className="text-ink/40"> ({h.actor_type})</span> : null}
-                        {' — '}{h.gebeurtenis}
+                        {' — '}{gebeurtenisLabel(h.gebeurtenis)}
                         {(h.van_status || h.naar_status) && (
                           <span className="text-ink/50"> · {h.van_status ?? '—'} → {h.naar_status ?? '—'}</span>
                         )}
@@ -391,6 +405,10 @@ export default function PvaCard({
               rows={2}
               className="w-full text-sm border border-ink/20 rounded px-3 py-2 resize-none bg-white"
             />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-ink/40 uppercase tracking-wider mb-1">Bewijs</p>
+            <BewijsBlok modus="beheerder" actieId={item.id} />
           </div>
         </div>
       )}

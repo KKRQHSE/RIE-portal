@@ -45,22 +45,22 @@ export default function RieClient({ company, modules, vragen, fotos, huisstijl =
           <p className="text-sm text-ink/50 mt-0.5">Risico-inventarisatie &amp; -evaluatie</p>
         </div>
 
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-3 mb-6">
           <Link
             href={`/${company.id}/pva`}
-            className="text-sm px-4 py-2 rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
+            className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
           >
             Plan van Aanpak
           </Link>
-          <span className="text-sm px-4 py-2 rounded-full bg-ink text-white">
+          <span className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white">
             Volledige RI&amp;E
           </span>
         </div>
 
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-3 mb-4">
           <button
             onClick={() => setFilter('Alle')}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+            className={`text-xs px-3 py-2 min-h-[44px] inline-flex items-center rounded-full border transition-colors ${
               filter === 'Alle' ? 'bg-ink text-white border-ink' : 'bg-white text-ink/60 border-ink/20'
             }`}
           >
@@ -68,7 +68,7 @@ export default function RieClient({ company, modules, vragen, fotos, huisstijl =
           </button>
           <button
             onClick={() => setFilter('Nee')}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+            className={`text-xs px-3 py-2 min-h-[44px] inline-flex items-center rounded-full border transition-colors ${
               filter === 'Nee' ? 'bg-ink text-white border-ink' : 'bg-white text-ink/60 border-ink/20'
             }`}
           >

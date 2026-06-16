@@ -108,7 +108,7 @@ export default function ModuleCard({ companyId, module, vragen, fotos, filter, h
                         {v.pva && (
                           <Link
                             href={`/${companyId}/pva#actie-${v.pva}`}
-                            className="text-xs text-accent font-mono hover:underline"
+                            className="inline-flex items-center px-2 py-2.5 -my-2.5 text-xs text-accent font-mono hover:underline"
                           >
                             → actie {v.pva}
                           </Link>

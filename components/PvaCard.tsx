@@ -188,7 +188,7 @@ export default function PvaCard({
             <Link
               key={nr}
               href={`/${companyId}/rie#vraag-${nr}`}
-              className="text-xs font-mono text-accent hover:underline"
+              className="inline-flex items-center px-2 py-2.5 -my-2.5 text-xs font-mono text-accent hover:underline"
             >
               {nr}
             </Link>
@@ -212,7 +212,7 @@ export default function PvaCard({
               <select
                 value={persoonId ?? ''}
                 onChange={e => changePersoon(e.target.value)}
-                className="text-sm border border-ink/20 rounded px-2 py-1 flex-1 min-w-0 bg-white"
+                className="text-sm border border-ink/20 rounded px-3 py-2.5 min-h-[44px] flex-1 bg-white"
               >
                 <option value="">Niemand</option>
                 {personen.map(p => (
@@ -254,27 +254,27 @@ export default function PvaCard({
                 value={item.concept_status ?? ''}
                 onChange={e => voorstelConcept(e.target.value)}
                 disabled={bezig}
-                className="text-sm border border-ink/20 rounded px-2 py-1 bg-white"
+                className="text-sm border border-ink/20 rounded px-3 py-2.5 min-h-[44px] bg-white"
               >
                 <option value="">—</option>
                 {STATUS_OPTS.map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {heeftConcept && (
                 <>
                   <button
                     onClick={() => openPaneel('vrijgeven')}
                     disabled={bezig}
-                    className="text-xs px-3 py-1.5 rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+                    className="text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
                   >
                     Vrijgeven
                   </button>
                   <button
                     onClick={() => openPaneel('terugsturen')}
                     disabled={bezig}
-                    className="text-xs px-3 py-1.5 rounded-full border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
+                    className="text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
                   >
                     Terugsturen
                   </button>
@@ -282,7 +282,7 @@ export default function PvaCard({
               )}
               <button
                 onClick={toggleHistorie}
-                className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/50 hover:border-ink/40 transition-colors"
+                className="text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/50 hover:border-ink/40 transition-colors"
               >
                 Geschiedenis {histOpen ? '▲' : '▼'}
               </button>
@@ -296,19 +296,19 @@ export default function PvaCard({
                   value={vOpm}
                   onChange={e => setVOpm(e.target.value)}
                   placeholder="Opmerking (optioneel)"
-                  className="w-full text-sm border border-ink/20 rounded px-3 py-2 bg-white"
+                  className="w-full text-sm border border-ink/20 rounded px-3 py-2 min-h-[44px] bg-white"
                 />
                 <input
                   value={vBewijs}
                   onChange={e => setVBewijs(e.target.value)}
                   placeholder="bv. https://... of 'foto in dossier map X'"
-                  className="w-full text-sm border border-ink/20 rounded px-3 py-2 bg-white"
+                  className="w-full text-sm border border-ink/20 rounded px-3 py-2 min-h-[44px] bg-white"
                 />
                 <p className="text-[11px] text-ink/40 -mt-1">Bewijs (link of korte verwijzing)</p>
                 <button
                   onClick={doeVrijgeven}
                   disabled={bezig}
-                  className="text-sm px-4 py-1.5 rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+                  className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
                 >
                   {bezig ? 'Bezig…' : 'Vrijgeven'}
                 </button>
@@ -323,12 +323,12 @@ export default function PvaCard({
                   value={vOpm}
                   onChange={e => setVOpm(e.target.value)}
                   placeholder="Reden (optioneel)"
-                  className="w-full text-sm border border-ink/20 rounded px-3 py-2 bg-white"
+                  className="w-full text-sm border border-ink/20 rounded px-3 py-2 min-h-[44px] bg-white"
                 />
                 <button
                   onClick={doeTerugsturen}
                   disabled={bezig}
-                  className="text-sm px-4 py-1.5 rounded-full border border-red-200 bg-white text-red-600 font-medium hover:bg-red-50 transition-colors disabled:opacity-40"
+                  className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 font-medium hover:bg-red-50 transition-colors disabled:opacity-40"
                 >
                   {bezig ? 'Bezig…' : 'Terugsturen'}
                 </button>

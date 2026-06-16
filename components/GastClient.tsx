@@ -225,7 +225,7 @@ function GastActieKaart({ token, actie }: { token: string; actie: GastActie }) {
           </div>
           <button
             onClick={ditHebIkGedaan}
-            disabled={bezig || voorstel === 'Afgerond'}
+            disabled={bezig}
             className="text-sm px-4 py-1.5 rounded-full bg-accent text-white font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
           >
             Dit heb ik gedaan

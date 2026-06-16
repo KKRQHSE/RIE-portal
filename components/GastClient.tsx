@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
+import type { HistorieRegel } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 
 export type GastActie = {
@@ -37,6 +38,42 @@ const STATUS_BADGE: Record<string, string> = {
 }
 
 const STATUS_OPTS = ['Open', 'In behandeling', 'Afgerond']
+
+// Zelfde datumnotatie als de ingelogde kant (PvaCard).
+function formatDatum(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// Leesbare labels voor de gelogde gebeurtenissen.
+const GEBEURTENIS_LABEL: Record<string, string> = {
+  concept_gewijzigd:     'Voorstel ingediend',
+  concept_teruggestuurd: 'Teruggestuurd',
+  vrijgegeven:           'Vrijgegeven',
+  status_gezet:          'Status gewijzigd',
+}
+function gebeurtenisLabel(g: string): string {
+  return GEBEURTENIS_LABEL[g] ?? g
+}
+
+// Pure ophaler (geen state): de gast gebruikt hiervoor uitsluitend de nieuwe
+// RPC deellink_actie_historie. Geeft de regels (nieuwste eerst), [] bij lege
+// historie, of null als het ophalen mislukt — de aanroeper beslist wat te tonen.
+async function haalHistorieOp(token: string, actieId: string): Promise<HistorieRegel[] | null> {
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase.rpc('deellink_actie_historie', {
+      p_token: token,
+      p_actie_id: actieId,
+    })
+    if (error) return null
+    const arr = typeof data === 'string' ? JSON.parse(data) : data
+    return Array.isArray(arr) ? (arr as HistorieRegel[]) : []
+  } catch {
+    return null
+  }
+}
 
 export default function GastClient({ token, persoonNaam, bedrijfNaam, acties, huisstijl = VEILIGE_HUISSTIJL }: Props) {
   return (
@@ -78,6 +115,20 @@ function GastActieKaart({ token, actie }: { token: string; actie: GastActie }) {
   const [ingediendStatus, setIngediendStatus] = useState<string | null>(actie.concept_status)
   const [netIngediend, setNetIngediend] = useState(false)
 
+  // Geschiedenis van deze ene eigen actie (nieuwste eerst). null = nog niet geladen.
+  const [historie, setHistorie] = useState<HistorieRegel[] | null>(null)
+  const [histOpen, setHistOpen] = useState(false)
+
+  // Eén ophaling per actie bij mount. setState gebeurt pas ná de await (in de
+  // .then), zodat het geen synchrone state-update in het effect is.
+  useEffect(() => {
+    let actief = true
+    haalHistorieOp(token, actie.id).then(rows => {
+      if (actief && rows) setHistorie(rows)
+    })
+    return () => { actief = false }
+  }, [token, actie.id])
+
   async function bewaar(nieuwVoorstel: string, nieuweOpm: string) {
     setBezig(true)
     const supabase = createClient()
@@ -93,7 +144,16 @@ function GastActieKaart({ token, actie }: { token: string; actie: GastActie }) {
     setIngediendStatus(nieuwVoorstel)
     setNetIngediend(true)
     setTimeout(() => setNetIngediend(false), 4000)
+    // Historie opnieuw ophalen: het terugstuur-blokje verdwijnt nu het nieuwe
+    // voorstel de laatste gebeurtenis is.
+    const rows = await haalHistorieOp(token, actie.id)
+    if (rows) setHistorie(rows)
   }
+
+  // Toon het terugstuur-blokje alleen als terugsturen de laatste gebeurtenis was
+  // én er nu geen lopend voorstel is.
+  const laatste = historie && historie.length > 0 ? historie[0] : null
+  const toonTerugstuur = !ingediendStatus && laatste?.gebeurtenis === 'concept_teruggestuurd'
 
   function changeVoorstel(val: string) {
     setVoorstel(val)
@@ -125,6 +185,19 @@ function GastActieKaart({ token, actie }: { token: string; actie: GastActie }) {
       </div>
 
       <div className="mt-3 pt-3 border-t border-surface space-y-3">
+        {/* Terugstuur-reden: rustig maar opvallend, alleen als terugsturen het laatst gebeurde */}
+        {toonTerugstuur && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <p className="text-sm text-amber-900">
+              {laatste?.opmerking ? (
+                <>Je vorige voorstel is teruggestuurd: <span className="font-medium">{laatste.opmerking}</span></>
+              ) : (
+                'Je vorige voorstel is teruggestuurd.'
+              )}
+            </p>
+          </div>
+        )}
+
         {/* Echte status (read-only) + huidige voorstel */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <div className="flex items-center gap-2">
@@ -176,6 +249,39 @@ function GastActieKaart({ token, actie }: { token: string; actie: GastActie }) {
             Concept ingediend — je KAM-coördinator geeft het vrij.
           </p>
         )}
+
+        {/* Geschiedenis-uitklap van deze eigen actie (zelfde stijl als ingelogde kant) */}
+        <div>
+          <button
+            onClick={() => setHistOpen(o => !o)}
+            className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/50 hover:border-ink/40 transition-colors"
+          >
+            Geschiedenis {histOpen ? '▲' : '▼'}
+          </button>
+          {histOpen && (
+            <div className="mt-2 rounded border border-surface bg-surface/40 p-3">
+              {historie === null && <p className="text-xs text-ink/40">Laden…</p>}
+              {historie && historie.length === 0 && (
+                <p className="text-xs text-ink/40">Nog geen geschiedenis.</p>
+              )}
+              {historie && historie.length > 0 && (
+                <ul className="space-y-2">
+                  {historie.map((h, i) => (
+                    <li key={i} className="text-xs text-ink/60 border-l-2 border-ink/10 pl-2">
+                      <span className="font-medium text-ink/80">{h.actor_naam ?? 'Onbekend'}</span>
+                      {' — '}{gebeurtenisLabel(h.gebeurtenis)}
+                      {(h.van_status || h.naar_status) && (
+                        <span className="text-ink/50"> · {h.van_status ?? '—'} → {h.naar_status ?? '—'}</span>
+                      )}
+                      <span className="text-ink/40"> · {formatDatum(h.created_at)}</span>
+                      {h.opmerking && <p className="text-ink/50 mt-0.5">{h.opmerking}</p>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

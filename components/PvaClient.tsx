@@ -84,20 +84,20 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
           )}
         </div>
 
-        <div className="flex gap-2 mb-6">
-          <span className="text-sm px-4 py-2 rounded-full bg-ink text-white">
+        <div className="flex gap-3 mb-6">
+          <span className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white">
             Plan van Aanpak
           </span>
           <Link
             href={`/${company.id}/rie`}
-            className="text-sm px-4 py-2 rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
+            className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
           >
             Volledige RI&amp;E
           </Link>
           {magBeheren && (
             <Link
               href={`/${company.id}/personen`}
-              className="text-sm px-4 py-2 rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
+              className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
             >
               Personen
             </Link>

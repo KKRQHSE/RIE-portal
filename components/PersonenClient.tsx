@@ -147,14 +147,14 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
           <p className="text-sm text-ink/50 mt-0.5">Personen &amp; deellinks</p>
         </div>
 
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-3 mb-6">
           <Link
             href={`/${company.id}/pva`}
-            className="text-sm px-4 py-2 rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
+            className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
           >
             Plan van Aanpak
           </Link>
-          <span className="text-sm px-4 py-2 rounded-full bg-ink text-white">
+          <span className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white">
             Personen
           </span>
         </div>
@@ -169,7 +169,7 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
                 value={naam}
                 onChange={e => naamChange(e.target.value)}
                 placeholder="Voor- en achternaam"
-                className="w-full text-sm border border-ink/20 rounded px-3 py-2 bg-white"
+                className="w-full text-sm border border-ink/20 rounded px-3 py-2 min-h-[44px] bg-white"
               />
             </div>
             <div className="flex-1 min-w-[200px]">
@@ -179,7 +179,7 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
                 onChange={e => emailChange(e.target.value)}
                 placeholder="naam@bedrijf.nl"
                 type="email"
-                className={`w-full text-sm border rounded px-3 py-2 bg-white ${
+                className={`w-full text-sm border rounded px-3 py-2 min-h-[44px] bg-white ${
                   suggestie.actief ? 'border-accent/40' : 'border-ink/20'
                 }`}
               />
@@ -194,7 +194,7 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
             <button
               type="submit"
               disabled={!naam.trim() || bezig}
-              className="text-sm px-4 py-2 rounded-full bg-accent text-white font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
+              className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
             >
               {bezig ? 'Bezig…' : 'Toevoegen'}
             </button>
@@ -235,27 +235,27 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
                           readOnly
                           value={url}
                           onFocus={e => e.currentTarget.select()}
-                          className="flex-1 min-w-0 text-xs font-mono border border-ink/15 rounded px-2 py-1.5 bg-surface/50 text-ink/70"
+                          className="flex-1 min-w-0 text-xs font-mono border border-ink/15 rounded px-2 py-2 min-h-[44px] bg-surface/50 text-ink/70"
                         />
                         <button
                           onClick={() => kopieer(url, p.id)}
-                          className="shrink-0 text-xs px-3 py-1.5 rounded-full bg-ink text-white hover:opacity-90 transition-opacity"
+                          className="shrink-0 text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white hover:opacity-90 transition-opacity"
                         >
                           {gekopieerd === p.id ? '✓ Gekopieerd' : 'Kopieer link'}
                         </button>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-4">
                         <button
                           onClick={() => maakOfVernieuw(p.id)}
                           disabled={linkBezig === p.id}
-                          className="text-xs text-ink/50 hover:text-accent transition-colors disabled:opacity-40"
+                          className="inline-flex items-center min-h-[44px] px-2 text-xs text-ink/50 hover:text-accent transition-colors disabled:opacity-40"
                         >
                           Opnieuw genereren
                         </button>
                         <button
                           onClick={() => trekIn(p.id)}
                           disabled={linkBezig === p.id}
-                          className="text-xs text-red-600 hover:underline disabled:opacity-40"
+                          className="inline-flex items-center min-h-[44px] px-2 text-xs text-red-600 hover:underline disabled:opacity-40"
                         >
                           Intrekken
                         </button>
@@ -268,7 +268,7 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
                     <button
                       onClick={() => maakOfVernieuw(p.id)}
                       disabled={linkBezig === p.id}
-                      className="text-sm px-3 py-1.5 rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
+                      className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
                     >
                       {linkBezig === p.id ? 'Bezig…' : ingetrokken ? 'Nieuwe deellink' : 'Deellink aanmaken'}
                     </button>

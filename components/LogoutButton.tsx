@@ -16,7 +16,7 @@ export default function LogoutButton({ className }: { className?: string }) {
   return (
     <button
       onClick={logout}
-      className={className ?? 'text-sm text-ink/50 hover:text-accent transition-colors'}
+      className={className ?? 'inline-flex items-center min-h-[44px] px-2 text-sm text-ink/50 hover:text-accent transition-colors'}
     >
       Uitloggen
     </button>

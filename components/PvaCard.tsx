@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { PvaItem, Persoon, HistorieRegel } from '@/lib/types'
 import BewijsBlok from './BewijsBlok'
+import Doorgeven from './Doorgeven'
 
 const PRIO_STYLE: Record<string, string> = {
   Laag:   'bg-yellow-100 text-yellow-800',
@@ -29,6 +31,7 @@ const GEBEURTENIS_LABEL: Record<string, string> = {
   status_gezet:          'Status gewijzigd',
   bewijs_toegevoegd:     'Bewijs toegevoegd',
   bewijs_verwijderd:     'Bewijs verwijderd',
+  doorgegeven:           'Doorgegeven',
 }
 function gebeurtenisLabel(g: string): string {
   return GEBEURTENIS_LABEL[g] ?? g
@@ -58,6 +61,7 @@ export default function PvaCard({
   magBeheren = false,
 }: Props) {
   const [open, setOpen] = useState(false)
+  const router = useRouter()
 
   // ref bevat vraagnummers gescheiden door "/", bv "F1-1 / F1-2".
   const refNums = (item.ref ?? '').split('/').map(s => s.trim()).filter(Boolean)
@@ -410,6 +414,14 @@ export default function PvaCard({
             <p className="text-xs font-medium text-ink/40 uppercase tracking-wider mb-1">Bewijs</p>
             <BewijsBlok modus="beheerder" actieId={item.id} />
           </div>
+          {magBeheren && (
+            <div>
+              <p className="text-xs font-medium text-ink/40 uppercase tracking-wider mb-1">Doorgeven</p>
+              {/* Na doorgeven verandert de houder; server-data herladen zodat de
+                  nieuwe houder (en evt. nieuwe persoon) klopt. */}
+              <Doorgeven modus="beheerder" actieId={item.id} onDoorgegeven={() => router.refresh()} />
+            </div>
+          )}
         </div>
       )}
     </div>

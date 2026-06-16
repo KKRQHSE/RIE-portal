@@ -6,6 +6,7 @@ import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/hui
 import type { HistorieRegel } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 import BewijsBlok from './BewijsBlok'
+import Doorgeven from './Doorgeven'
 
 export type GastActie = {
   id: string
@@ -55,6 +56,7 @@ const GEBEURTENIS_LABEL: Record<string, string> = {
   status_gezet:          'Status gewijzigd',
   bewijs_toegevoegd:     'Bewijs toegevoegd',
   bewijs_verwijderd:     'Bewijs verwijderd',
+  doorgegeven:           'Doorgegeven',
 }
 function gebeurtenisLabel(g: string): string {
   return GEBEURTENIS_LABEL[g] ?? g
@@ -118,6 +120,10 @@ function GastActieKaart({ token, actie }: { token: string; actie: GastActie }) {
   const [ingediendStatus, setIngediendStatus] = useState<string | null>(actie.concept_status)
   const [netIngediend, setNetIngediend] = useState(false)
 
+  // Na doorgeven verhuist de actie naar de collega en is hij niet meer van deze
+  // gast. We tonen dan een rustige bevestiging i.p.v. de bewerkbare kaart.
+  const [doorgegevenAan, setDoorgegevenAan] = useState<string | null>(null)
+
   // Geschiedenis van deze ene eigen actie (nieuwste eerst). null = nog niet geladen.
   const [historie, setHistorie] = useState<HistorieRegel[] | null>(null)
   const [histOpen, setHistOpen] = useState(false)
@@ -166,6 +172,21 @@ function GastActieKaart({ token, actie }: { token: string; actie: GastActie }) {
   function ditHebIkGedaan() {
     setVoorstel('Afgerond')
     bewaar('Afgerond', opm)
+  }
+
+  // Doorgegeven: de actie is verhuisd; toon alleen nog een bevestiging.
+  if (doorgegevenAan) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-4">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          {actie.nr && <span className="font-mono text-xs text-ink/40">{actie.nr}</span>}
+          <span className="font-medium text-ink">{actie.onderwerp}</span>
+        </div>
+        <p className="text-sm text-green-600 font-medium mt-2">
+          Doorgegeven aan {doorgegevenAan}. Deze actie staat niet meer op jouw lijst.
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -258,6 +279,14 @@ function GastActieKaart({ token, actie }: { token: string; actie: GastActie }) {
           <span className="text-xs text-ink/40">Bewijs</span>
           <BewijsBlok modus="gast" token={token} actieId={actie.id} />
         </div>
+
+        {/* Doorgeven aan een collega — rustige secundaire actie */}
+        <Doorgeven
+          modus="gast"
+          token={token}
+          actieId={actie.id}
+          onDoorgegeven={r => setDoorgegevenAan(r.ontvangerNaam)}
+        />
 
         {/* Geschiedenis-uitklap van deze eigen actie (zelfde stijl als ingelogde kant) */}
         <div>

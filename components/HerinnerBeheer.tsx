@@ -27,8 +27,9 @@ type Samenvatting = {
 }
 
 export default function HerinnerBeheer({ companyId, initialRitme, actiehouders }: Props) {
-  // Instelscherm (automatische heartbeat)
+  // Instelscherm (automatische heartbeat) — standaard dichtgeklapt.
   const [ritme, setRitme] = useState<Ritme>(initialRitme)
+  const [autoOpen, setAutoOpen] = useState(false)
   const [ritmeBezig, setRitmeBezig] = useState(false)
   const [ritmeMelding, setRitmeMelding] = useState<string | null>(null)
 
@@ -114,35 +115,51 @@ export default function HerinnerBeheer({ companyId, initialRitme, actiehouders }
   }
 
   const allesGeselecteerd = actiehouders.length > 0 && selectie.size === actiehouders.length
+  const ritmeLabel = RITME_OPTIES.find(o => o.waarde === ritme)?.label ?? 'Uit'
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-4 mb-6 space-y-5">
-      {/* Automatische herinneringen */}
+      {/* Automatische herinneringen — compacte regel, inklapbaar (zelden aangeraakt) */}
       <div>
-        <p className="text-sm font-medium text-ink mb-2">Automatische herinneringen</p>
-        <div className="flex flex-wrap gap-2">
-          {RITME_OPTIES.map(opt => {
-            const actief = ritme === opt.waarde
-            return (
-              <button
-                key={opt.waarde}
-                onClick={() => kiesRitme(opt.waarde)}
-                disabled={ritmeBezig}
-                className={`text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full transition-colors disabled:opacity-40 ${
-                  actief
-                    ? 'bg-ink text-white'
-                    : 'bg-white text-ink/60 border border-ink/20 hover:border-ink/40'
-                }`}
-              >
-                {opt.label}
-              </button>
-            )
-          })}
-        </div>
-        <p className="text-xs text-ink/50 mt-2">
-          Mensen met openstaande acties krijgen automatisch een herinnering, maximaal twee keer per week.
-        </p>
-        {ritmeMelding && <p className="text-xs text-accent mt-1">{ritmeMelding}</p>}
+        <button
+          type="button"
+          onClick={() => setAutoOpen(o => !o)}
+          aria-expanded={autoOpen}
+          className="w-full min-h-[44px] flex items-center justify-between gap-3 rounded-lg bg-surface px-3 text-left text-sm text-ink hover:bg-surface/70 transition-colors"
+        >
+          <span>
+            Automatische herinneringen: <span className="font-medium">{ritmeLabel}</span>
+          </span>
+          <span className="text-ink/40" aria-hidden>{autoOpen ? '▾' : '▸'}</span>
+        </button>
+
+        {autoOpen && (
+          <div className="mt-3">
+            <div className="flex flex-wrap gap-2">
+              {RITME_OPTIES.map(opt => {
+                const actief = ritme === opt.waarde
+                return (
+                  <button
+                    key={opt.waarde}
+                    onClick={() => kiesRitme(opt.waarde)}
+                    disabled={ritmeBezig}
+                    className={`text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full transition-colors disabled:opacity-40 ${
+                      actief
+                        ? 'bg-ink text-white'
+                        : 'bg-white text-ink/60 border border-ink/20 hover:border-ink/40'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-xs text-ink/50 mt-2">
+              Mensen met openstaande acties krijgen automatisch een herinnering, maximaal twee keer per week.
+            </p>
+            {ritmeMelding && <p className="text-xs text-accent mt-1">{ritmeMelding}</p>}
+          </div>
+        )}
       </div>
 
       {/* Handmatige herinnering */}

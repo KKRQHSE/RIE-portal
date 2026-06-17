@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAnonClient } from '@/lib/supabase/anon'
 import { createServiceClient } from '@/lib/supabase/service'
-import { BEWIJS_BUCKET, parseJson } from '@/lib/bewijs'
+import { BEWIJS_BUCKET, parseJson, isVeiligOpslagPad } from '@/lib/bewijs'
 
 // Nooit cachen/prerenderen: dit is altijd een verse, request-specifieke actie.
 export const dynamic = 'force-dynamic'
@@ -41,7 +41,9 @@ export async function POST(request: Request) {
 
   const reserved = parseJson<{ pad?: string; company_id?: string }>(data)
   const pad = reserved?.pad
-  if (typeof pad !== 'string' || !pad) return fout('Geen toegang.', 403)
+  // De RPC bepaalt het pad uit de token (niet uit client-invoer); deze guard borgt
+  // bovendien dat het een bucket-relatief pad binnen de eigen opslag is.
+  if (!isVeiligOpslagPad(pad)) return fout('Geen toegang.', 403)
 
   // Pas hier de service role: één signed upload-URL voor exact dit pad.
   const service = createServiceClient()

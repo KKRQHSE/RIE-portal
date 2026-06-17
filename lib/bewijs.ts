@@ -26,6 +26,19 @@ export function veiligeExt(bestandsnaam: string): string {
   return m ? m[1].toLowerCase() : 'bin'
 }
 
+// Defense-in-depth aan de route-grens: een opslagpad dat we aan de service role
+// (signed Storage-URL) doorgeven moet een bucket-relatieve sleutel zijn die binnen
+// de eigen bewijs-opslag blijft. De gast-RPC's reserveren/leveren zulke paden al
+// veilig op; deze check borgt dat er nooit padmanipulatie (../, absolute paden,
+// backslash-/null-trucs) doorheen glipt mocht het pad-schema ooit wijzigen.
+export function isVeiligOpslagPad(pad: unknown): pad is string {
+  if (typeof pad !== 'string' || !pad) return false
+  if (pad.startsWith('/')) return false   // geen absoluut pad
+  if (pad.includes('\\')) return false     // geen backslash-trucs
+  if (pad.includes('\0')) return false     // geen null-byte
+  return !pad.split('/').includes('..')    // geen '..'-segment
+}
+
 // jsonb RPC-resultaten komen soms als string binnen — net als elders in de app.
 export function parseJson<T>(data: unknown): T | null {
   if (data == null) return null

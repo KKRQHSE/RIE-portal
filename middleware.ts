@@ -6,7 +6,21 @@ import { NextResponse, type NextRequest } from 'next/server'
 // '/api/herinneringen/heartbeat' = automatische wekker, aangeroepen door pg_cron
 //   (heeft géén sessie). De route beschermt zichzelf met de x-heartbeat-secret-check;
 //   zonder die uitzondering zou de middleware de cron-aanroep naar /login redirecten.
-const PUBLIC_PATHS = ['/login', '/auth', '/reset-wachtwoord', '/set-wachtwoord', '/a', '/api/herinneringen/heartbeat']
+// '/api/bewijs/gast-upload' + '/api/bewijs/gast-download' = bewijs-routes die de
+//   sessieloze gast via zijn deellink aanroept. De beveiliging zit volledig in de
+//   routes zelf: de deellink-token wordt door de SECURITY DEFINER-RPC's gevalideerd
+//   (zie lib/supabase/anon.ts). Zonder deze uitzondering zou de middleware de gast
+//   naar /login redirecten en kon hij geen bewijs uploaden/downloaden.
+const PUBLIC_PATHS = [
+  '/login',
+  '/auth',
+  '/reset-wachtwoord',
+  '/set-wachtwoord',
+  '/a',
+  '/api/herinneringen/heartbeat',
+  '/api/bewijs/gast-upload',
+  '/api/bewijs/gast-download',
+]
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })

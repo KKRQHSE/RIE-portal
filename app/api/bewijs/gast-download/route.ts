@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAnonClient } from '@/lib/supabase/anon'
 import { createServiceClient } from '@/lib/supabase/service'
-import { BEWIJS_BUCKET, DOWNLOAD_GELDIGHEID_SEC, parseJson, type BewijsItem } from '@/lib/bewijs'
+import { BEWIJS_BUCKET, DOWNLOAD_GELDIGHEID_SEC, parseJson, isVeiligOpslagPad, type BewijsItem } from '@/lib/bewijs'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,7 +47,9 @@ export async function POST(request: Request) {
   const bewijzen: BewijsItem[] = await Promise.all(
     rijen.map(async (r): Promise<BewijsItem> => {
       let downloadUrl: string | null = null
-      if (typeof r.pad === 'string' && r.pad) {
+      // Alleen paden die de RPC (token-gevalideerd) teruggaf én bucket-relatief
+      // binnen de eigen opslag blijven, krijgen een signed URL.
+      if (isVeiligOpslagPad(r.pad)) {
         const { data: signed } = await service.storage
           .from(BEWIJS_BUCKET)
           .createSignedUrl(r.pad, DOWNLOAD_GELDIGHEID_SEC)

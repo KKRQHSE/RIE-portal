@@ -156,3 +156,94 @@ export async function stuurActieMail(
     return { ok: false, fout: 'De e-mail kon niet worden verstuurd.' }
   }
 }
+
+/** Eén openstaande actie in een herinnering. Komt als jsonb uit de RPC. */
+export type HerinnerActie = { nr?: string | number | null; onderwerp?: string | null }
+
+export type StuurHerinnerMailArgs = {
+  naarEmail: string
+  naarNaam: string
+  bedrijf: string
+  /** Deellink-token van de actiehouder; de URL wordt hier opgebouwd. */
+  deellinkToken: string
+  /** Openstaande acties [{nr, onderwerp}, ...]. Leeg = geen mail. */
+  acties: HerinnerActie[]
+}
+
+/**
+ * Verstuurt een nette, zakelijke herinnering aan een actiehouder met openstaande
+ * acties. Zelfde afzender-opbouw en defensieve uitkomst als stuurActieMail; gooit
+ * nooit. Bij een lege actielijst wordt geen mail verstuurd ({ ok:false, fout:'geen acties' }).
+ */
+export async function stuurHerinnerMail(
+  args: StuurHerinnerMailArgs
+): Promise<StuurActieMailResultaat> {
+  const { naarEmail, naarNaam, bedrijf, deellinkToken, acties } = args
+
+  if (!naarEmail || !deellinkToken) {
+    return { ok: false, fout: 'Onvoldoende gegevens om een e-mail te versturen.' }
+  }
+
+  // Normaliseer en filter lege regels; geen acties = geen herinnering.
+  const regels = (acties ?? [])
+    .map(a => {
+      const nr = String(a?.nr ?? '').trim()
+      const onderwerp = String(a?.onderwerp ?? '').trim()
+      return { nr, onderwerp, tekst: nr ? `${nr}. ${onderwerp}`.trim() : onderwerp }
+    })
+    .filter(r => r.tekst !== '')
+
+  if (regels.length === 0) {
+    return { ok: false, fout: 'geen acties' }
+  }
+
+  const url = `${siteUrl()}/a/${encodeURIComponent(deellinkToken)}`
+  const naam = naarNaam?.trim() || 'collega'
+
+  const onderwerp = `Herinnering: openstaande acties - ${bedrijf}`
+
+  const tekst =
+    `Hoi ${naam},\n\n` +
+    `Er staan nog acties voor je open in het veiligheidsportaal van ${bedrijf}:\n\n` +
+    regels.map(r => r.tekst).join('\n') +
+    `\n\nVia onderstaande link kun je ze bekijken en bijwerken:\n\n` +
+    `${url}\n\n` +
+    `Met vriendelijke groet,\n${bedrijf}`
+
+  const lijstHtml = regels
+    .map(r => `<li style="margin:4px 0">${escapeHtml(r.tekst)}</li>`)
+    .join('')
+
+  const html =
+    `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a1a;line-height:1.5;max-width:520px">` +
+    `<p>Hoi ${escapeHtml(naam)},</p>` +
+    `<p>Er staan nog acties voor je open in het veiligheidsportaal van ` +
+    `<strong>${escapeHtml(bedrijf)}</strong>:</p>` +
+    `<ul style="padding-left:20px;margin:12px 0">${lijstHtml}</ul>` +
+    `<p style="margin:24px 0">` +
+    `<a href="${escapeHtml(url)}" style="display:inline-block;background:#1a1a1a;color:#fff;` +
+    `text-decoration:none;padding:12px 20px;border-radius:9999px;font-weight:600">Acties bekijken</a>` +
+    `</p>` +
+    `<p style="font-size:13px;color:#666">Werkt de knop niet? Open dan deze link:<br>` +
+    `<a href="${escapeHtml(url)}" style="color:#666">${escapeHtml(url)}</a></p>` +
+    `<p style="font-size:13px;color:#666">Met vriendelijke groet,<br>${escapeHtml(bedrijf)}</p>` +
+    `</div>`
+
+  try {
+    const resend = bouwClient()
+    const { data, error } = await resend.emails.send({
+      from: afzenderHeader(bedrijf),
+      to: naarEmail,
+      subject: onderwerp,
+      html,
+      text: tekst,
+    })
+
+    if (error) {
+      return { ok: false, fout: error.message || 'De e-mail kon niet worden verstuurd.' }
+    }
+    return { ok: true, id: data?.id ?? null }
+  } catch {
+    return { ok: false, fout: 'De e-mail kon niet worden verstuurd.' }
+  }
+}

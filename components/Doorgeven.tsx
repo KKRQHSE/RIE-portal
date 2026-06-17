@@ -28,6 +28,8 @@ export default function Doorgeven({ modus, actieId, token, onDoorgegeven }: Prop
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
   const [klaar, setKlaar] = useState<DoorgevenResultaat | null>(null)
+  // Mail is een EXTRA bovenop het doorgeven: doorgeven slaagt ook als de mail faalt.
+  const [mail, setMail] = useState<'bezig' | { ok: true } | { ok: false; reden: string } | null>(null)
 
   const naamTrim = naam.trim()
   const emailTrim = email.trim()
@@ -89,8 +91,28 @@ export default function Doorgeven({ modus, actieId, token, onDoorgegeven }: Prop
       const ontvangerNaam = String(
         obj.ontvanger_naam || obj.ontvanger_email || naamTrim || emailTrim || 'de collega'
       )
+      // Doorgeven is gelukt — toon dat direct. De actie is al verhuisd.
       setKlaar({ ontvangerNaam })
       onDoorgegeven?.({ ontvangerNaam })
+
+      // Extra: de nieuwe houder mailen. De server-route valideert de token +
+      // toewijzing opnieuw en mailt naar het DB-adres; wij sturen geen vrij adres.
+      const ontvangerToken = obj.ontvanger_token ? String(obj.ontvanger_token) : null
+      const actieNr = obj.actie_nr != null ? String(obj.actie_nr) : null
+      if (ontvangerToken && actieNr) {
+        setMail('bezig')
+        try {
+          const r = await fetch('/api/mail/doorgeven', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: ontvangerToken, actieNr }),
+          })
+          const j = (await r.json().catch(() => null)) as { ok?: boolean; fout?: string } | null
+          setMail(j?.ok ? { ok: true } : { ok: false, reden: j?.fout || 'onbekende reden' })
+        } catch {
+          setMail({ ok: false, reden: 'netwerkfout' })
+        }
+      }
     } catch {
       setFout('Er ging iets mis bij het doorgeven.')
     } finally {
@@ -100,10 +122,21 @@ export default function Doorgeven({ modus, actieId, token, onDoorgegeven }: Prop
 
   if (klaar) {
     return (
-      <p className="text-xs text-green-600 font-medium">
-        Doorgegeven aan {klaar.ontvangerNaam}.
-        {modus === 'gast' ? ' Deze actie staat niet meer op jouw lijst.' : ''}
-      </p>
+      <div className="text-xs font-medium space-y-1">
+        <p className="text-green-600">
+          Doorgegeven aan {klaar.ontvangerNaam}.
+          {modus === 'gast' ? ' Deze actie staat niet meer op jouw lijst.' : ''}
+        </p>
+        {mail === 'bezig' && <p className="text-ink/50">E-mail wordt verstuurd…</p>}
+        {mail && mail !== 'bezig' && mail.ok && (
+          <p className="text-green-600">Er is een e-mail gestuurd.</p>
+        )}
+        {mail && mail !== 'bezig' && !mail.ok && (
+          <p className="text-amber-600">
+            Let op: de e-mail kon niet worden verstuurd ({mail.reden}).
+          </p>
+        )}
+      </div>
     )
   }
 

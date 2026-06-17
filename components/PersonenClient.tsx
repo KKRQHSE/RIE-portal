@@ -45,6 +45,12 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
   const [gekopieerd, setGekopieerd] = useState<string | null>(null)
   const [linkBezig, setLinkBezig] = useState<string | null>(null)
 
+  // Uitnodiging per e-mail (expliciet per persoon — geen automatische mail).
+  const [mailBezig, setMailBezig] = useState<string | null>(null)
+  const [mailUitkomst, setMailUitkomst] = useState<
+    Record<string, { ok: true } | { ok: false; reden: string }>
+  >({})
+
   // Browser-only origin voor de deellink-URL's; server-snapshot is leeg zodat
   // er geen hydration-mismatch of setState in een effect nodig is.
   const origin = useSyncExternalStore(
@@ -123,6 +129,33 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
       if (!cur) return prev
       return { ...prev, [persoonId]: { ...cur, ingetrokken: true } }
     })
+  }
+
+  // Stuurt de actiehouder een uitnodiging met zijn deellink. De mailsleutel zit
+  // uitsluitend server-side; deze client roept alleen de server-route aan. De
+  // mail is een extra — een fout blokkeert niets, we tonen alleen de uitkomst.
+  async function stuurUitnodiging(persoonId: string) {
+    setMailBezig(persoonId)
+    setMailUitkomst(prev => {
+      const { [persoonId]: _weg, ...rest } = prev
+      return rest
+    })
+    try {
+      const r = await fetch('/api/mail/toewijzen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ persoonId }),
+      })
+      const j = (await r.json().catch(() => null)) as { ok?: boolean; fout?: string } | null
+      setMailUitkomst(prev => ({
+        ...prev,
+        [persoonId]: j?.ok ? { ok: true } : { ok: false, reden: j?.fout || 'onbekende reden' },
+      }))
+    } catch {
+      setMailUitkomst(prev => ({ ...prev, [persoonId]: { ok: false, reden: 'netwerkfout' } }))
+    } finally {
+      setMailBezig(null)
+    }
   }
 
   function kopieer(url: string, persoonId: string) {
@@ -263,6 +296,31 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
                       <p className="text-xs text-ink/40">
                         Opnieuw genereren maakt de huidige link direct ongeldig.
                       </p>
+
+                      {/* Uitnodiging per e-mail — expliciete knop per persoon */}
+                      <div className="pt-2 border-t border-surface space-y-1">
+                        <button
+                          onClick={() => stuurUitnodiging(p.id)}
+                          disabled={!p.email || mailBezig === p.id}
+                          title={p.email ? undefined : 'Deze persoon heeft geen e-mailadres'}
+                          className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
+                        >
+                          {mailBezig === p.id ? 'Versturen…' : 'Stuur uitnodiging per e-mail'}
+                        </button>
+                        {!p.email && (
+                          <p className="text-xs text-ink/40">
+                            Geen e-mailadres — voeg er een toe om te kunnen uitnodigen.
+                          </p>
+                        )}
+                        {mailUitkomst[p.id]?.ok && (
+                          <p className="text-xs text-green-600">Uitnodiging verstuurd naar {p.email}.</p>
+                        )}
+                        {mailUitkomst[p.id] && !mailUitkomst[p.id].ok && (
+                          <p className="text-xs text-amber-600">
+                            E-mail niet verstuurd ({(mailUitkomst[p.id] as { reden: string }).reden}).
+                          </p>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <button

@@ -3,7 +3,10 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 // Pagina's die je zonder inloggen mag zien.
 // '/a' = gast-deellinkpagina (actiehouders zonder account).
-const PUBLIC_PATHS = ['/login', '/auth', '/reset-wachtwoord', '/set-wachtwoord', '/a']
+// '/api/herinneringen/heartbeat' = automatische wekker, aangeroepen door pg_cron
+//   (heeft géén sessie). De route beschermt zichzelf met de x-heartbeat-secret-check;
+//   zonder die uitzondering zou de middleware de cron-aanroep naar /login redirecten.
+const PUBLIC_PATHS = ['/login', '/auth', '/reset-wachtwoord', '/set-wachtwoord', '/a', '/api/herinneringen/heartbeat']
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })

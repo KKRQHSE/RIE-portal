@@ -108,10 +108,10 @@ export async function stuurActieMail(
   // Specifieke actie (doorgeven) vs. algemene uitnodiging (toewijzen).
   const heeftActie = !!(actieNr && actieNr.trim())
   const actieZin = heeftActie
-    ? `: actie ${actieNr}${actieOnderwerp ? ` — ${actieOnderwerp}` : ''}`
+    ? `: actie ${actieNr}${actieOnderwerp ? ` - ${actieOnderwerp}` : ''}`
     : ''
 
-  const onderwerp = `Er staat een actie voor je klaar — ${bedrijf}`
+  const onderwerp = `Er staat een actie voor je klaar - ${bedrijf}`
 
   const tekst =
     `Hoi ${naam},\n\n` +
@@ -125,7 +125,7 @@ export async function stuurActieMail(
     `<p>Hoi ${escapeHtml(naam)},</p>` +
     `<p>Er staat een actie voor je klaar in het veiligheidsportaal van ` +
     `<strong>${escapeHtml(bedrijf)}</strong>` +
-    `${heeftActie ? `: actie ${escapeHtml(actieNr!)}${actieOnderwerp ? ` — ${escapeHtml(actieOnderwerp)}` : ''}` : ''}.` +
+    `${heeftActie ? `: actie ${escapeHtml(actieNr!)}${actieOnderwerp ? ` - ${escapeHtml(actieOnderwerp)}` : ''}` : ''}.` +
     ` Via onderstaande knop kun je hem bekijken en bijwerken.</p>` +
     `<p style="margin:24px 0">` +
     `<a href="${escapeHtml(url)}" style="display:inline-block;background:#1a1a1a;color:#fff;` +

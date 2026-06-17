@@ -10,6 +10,7 @@ import FilterBar from './FilterBar'
 import LogoutButton from './LogoutButton'
 import NaamVragen from './NaamVragen'
 import HuisstijlLogo from './HuisstijlLogo'
+import HerinnerBeheer, { type Ritme } from './HerinnerBeheer'
 
 type Props = {
   company: Company
@@ -18,9 +19,10 @@ type Props = {
   personen?: Persoon[]
   huisstijl?: HuisstijlView
   toonNaamVragen?: boolean
+  ritme?: Ritme
 }
 
-export default function PvaClient({ company, initialItems, magBeheren = false, personen = [], huisstijl = VEILIGE_HUISSTIJL, toonNaamVragen = false }: Props) {
+export default function PvaClient({ company, initialItems, magBeheren = false, personen = [], huisstijl = VEILIGE_HUISSTIJL, toonNaamVragen = false, ritme = 'uit' }: Props) {
   const [items, setItems] = useState<PvaItem[]>(initialItems)
   const [filterStatus, setFilterStatus] = useState('Alle')
   const [filterPrio, setFilterPrio] = useState('Alle')
@@ -55,6 +57,18 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
   const afgerond = items.filter(i => i.status === 'Afgerond').length
   const hoogOpen = items.filter(i => i.prio === 'Hoog' && i.status !== 'Afgerond').length
   const pct = items.length > 0 ? Math.round((afgerond / items.length) * 100) : 0
+
+  // Actiehouders met openstaande acties (voor de handmatige herinnering-keuze).
+  // De eigenlijke verzendbaarheid (e-mail, geldige link, rem) bepaalt de server.
+  const openPerPersoon = new Map<string, number>()
+  items.forEach(i => {
+    if (i.persoon_id && i.status !== 'Afgerond') {
+      openPerPersoon.set(i.persoon_id, (openPerPersoon.get(i.persoon_id) ?? 0) + 1)
+    }
+  })
+  const actiehouders = personen
+    .filter(p => openPerPersoon.has(p.id))
+    .map(p => ({ id: p.id, naam: p.naam, aantal: openPerPersoon.get(p.id) ?? 0 }))
 
   return (
     <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
@@ -114,6 +128,14 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
             )}
           </div>
         </div>
+
+        {magBeheren && (
+          <HerinnerBeheer
+            companyId={company.id}
+            initialRitme={ritme}
+            actiehouders={actiehouders}
+          />
+        )}
 
         <FilterBar
           filterStatus={filterStatus}

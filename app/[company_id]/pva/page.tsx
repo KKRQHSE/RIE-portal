@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import PvaClient from '@/components/PvaClient'
+import type { Ritme } from '@/components/HerinnerBeheer'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
 
 export default async function PvaPage({
@@ -66,6 +67,16 @@ export default async function PvaPage({
         .order('naam', { ascending: true })
     : { data: [] }
 
+  // Huidig herinner-ritme van dit bedrijf (alleen relevant voor de beheerder).
+  const { data: instelling } = magBeheren
+    ? await supabase
+        .from('herinner_instelling')
+        .select('ritme')
+        .eq('company_id', company_id)
+        .maybeSingle()
+    : { data: null }
+  const ritme = (instelling?.ritme ?? 'uit') as Ritme
+
   const huisstijl = await haalHuisstijl(company_id)
 
   return (
@@ -76,6 +87,7 @@ export default async function PvaPage({
       personen={personen ?? []}
       huisstijl={huisstijl}
       toonNaamVragen={isClient && !heeftNaam}
+      ritme={ritme}
     />
   )
 }

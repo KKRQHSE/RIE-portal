@@ -22,6 +22,16 @@ const RITME_LABELS: Record<Ritme, string> = {
   maandelijks: 'Maandelijks',
 }
 
+// Uitleg per ritme. Hangt af van de gekozen waarde; geen vaste "2x per week"-zin
+// meer (dat was een restant van toen 'dagelijks' nog koos). De rem (max 2/7)
+// blijft als technisch vangnet bestaan, maar wordt hier niet meer genoemd.
+const RITME_UITLEG: Record<Ritme, string> = {
+  uit: 'Er worden geen automatische herinneringen verstuurd.',
+  dagelijks: 'Mensen met openstaande acties krijgen elke dag een herinnering (in de praktijk beperkt het systeem dit).',
+  wekelijks: 'Mensen met openstaande acties krijgen elke week een herinnering.',
+  maandelijks: 'Mensen met openstaande acties krijgen elke maand een herinnering.',
+}
+
 // KEUZES die de KAM mag instellen. 'Dagelijks' is bewust weggelaten: dat botst
 // met de harde rem (max 2 herinneringen per persoon per 7 dagen).
 const RITME_OPTIES: { waarde: Ritme; label: string }[] = [
@@ -165,7 +175,7 @@ export default function HerinnerBeheer({ companyId, initialRitme, actiehouders }
               })}
             </div>
             <p className="text-xs text-ink/50 mt-2">
-              Mensen met openstaande acties krijgen automatisch een herinnering, maximaal twee keer per week.
+              {RITME_UITLEG[ritme]}
             </p>
             {ritmeMelding && <p className="text-xs text-accent mt-1">{ritmeMelding}</p>}
           </div>

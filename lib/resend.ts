@@ -11,8 +11,30 @@
 import 'server-only'
 import { Resend } from 'resend'
 
-// Vaste, geverifieerde afzender in Resend.
-const AFZENDER = 'rie@qhsetotaal.nl'
+// Vast afzenderadres op het in Resend geverifieerde domein qhsetotaal.nl.
+const AFZENDER_ADRES = 'portaal@qhsetotaal.nl'
+// Vast deel van de weergavenaam; de bedrijfsnaam wordt er dynamisch achter gezet.
+const AFZENDER_NAAM_BASIS = 'Acties Veiligheid en Arbo'
+
+/**
+ * Bouwt de From-header met een zelfverklarende weergavenaam:
+ *   "Acties Veiligheid en Arbo - <bedrijfsnaam>" <portaal@qhsetotaal.nl>
+ * Resend verwacht `from` als RFC 5322-string; de weergavenaam staat tussen
+ * aanhalingstekens vanwege de spaties en het koppelstreepje.
+ *
+ * De bedrijfsnaam wordt veilig ingevoegd: CR/LF en andere stuurtekens worden
+ * verwijderd (header-injectie voorkomen) en `"`/`\` worden ge-escaped binnen de
+ * quoted-string. Ontbreekt de bedrijfsnaam, dan valt de naam terug op alleen het
+ * vaste deel — nooit een hangend " - ".
+ */
+function afzenderHeader(bedrijf: string | null | undefined): string {
+  // Stuurtekens (incl. CR/LF) eruit; daarna trimmen.
+  const schoon = (bedrijf ?? '').replace(/[\x00-\x1F\x7F]/g, '').trim()
+  const naam = schoon ? `${AFZENDER_NAAM_BASIS} - ${schoon}` : AFZENDER_NAAM_BASIS
+  // Quoted-string: backslash en aanhalingsteken escapen.
+  const quoted = naam.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+  return `"${quoted}" <${AFZENDER_ADRES}>`
+}
 
 /**
  * Basis-URL van het portaal voor het opbouwen van deellinks.
@@ -117,7 +139,7 @@ export async function stuurActieMail(
   try {
     const resend = bouwClient()
     const { data, error } = await resend.emails.send({
-      from: AFZENDER,
+      from: afzenderHeader(bedrijf),
       to: naarEmail,
       subject: onderwerp,
       html,

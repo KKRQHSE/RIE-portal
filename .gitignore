@@ -48,3 +48,6 @@ next-env.d.ts
 
 # lokaal gezondheidsrapport (geen projectcode)
 /GEZONDHEID.md
+
+# nachttest (lokaal, niet committen)
+/test-nacht/

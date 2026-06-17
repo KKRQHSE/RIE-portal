@@ -45,3 +45,6 @@ next-env.d.ts
 
 # lokale testdata-seed (geen projectcode)
 /seed_testdata.sql
+
+# lokaal gezondheidsrapport (geen projectcode)
+/GEZONDHEID.md

@@ -13,11 +13,21 @@ type Props = {
   actiehouders: Actiehouder[]
 }
 
+// Labels voor het TONEN van de huidige stand (alle DB-waarden, incl. 'dagelijks'
+// voor een bedrijf dat daar al op staat). De constraint blijft ongewijzigd.
+const RITME_LABELS: Record<Ritme, string> = {
+  uit: 'Uit',
+  dagelijks: 'Dagelijks',
+  wekelijks: 'Wekelijks',
+  maandelijks: 'Maandelijks',
+}
+
+// KEUZES die de KAM mag instellen. 'Dagelijks' is bewust weggelaten: dat botst
+// met de harde rem (max 2 herinneringen per persoon per 7 dagen).
 const RITME_OPTIES: { waarde: Ritme; label: string }[] = [
-  { waarde: 'uit', label: 'Uit' },
-  { waarde: 'dagelijks', label: 'Dagelijks' },
-  { waarde: 'wekelijks', label: 'Wekelijks' },
-  { waarde: 'maandelijks', label: 'Maandelijks' },
+  { waarde: 'uit', label: RITME_LABELS.uit },
+  { waarde: 'wekelijks', label: RITME_LABELS.wekelijks },
+  { waarde: 'maandelijks', label: RITME_LABELS.maandelijks },
 ]
 
 type Samenvatting = {
@@ -115,7 +125,7 @@ export default function HerinnerBeheer({ companyId, initialRitme, actiehouders }
   }
 
   const allesGeselecteerd = actiehouders.length > 0 && selectie.size === actiehouders.length
-  const ritmeLabel = RITME_OPTIES.find(o => o.waarde === ritme)?.label ?? 'Uit'
+  const ritmeLabel = RITME_LABELS[ritme] ?? 'Uit'
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-4 mb-6 space-y-5">

@@ -51,14 +51,14 @@ Werkende Next.js/Supabase-app, in twee browsertest-ronden groen op de kritieke p
 
 ### Spoor 2 (portaal)
 - **Geissler-termijnanker (eerstvolgende stap, vakoordeel):** 18 open PvA-acties bij Geissler hebben kwalitatieve termijnen ("binnen 12 maanden"/"binnen 2 jaar") i.p.v. data; Geissler heeft géén rie_versie met toetsdatum. Kees moet een ankerdatum + horizon-conventie geven, dan kan `termijn_datum` gevuld worden en gaat de "over de termijn"-tegel ook voor Geissler leven. De RPC/UI staat klaar.
-- **Backfill rie_versie_id:** bestaande modules/vragen/pva_items/fotos nog niet aan een rie_versie_id gekoppeld. Beslissing: wel backfillen. Migratie nog te schrijven, eerst op Alpha/Bravo. LET OP nummering: de nachttest-agent claimde `0003_revoke_execute_interne_rpcs.sql` al (zie hieronder) — deze backfill wordt 0004 of de revoke wordt hernummerd.
+- **Backfill rie_versie_id (wordt migratie 0004):** bestaande modules/vragen/pva_items/fotos nog niet aan een rie_versie_id gekoppeld. Beslissing: wel backfillen. Migratie nog te schrijven, eerst op Alpha/Bravo. (0003 is inmiddels de security-revoke, zie hieronder.)
 - Werkplekinspectie verder uitbouwen (uit alpha): bredere uitrol, eventueel gast-/mobiele inspecties.
 - Uitgebreid rollenmodel deskundigen (HVK/A&O/arbeidshygiënist): grote aparte uitbreiding, later.
 - Gast de terugstuurreden tonen (kleine afronding).
 - Leeg paneel rechtsboven (niet-kritiek, vermoedelijk externe widget).
 - Middleware-deprecatie opruimen: Next 16 wil `proxy` i.p.v. `middleware` (dev-warning). Geen haast, maar de middleware regelt auth-redirects — voorzichtig migreren.
 - **Schema in repo:** supabase/migrations/ (0001, 0002) + `db/schema.sql` als dump. Toekomstige schema-wijzigingen altijd als migratiebestand committen.
-- **Parallelle nachttest-agent:** er draait een tweede agent op main (tenant-isolatietest, `scripts/nachttest_rls.mjs`). Liet o.a. `0003_revoke_execute_interne_rpcs.sql` na (trekt EXECUTE op interne RPC's in). NIET klakkeloos toepassen — eerst nagaan of dat geen legitieme aanroepen breekt. Kees: "geen autonome bevoegdheden inperken."
+- **Parallelle nachttest-agent:** een tweede agent op main draait tenant-isolatietests (`scripts/nachttest_rls.mjs`). Vond echte lekken en dichtte ze in migratie `0003_revoke_execute_interne_rpcs.sql`: REVOKE EXECUTE op 4 interne helpers (actie_als_jsonb lekte volledige pva-rijen; import_rie_content was destructief; import_company; vind_of_maak_persoon) — alleen service_role houdt toegang. Geverifieerd dat dit géén client-facing RPC's raakt (dashboard/PvA/inspectie blijven werken). Legitieme beveiliging, geen inperking van functionaliteit.
 - ~~Kapot logo~~ — opgelost: /logo.jpg geeft 200 (geldig JPEG aanwezig in /public, geverifieerd 19 juni).
 - ~~E-mailmeldingen + herinneringen~~ — gebouwd (zie boven).
 - ~~Managementdashboard~~ — gebouwd (zie boven); resteert browsertest op fysieke devices + de smaaksuggesties (iconen, 3-koloms op breed scherm).

@@ -23,18 +23,18 @@ function datumNL(iso: string | null): string {
 
 // Eén tegel: titel + inhoud, klikbaar als er een href is.
 function Tegel({
-  titel, children, href, accent,
+  titel, children, href, urgent,
 }: {
   titel: string
   children: React.ReactNode
   href?: string
-  accent?: boolean
+  urgent?: boolean
 }) {
   const inner = (
     <div
-      className={`bg-white rounded-lg shadow-sm p-5 h-full ${
+      className={`bg-white rounded-lg shadow-sm p-5 h-full min-h-[124px] ${
         href ? 'hover:shadow-md transition-shadow' : ''
-      } ${accent ? 'ring-1 ring-accent/30' : ''}`}
+      } ${urgent ? 'border-l-4 border-red-500' : ''}`}
     >
       <p className="text-xs font-medium uppercase tracking-wide text-ink/40 mb-3">{titel}</p>
       {children}
@@ -43,12 +43,18 @@ function Tegel({
   return href ? <Link href={href} className="block h-full">{inner}</Link> : inner
 }
 
+// Rij met gelijke kolommen, zodat de getallen op elke schermbreedte netjes
+// uitlijnen i.p.v. uit de kaart te lopen.
+function Rij({ kolommen = 3, children }: { kolommen?: 2 | 3; children: React.ReactNode }) {
+  return <div className={`grid ${kolommen === 2 ? 'grid-cols-2' : 'grid-cols-3'} gap-2`}>{children}</div>
+}
+
 // Klein gekleurd getal-met-label-blokje binnen een tegel.
 function Cijfer({ n, label, kleur }: { n: number; label: string; kleur?: string }) {
   return (
-    <div>
-      <p className={`text-2xl font-semibold ${kleur ?? 'text-ink'}`}>{n}</p>
-      <p className="text-xs text-ink/50 mt-0.5">{label}</p>
+    <div className="min-w-0">
+      <p className={`text-2xl font-semibold tabular-nums ${kleur ?? 'text-ink'}`}>{n}</p>
+      <p className="text-xs text-ink/50 mt-0.5 leading-tight">{label}</p>
     </div>
   )
 }
@@ -138,14 +144,14 @@ export default function DashboardClient({
           </Tegel>
 
           {/* Termijn-urgentie */}
-          <Tegel titel="Termijn" href={`/${cid}/pva`}>
-            <div className="flex gap-6">
+          <Tegel titel="Termijn" href={`/${cid}/pva`} urgent={termijn.over > 0}>
+            <Rij>
               <Cijfer n={termijn.over} label="over de termijn"
                 kleur={termijn.over > 0 ? 'text-red-600' : 'text-ink/30'} />
               <Cijfer n={termijn.binnenkort} label="binnen 30 dagen"
                 kleur={termijn.binnenkort > 0 ? 'text-amber-600' : 'text-ink/30'} />
               <Cijfer n={termijn.zonder_datum} label="zonder datum" kleur="text-ink/40" />
-            </div>
+            </Rij>
             {termijn.zonder_datum > 0 && (
               <p className="text-xs text-ink/40 mt-3">
                 {termijn.zonder_datum} open {termijn.zonder_datum === 1 ? 'actie heeft' : 'acties hebben'} nog
@@ -156,12 +162,12 @@ export default function DashboardClient({
 
           {/* Openstaand per prioriteit */}
           <Tegel titel="Openstaand per prioriteit" href={`/${cid}/pva`}>
-            <div className="flex gap-6">
+            <Rij>
               <Cijfer n={prio_open.Hoog} label="Hoog"
                 kleur={prio_open.Hoog > 0 ? 'text-red-600' : 'text-ink/30'} />
               <Cijfer n={prio_open.Middel} label="Middel" kleur="text-ink" />
               <Cijfer n={prio_open.Laag} label="Laag" kleur="text-ink/60" />
-            </div>
+            </Rij>
           </Tegel>
 
           {/* RI&E-geldigheid */}
@@ -185,23 +191,23 @@ export default function DashboardClient({
 
           {/* Inspecties (alleen als de module aanstaat) */}
           {toonInspecties && (
-            <Tegel titel="Werkplekinspecties" href={`/${cid}/inspecties`}>
-              <div className="flex gap-6">
+            <Tegel titel="Werkplekinspecties" href={`/${cid}/inspecties`} urgent={inspecties.open_bevindingen > 0}>
+              <Rij>
                 <Cijfer n={inspecties.open} label="lopend" kleur="text-ink" />
                 <Cijfer n={inspecties.afgerond} label="afgerond" kleur="text-ink/60" />
                 <Cijfer n={inspecties.open_bevindingen} label="open bevindingen"
                   kleur={inspecties.open_bevindingen > 0 ? 'text-red-600' : 'text-ink/30'} />
-              </div>
+              </Rij>
             </Tegel>
           )}
 
           {/* Bewijslast */}
           <Tegel titel="Bewijslast afgeronde acties" href={`/${cid}/pva`}>
-            <div className="flex gap-6">
+            <Rij kolommen={2}>
               <Cijfer n={bewijs.afgerond_met_bewijs} label="met bewijs" kleur="text-green-700" />
               <Cijfer n={bewijs.afgerond_zonder_bewijs} label="zonder bewijs"
                 kleur={bewijs.afgerond_zonder_bewijs > 0 ? 'text-amber-600' : 'text-ink/30'} />
-            </div>
+            </Rij>
           </Tegel>
 
         </div>

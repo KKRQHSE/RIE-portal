@@ -49,31 +49,44 @@ export default function AdminDashboardClient({
           </div>
         ) : (
           <div className="space-y-3">
-            {bedrijven.map((b) => (
-              <Link
-                key={b.id}
-                href={`/${b.id}/dashboard`}
-                className="block bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="font-medium text-ink truncate">{b.name}</p>
-                    <p className="text-xs text-ink/40 mt-0.5">
-                      Laatste activiteit: {datumNL(b.laatste_activiteit)}
-                      {b.rie_status && <> · RI&amp;E {b.rie_status}</>}
-                    </p>
+            {bedrijven.map((b) => {
+              // Visuele aandacht-signalering: rood bij overschreden termijn,
+              // accent bij wachtende beoordelingen, anders neutraal.
+              const rand = b.over_termijn > 0
+                ? 'border-l-4 border-red-500'
+                : b.te_beoordelen > 0
+                ? 'border-l-4 border-accent'
+                : 'border-l-4 border-transparent'
+              return (
+                <Link
+                  key={b.id}
+                  href={`/${b.id}/dashboard`}
+                  className={`block bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow ${rand}`}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="font-medium text-ink truncate">{b.name}</p>
+                      <p className="text-xs text-ink/40 mt-0.5">
+                        Laatste activiteit: {datumNL(b.laatste_activiteit)}
+                        {b.rie_status && <> · RI&amp;E {b.rie_status}</>}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-lg font-semibold text-ink tabular-nums">{b.pct}%</p>
+                      <p className="text-xs text-ink/40 tabular-nums">{b.pva_afgerond}/{b.pva_totaal}</p>
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-lg font-semibold text-ink">{b.pct}%</p>
-                    <p className="text-xs text-ink/40">{b.pva_afgerond}/{b.pva_totaal}</p>
+                  {/* Dunne voortgangsbalk voor snel scannen */}
+                  <div className="h-1.5 rounded-full bg-ink/10 mt-3 overflow-hidden">
+                    <div className="h-full rounded-full bg-accent" style={{ width: `${b.pct}%` }} />
                   </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 mt-3">
-                  <Badge n={b.te_beoordelen} label="te beoordelen" />
-                  <Badge n={b.over_termijn} label="over termijn" urgent />
-                </div>
-              </Link>
-            ))}
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <Badge n={b.te_beoordelen} label="te beoordelen" />
+                    <Badge n={b.over_termijn} label="over termijn" urgent />
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         )}
 

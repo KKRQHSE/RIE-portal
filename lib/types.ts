@@ -109,3 +109,67 @@ export type Deellink = {
   vervalt_op: string | null
   ingetrokken: boolean
 }
+
+// ---- Werkplekinspectie (module 'inspectie') ----
+
+export type InspectieSjabloon = {
+  id: string
+  company_id: string
+  naam: string
+  controlesoort: string | null
+  actief: boolean
+  gearchiveerd_op: string | null
+}
+
+export type InspectieSjabloonPunt = {
+  id: string
+  company_id: string
+  sjabloon_id: string
+  volgorde: number
+  tekst: string
+  verplicht: boolean
+}
+
+// Sjabloon met zijn punten erbij (zoals de beheer-UI het toont).
+export type SjabloonMetPunten = InspectieSjabloon & {
+  punten: InspectieSjabloonPunt[]
+}
+
+export type InspectieStatus = 'concept' | 'ingediend' | 'afgerond' | 'geannuleerd'
+
+export type Inspectie = {
+  id: string
+  company_id: string
+  sjabloon_id: string | null
+  persoon_id: string | null
+  status: InspectieStatus
+  gepland_op: string | null
+  uitgevoerd_op: string | null
+  conclusie: string | null
+  sjabloon_naam_snap: string | null
+  controlesoort_snap: string | null
+}
+
+export type BevindingResultaat = 'in_orde' | 'niet_in_orde' | 'nvt'
+export type BevindingAfhandeling = 'geen' | 'meteen_hersteld' | 'actie'
+
+export type InspectieBevinding = {
+  id: string
+  company_id: string
+  inspectie_id: string
+  punt_tekst_snap: string
+  verplicht: boolean
+  volgorde: number
+  resultaat: BevindingResultaat | null
+  afhandeling: BevindingAfhandeling
+  actie_id: string | null
+  opmerking: string | null
+}
+
+export type InspectieHistorieRegel = {
+  id: string
+  inspectie_id: string
+  wie: string | null
+  wanneer: string
+  wijziging: string
+}

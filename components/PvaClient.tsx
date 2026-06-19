@@ -20,9 +20,10 @@ type Props = {
   huisstijl?: HuisstijlView
   toonNaamVragen?: boolean
   ritme?: Ritme
+  toonInspecties?: boolean
 }
 
-export default function PvaClient({ company, initialItems, magBeheren = false, personen = [], huisstijl = VEILIGE_HUISSTIJL, toonNaamVragen = false, ritme = 'uit' }: Props) {
+export default function PvaClient({ company, initialItems, magBeheren = false, personen = [], huisstijl = VEILIGE_HUISSTIJL, toonNaamVragen = false, ritme = 'uit', toonInspecties = false }: Props) {
   const [items, setItems] = useState<PvaItem[]>(initialItems)
   const [filterStatus, setFilterStatus] = useState('Alle')
   const [filterPrio, setFilterPrio] = useState('Alle')
@@ -114,6 +115,14 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
               className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
             >
               Personen
+            </Link>
+          )}
+          {toonInspecties && (
+            <Link
+              href={`/${company.id}/inspecties`}
+              className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
+            >
+              Werkplekinspectie
             </Link>
           )}
         </div>

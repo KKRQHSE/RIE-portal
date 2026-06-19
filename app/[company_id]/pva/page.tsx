@@ -77,6 +77,19 @@ export default async function PvaPage({
     : { data: null }
   const ritme = (instelling?.ritme ?? 'uit') as Ritme
 
+  // Inspectiemodule: alleen tonen als die aanstaat voor dit bedrijf én de
+  // gebruiker mag beheren. De /inspecties-pagina dwingt dit ook zelf af.
+  const { data: inspectieModule } = magBeheren
+    ? await supabase
+        .from('bedrijf_modules')
+        .select('actief')
+        .eq('company_id', company_id)
+        .eq('module', 'inspectie')
+        .eq('actief', true)
+        .maybeSingle()
+    : { data: null }
+  const toonInspecties = magBeheren && !!inspectieModule
+
   const huisstijl = await haalHuisstijl(company_id)
 
   return (
@@ -88,6 +101,7 @@ export default async function PvaPage({
       huisstijl={huisstijl}
       toonNaamVragen={isClient && !heeftNaam}
       ritme={ritme}
+      toonInspecties={toonInspecties}
     />
   )
 }

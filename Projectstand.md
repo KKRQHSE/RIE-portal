@@ -2,7 +2,7 @@
 
 > Levend document, de enige plek voor "waar staan we". Status, geen verantwoording: het waarom van keuzes staat in `Beslissingen.md`. Overschrijf vrij bij elke sessie.
 >
-> **Laatst bijgewerkt:** 17 juni 2026 — alignment opgelost, migraties 0001/0002 groen, backfill open.
+> **Laatst bijgewerkt:** 19 juni 2026 — werkplekinspectie-module live (alpha), managementdashboard gebouwd (KAM + admin), directe DB-tooling + schemadump als bron van waarheid. Open: Geissler-termijnanker, rie_versie-backfill.
 
 ## Het project in het kort
 
@@ -30,6 +30,10 @@ Werkende Next.js/Supabase-app, in twee browsertest-ronden groen op de kritieke p
 - Volledige audit-trail via een loggende RPC-laag (Beslissing 44); geen datalek tussen bedrijven (getest).
 - White-label per klant (logo/kleur/lettertype); veilige standaard: uit tenzij geactiveerd (Beslissing 46-50).
 - Bewijs-upload (foto/PDF, beveiligd, naspeurbaar, auto-verkleind), acties doorgeven aan een collega, mobiel.
+- E-mailmeldingen (toewijzen/doorgeven) + herinneringen (handmatig + automatisch, met maximum per persoon en logboek): gebouwd.
+- **Werkplekinspectie-module (alpha):** sjabloonbeheer + inspectie uitvoeren via een loggende RPC-laag; niet-in-orde-bevindingen worden PvA-acties. Per bedrijf aan/uit (`bedrijf_modules`). Negatieve isolatietests 9/9 en E2E 18/18 groen tegen de live DB.
+- **Managementdashboard:** KAM per bedrijf (`/[company_id]/dashboard`, white-label) + admin-roll-up (`/dashboard`), gevoed door één lees-RPC `dashboard_overzicht` / `dashboard_admin_overzicht`. Tegels: te beoordelen, voortgang PvA, termijn-urgentie, prioriteit, RI&E-geldigheid, inspecties, bewijslast.
+- **DB-tooling:** directe SQL-runner (`scripts/db_run.mjs`) en schemadumper (`npm run db:schema` → `db/schema.sql`) als reviewbare bron van waarheid naast `supabase/migrations`.
 
 ## Wat ligt open
 
@@ -46,15 +50,18 @@ Werkende Next.js/Supabase-app, in twee browsertest-ronden groen op de kritieke p
 - Vakinhoudelijke meetlat: eigen dekking spiegelen aan gevestigde instrumenten (eenmalig).
 
 ### Spoor 2 (portaal)
-- E-mailmeldingen bij toewijzen/doorgeven (eerstvolgende bouwstap, basis voor herinneringen).
-- Herinneringen (handmatig + automatisch). Risicoafweging: maximum per persoon + logboek van elke mail, extra zorgvuldig testen.
-- Managementdashboard (bewust laatst, het pronkstuk).
+- **Geissler-termijnanker (eerstvolgende stap, vakoordeel):** 18 open PvA-acties bij Geissler hebben kwalitatieve termijnen ("binnen 12 maanden"/"binnen 2 jaar") i.p.v. data; Geissler heeft géén rie_versie met toetsdatum. Kees moet een ankerdatum + horizon-conventie geven, dan kan `termijn_datum` gevuld worden en gaat de "over de termijn"-tegel ook voor Geissler leven. De RPC/UI staat klaar.
+- **Backfill rie_versie_id:** bestaande modules/vragen/pva_items/fotos nog niet aan een rie_versie_id gekoppeld. Beslissing: wel backfillen. Migratie nog te schrijven, eerst op Alpha/Bravo. LET OP nummering: de nachttest-agent claimde `0003_revoke_execute_interne_rpcs.sql` al (zie hieronder) — deze backfill wordt 0004 of de revoke wordt hernummerd.
+- Werkplekinspectie verder uitbouwen (uit alpha): bredere uitrol, eventueel gast-/mobiele inspecties.
 - Uitgebreid rollenmodel deskundigen (HVK/A&O/arbeidshygiënist): grote aparte uitbreiding, later.
 - Gast de terugstuurreden tonen (kleine afronding).
-- Leeg paneel rechtsboven (niet-kritiek, vermoedelijk externe widget). Middleware-deprecatie opruimen (geen haast).
-- **Backfill (eerstvolgende stap):** bestaande modules/vragen/pva_items/fotos zijn nog niet aan een rie_versie_id gekoppeld. Beslissing: wel backfillen. Migratie 0003 nog te schrijven en te draaien, eerst op testbedrijven Alpha/Bravo.
-- **Schema in repo:** supabase/migrations/ bestaat nu (0001 en 0002). Toekomstige schema-wijzigingen altijd als migratiebestand committen.
-- **Kapot logo:** /logo.jpg geeft 400, ontbrekend bestand, oplossen voor klantweergave.
+- Leeg paneel rechtsboven (niet-kritiek, vermoedelijk externe widget).
+- Middleware-deprecatie opruimen: Next 16 wil `proxy` i.p.v. `middleware` (dev-warning). Geen haast, maar de middleware regelt auth-redirects — voorzichtig migreren.
+- **Schema in repo:** supabase/migrations/ (0001, 0002) + `db/schema.sql` als dump. Toekomstige schema-wijzigingen altijd als migratiebestand committen.
+- **Parallelle nachttest-agent:** er draait een tweede agent op main (tenant-isolatietest, `scripts/nachttest_rls.mjs`). Liet o.a. `0003_revoke_execute_interne_rpcs.sql` na (trekt EXECUTE op interne RPC's in). NIET klakkeloos toepassen — eerst nagaan of dat geen legitieme aanroepen breekt. Kees: "geen autonome bevoegdheden inperken."
+- ~~Kapot logo~~ — opgelost: /logo.jpg geeft 200 (geldig JPEG aanwezig in /public, geverifieerd 19 juni).
+- ~~E-mailmeldingen + herinneringen~~ — gebouwd (zie boven).
+- ~~Managementdashboard~~ — gebouwd (zie boven); resteert browsertest op fysieke devices + de smaaksuggesties (iconen, 3-koloms op breed scherm).
 
 ### Overkoepelend / blokkerend
 - **AVG (blokkeert livegang):** verwerkersovereenkomst, verwerkingsregister, privacyverklaring (Beslissing 33). Datalocatie goed: Supabase EU West (Ierland).

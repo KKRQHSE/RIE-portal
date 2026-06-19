@@ -30,6 +30,13 @@ begin;
 alter table public.inspectie_bevinding
   add column if not exists verplicht boolean not null default false;
 
+-- Additieve snapshot-kolom: bevriest de volgorde van het sjabloonpunt, zodat de
+-- bevindingen bij het uitvoeren/teruglezen altijd in dezelfde (template-)volgorde
+-- staan. inspectie_bevinding heeft zelf geen ordening; zonder deze kolom zou de
+-- frontend op willekeurige id-volgorde uitkomen. Niet-destructief en idempotent.
+alter table public.inspectie_bevinding
+  add column if not exists volgorde integer not null default 0;
+
 
 -- ----------------------------------------------------------------------------
 -- sjabloon_opslaan: nieuw sjabloon (p_sjabloon_id = null) of bestaand bijwerken.
@@ -244,9 +251,9 @@ begin
   values (v_company, p_sjabloon_id, 'concept', v_naam, v_soort)
   returning id into v_inspectie;
 
-  -- Eén bevinding per sjabloonpunt, met bevroren tekst + verplicht-vlag.
-  insert into inspectie_bevinding (company_id, inspectie_id, punt_tekst_snap, verplicht, afhandeling)
-  select v_company, v_inspectie, punt.tekst, coalesce(punt.verplicht, false), 'geen'
+  -- Eén bevinding per sjabloonpunt, met bevroren tekst + verplicht + volgorde.
+  insert into inspectie_bevinding (company_id, inspectie_id, punt_tekst_snap, verplicht, volgorde, afhandeling)
+  select v_company, v_inspectie, punt.tekst, coalesce(punt.verplicht, false), coalesce(punt.volgorde, 0), 'geen'
     from inspectie_sjabloon_punt punt
    where punt.sjabloon_id = p_sjabloon_id
    order by punt.volgorde;

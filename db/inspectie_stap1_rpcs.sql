@@ -503,6 +503,17 @@ begin
     raise exception 'Niet alle verplichte punten hebben een resultaat';
   end if;
 
+  -- Sinds de constraint de tussenstadia toelaat, borgt afronden de eindstrengheid:
+  -- een 'niet in orde'-bevinding moet zijn afgehandeld (meteen hersteld of actie).
+  if exists (
+    select 1 from inspectie_bevinding
+     where inspectie_id = p_inspectie_id
+       and resultaat = 'niet_in_orde'
+       and afhandeling = 'geen'
+  ) then
+    raise exception 'Elke ''niet in orde''-bevinding moet zijn afgehandeld (meteen hersteld of actie)';
+  end if;
+
   update inspectie
      set status       = 'afgerond',
          uitgevoerd_op = now(),

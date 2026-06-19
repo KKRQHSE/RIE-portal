@@ -108,9 +108,11 @@ async function maakBedrijf(label) {
     .single()
   if (e3) throw new Error(`inspectie insert (${label}): ${e3.message}`)
 
+  // resultaat is NOT NULL in het echte schema; een geldige (in_orde, geen)-bevinding
+  // voldoet aan alle CHECK-constraints en volstaat voor de isolatieproef.
   const { data: bev, error: e4 } = await admin
     .from('inspectie_bevinding')
-    .insert({ company_id: comp.id, inspectie_id: insp.id, punt_tekst_snap: 'Nooduitgang vrij?', afhandeling: 'geen' })
+    .insert({ company_id: comp.id, inspectie_id: insp.id, punt_tekst_snap: 'Nooduitgang vrij?', resultaat: 'in_orde', afhandeling: 'geen' })
     .select('id')
     .single()
   if (e4) throw new Error(`bevinding insert (${label}): ${e4.message}`)

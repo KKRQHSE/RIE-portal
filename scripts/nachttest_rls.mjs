@@ -264,6 +264,8 @@ async function run() {
   await rpcWeigert(P, cA, 'herinnering_loggen', { p_persoon_id: B.persoonId, p_bron: 'handmatig', p_acties: [], p_email: 'x@x.test' }, 'herinnering_loggen op B-persoon')
   await rpcWeigert(P, cA, 'zet_herinner_ritme', { p_company_id: B.cid, p_ritme: 'dagelijks' }, 'zet_herinner_ritme op B')
   await rpcWeigert(P, cA, 'koppel_mij_als_persoon', { p_company_id: B.cid }, 'koppel_mij_als_persoon in B')
+  await rpcWeigert(P, cA, 'dashboard_overzicht', { p_company_id: B.cid }, 'dashboard_overzicht van B')
+  await rpcWeigert(P, cA, 'dashboard_admin_overzicht', {}, 'dashboard_admin_overzicht als niet-admin')
 
   // Positieve controle: A mag dit op EIGEN resources
   {
@@ -271,32 +273,60 @@ async function run() {
     rec(P, 'positieve controle: A mag eigen ritme zetten', !error, error ? error.message : 'ok')
   }
 
-  // ---------------- PIJLER 4b: ONGEGUARDE definer-RPC's ----------------
-  console.log('\n=== PIJLER 4b — Ongeguarde SECURITY DEFINER-RPCs (bevindingen) ===')
-  const Q = 'Pijler 4b — Ongeguarde RPCs'
-  // vind_of_maak_persoon: A probeert een persoon in B te injecteren
+  // ---------------- PIJLER 4b: voorheen-ongeguarde interne definer-RPC's ----------------
+  // Na migratie 0003 hebben anon/authenticated GEEN EXECUTE meer op deze interne helpers.
+  // PostgREST hoort de aanroep dus te weigeren (permission denied). De interne aanroepen
+  // vanuit de wrappers blijven werken (zie Pijler 4c).
+  console.log('\n=== PIJLER 4b — Interne definer-RPCs niet meer direct aanroepbaar (na fix) ===')
+  const Q = 'Pijler 4b — Interne RPCs afgeschermd'
+  // actie_als_jsonb: was een LEESLEK (volledige actie-rij van elke id). Anon moet nu geweigerd worden.
+  {
+    const { data, error } = await anon.rpc('actie_als_jsonb', { p_actie_id: B.pvaId })
+    rec(Q, 'actie_als_jsonb: anon kan B-actie NIET meer uitlezen (leeslek gedicht)', !!error && !data, error ? `geweigerd (${error.code || 'denied'})` : `LIET DATA DOOR: ${JSON.stringify(data).slice(0, 80)}`)
+  }
+  // import_rie_content: was DESTRUCTIEF (wist/herimporteert RI&E-inhoud). Anon moet geweigerd worden.
+  {
+    const { error } = await anon.rpc('import_rie_content', { p_company_id: B.cid })
+    rec(Q, 'import_rie_content: anon kan B-RI&E NIET meer wissen/herimporteren', !!error, error ? `geweigerd (${error.code || 'denied'})` : 'TOEGESTAAN!')
+  }
+  // vind_of_maak_persoon: A mag geen persoon meer in B injecteren (en er mag niets aangemaakt zijn).
   {
     const voor = (await admin.from('personen').select('id', { count: 'exact', head: true }).eq('company_id', B.cid)).count
     const { data, error } = await cA.rpc('vind_of_maak_persoon', { p_company_id: B.cid, p_naam: 'NACHTTEST_INJECT', p_email: `inject_${TS}@x.test`, p_voorgesteld_door: null })
     const na = (await admin.from('personen').select('id', { count: 'exact', head: true }).eq('company_id', B.cid)).count
-    const geinjecteerd = na > voor
-    rec(Q, 'vind_of_maak_persoon: A kan persoon in B injecteren?', !geinjecteerd, geinjecteerd ? `JA — rij ${data} in B aangemaakt (ONGEGUARD schrijf-vector)` : 'nee')
-    // ... maar zelfs ná injectie blijft LEZEN dicht: RLS verbergt de rij voor A.
-    if (geinjecteerd && data) {
-      const { data: zicht } = await cA.from('personen').select('id').eq('id', data)
-      rec(Q, 'maar A kan de geïnjecteerde rij NIET teruglezen (RLS houdt leeslek dicht)', (zicht?.length ?? 0) === 0, `${zicht?.length ?? 0} rijen zichtbaar`)
-    }
+    rec(Q, 'vind_of_maak_persoon: A geweigerd én geen injectie in B', !!error && na === voor, error ? `geweigerd (${error.code || 'denied'})` : `INJECTEERDE rij ${data}`)
+    if (data) { await admin.from('personen').delete().eq('id', data) }
   }
-  // import_company: anon maakt nieuw bedrijf
+  // import_company: anon kan geen nieuw bedrijf meer aanmaken.
   {
     const { data, error } = await anon.rpc('import_company', { p_dataset: { bedrijf: { naam: `NACHTTEST_import_${TS}` }, planVanAanpak: [], modules: [], fotos: [] } })
     if (data) extraCompanyIds.push(data)
-    rec(Q, 'import_company: anon kan nieuw bedrijf aanmaken?', !data, data ? `JA — bedrijf ${data} aangemaakt door anon (ONGEGUARD)` : (error ? `nee (${error.message})` : 'nee'))
+    rec(Q, 'import_company: anon kan GEEN nieuw bedrijf aanmaken', !!error && !data, error ? `geweigerd (${error.code || 'denied'})` : `MAAKTE bedrijf ${data}`)
   }
-  // huisstijl_van_bedrijf: anon leest branding van B (by design voor gast)
+  // huisstijl_van_bedrijf: bewust nog publiek voor de gastpagina (cosmetisch).
   {
     const { data } = await anon.rpc('huisstijl_van_bedrijf', { p_company_id: B.cid })
-    rec(Q, 'huisstijl_van_bedrijf: anon leest branding van B (by design, cosmetisch)', true, data ? `geeft modus=${data.modus} (cosmetisch; geen bedrijfsnaam/data)` : 'null', 'info')
+    rec(Q, 'huisstijl_van_bedrijf: anon leest branding (BEWUST publiek voor gast, cosmetisch)', true, data ? `modus=${data.modus} (geen bedrijfsnaam/data)` : 'null', 'info')
+  }
+
+  // ---------------- PIJLER 4c: regressie — interne aanroepen werken nog ----------------
+  // Bewijst dat het intrekken van EXECUTE de legitieme interne definer-aanroepen NIET breekt.
+  console.log('\n=== PIJLER 4c — Regressie: interne definer-aanroepen werken nog (eigen bedrijf) ===')
+  const C = 'Pijler 4c — Regressie interne aanroepen'
+  {
+    // actie_doorgeven roept INTERN vind_of_maak_persoon aan; op A's eigen actie moet dit slagen.
+    const { data, error } = await cA.rpc('actie_doorgeven', { p_actie_id: A.pvaId, p_naam: 'NACHTTEST_ontvanger', p_email: `ontv_${TS}@example.test` })
+    rec(C, 'A: actie_doorgeven (gebruikt intern vind_of_maak_persoon) slaagt', !error && !!data, error ? error.message : 'ok')
+  }
+  {
+    // geef_actie_vrij roept INTERN actie_als_jsonb aan; op A's eigen actie moet dit slagen.
+    const { data, error } = await cA.rpc('geef_actie_vrij', { p_actie_id: A.pvaId, p_opmerking: 'nachttest', p_bewijs: null })
+    rec(C, 'A: geef_actie_vrij (gebruikt intern actie_als_jsonb) slaagt + geeft jsonb', !error && data && typeof data === 'object', error ? error.message : `actie ${data?.id ? 'ok' : '?'}`)
+  }
+  {
+    // De gast-wrapper deellink_data leunt op huisstijl_van_bedrijf; token A moet nog data geven.
+    const { data } = await anon.rpc('deellink_data', { p_token: A.token })
+    rec(C, 'gast: deellink_data (eigen token A) werkt nog volledig', !!data && !!data.bedrijf, data ? `bedrijf=${data.bedrijf}` : 'null')
   }
 
   // ---------------- PIJLER 5: Token-beveiliging ----------------

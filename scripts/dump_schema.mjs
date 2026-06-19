@@ -175,6 +175,31 @@ const fns = await q(`
   order by p.proname, p.oid`)
 for (const f of fns) out.push(f.def.replace(/\r\n/g, '\n').trimEnd() + ';')
 
+// 8b. Functie-privileges die afwijken van de Supabase-default (PUBLIC heeft EXECUTE).
+//     Alleen functies met een expliciete ACL (proacl niet NULL) verschijnen hier: dat zijn
+//     de bewust afgeschermde interne helpers (zie migratie 0003).
+const fnAcl = await q(`
+  select p.proname,
+         pg_get_function_identity_arguments(p.oid) as args,
+         bool_or(a.grantee = 0) as public_exec,
+         string_agg(distinct r.rolname, ',') filter (where a.grantee <> 0 and r.rolname is not null) as grantees
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  cross join lateral aclexplode(p.proacl) a
+  left join pg_roles r on r.oid = a.grantee
+  where n.nspname = 'public' and p.prokind = 'f' and p.proacl is not null and a.privilege_type = 'EXECUTE'
+  group by p.proname, p.oid
+  order by p.proname`)
+if (fnAcl.length) {
+  out.push(hdr('Functie-privileges (afwijkend van default — zie migratie 0003)'))
+  for (const f of fnAcl) {
+    const sig = `public.${f.proname}(${f.args})`
+    if (!f.public_exec) out.push(`REVOKE EXECUTE ON FUNCTION ${sig} FROM PUBLIC;`)
+    const roles = (f.grantees || '').split(',').filter(r => r && r !== 'postgres')
+    for (const r of roles) out.push(`GRANT EXECUTE ON FUNCTION ${sig} TO ${r};`)
+  }
+}
+
 // 9. Triggers op public-tabellen (geen interne FK-triggers)
 out.push(hdr('Triggers (public)'))
 const trgs = await q(`

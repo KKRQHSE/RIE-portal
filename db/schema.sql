@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-19T18:05:46.409Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-06-19T18:17:16.123Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -233,7 +233,8 @@ CREATE TABLE public.pva_items (
   vrijgave_bewijs text,
   rie_versie_id uuid,
   bron_type text,
-  bron_id uuid
+  bron_id uuid,
+  termijn_datum date
 );
 
 CREATE TABLE public.rie_versies (
@@ -379,6 +380,7 @@ CREATE INDEX herinnering_log_persoon_idx ON public.herinnering_log USING btree (
 CREATE INDEX idx_fotos_rie_versie ON public.fotos USING btree (rie_versie_id);
 CREATE INDEX idx_modules_rie_versie ON public.modules USING btree (rie_versie_id);
 CREATE INDEX idx_pva_items_rie_versie ON public.pva_items USING btree (rie_versie_id);
+CREATE INDEX idx_pva_items_termijn_datum ON public.pva_items USING btree (termijn_datum);
 CREATE INDEX idx_vragen_rie_versie ON public.vragen USING btree (rie_versie_id);
 CREATE INDEX inspectie_company_idx ON public.inspectie USING btree (company_id, status);
 CREATE INDEX inspectie_historie_idx ON public.inspectie_historie USING btree (inspectie_id, wanneer DESC);

@@ -173,3 +173,30 @@ export type InspectieHistorieRegel = {
   wanneer: string
   wijziging: string
 }
+
+// ---- Managementdashboard ----
+
+// Payload van de RPC dashboard_overzicht(p_company_id): alle tegelcijfers van één bedrijf.
+export type DashboardOverzicht = {
+  pva: { totaal: number; open: number; in_behandeling: number; afgerond: number; pct: number }
+  te_beoordelen: number
+  prio_open: { Hoog: number; Middel: number; Laag: number }
+  termijn: { over: number; binnenkort: number; zonder_datum: number }
+  rie: { versie: number; status: string; geldig_tot: string | null; verloopt_binnenkort: boolean } | null
+  inspecties: { open: number; afgerond: number; open_bevindingen: number }
+  bewijs: { afgerond_met_bewijs: number; afgerond_zonder_bewijs: number }
+}
+
+// Eén regel van de RPC dashboard_admin_overzicht(): per bedrijf voor de admin-roll-up.
+export type DashboardAdminRegel = {
+  id: string
+  name: string
+  pva_totaal: number
+  pva_afgerond: number
+  pct: number
+  te_beoordelen: number
+  over_termijn: number
+  rie_status: string | null
+  rie_geldig_tot: string | null
+  laatste_activiteit: string | null
+}

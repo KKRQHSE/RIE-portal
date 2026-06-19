@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-19T18:17:16.123Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-06-19T18:38:19.005Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -836,6 +836,168 @@ begin
         ingetrokken = false, created_at = now();
 
   return v_token;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.dashboard_admin_overzicht()
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v jsonb;
+begin
+  if not is_admin() then
+    raise exception 'Alleen voor beheerders';
+  end if;
+
+  select coalesce(jsonb_agg(row order by row->>'te_beoordelen' desc, row->>'over_termijn' desc, row->>'name'), '[]'::jsonb)
+  into v
+  from (
+    select jsonb_build_object(
+      'id', c.id,
+      'name', c.name,
+      'pva_totaal',    p.totaal,
+      'pva_afgerond',  p.afgerond,
+      'pct',           p.pct,
+      'te_beoordelen', p.te_beoordelen,
+      'over_termijn',  p.over_termijn,
+      'rie_status',    r.status,
+      'rie_geldig_tot', r.geldig_tot,
+      'laatste_activiteit', p.laatste_activiteit
+    ) as row
+    from companies c
+    left join lateral (
+      select
+        count(*)                                          as totaal,
+        count(*) filter (where status = 'Afgerond')       as afgerond,
+        case when count(*) > 0
+             then round(100.0 * count(*) filter (where status = 'Afgerond') / count(*))
+             else 0 end                                   as pct,
+        count(*) filter (where concept_status is not null and btrim(concept_status) <> '') as te_beoordelen,
+        count(*) filter (where termijn_datum < current_date and status <> 'Afgerond')      as over_termijn,
+        max(updated_at)                                   as laatste_activiteit
+      from pva_items where company_id = c.id
+    ) p on true
+    left join lateral (
+      select status, geldig_tot
+      from rie_versies where company_id = c.id
+      order by versie desc limit 1
+    ) r on true
+  ) s;
+
+  return v;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.dashboard_overzicht(p_company_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v jsonb;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  select jsonb_build_object(
+    -- Voortgang PvA: de kop-donut.
+    'pva', (
+      select jsonb_build_object(
+        'totaal',         count(*),
+        'open',           count(*) filter (where status = 'Open'),
+        'in_behandeling', count(*) filter (where status = 'In behandeling'),
+        'afgerond',       count(*) filter (where status = 'Afgerond'),
+        'pct', case when count(*) > 0
+                    then round(100.0 * count(*) filter (where status = 'Afgerond') / count(*))
+                    else 0 end
+      )
+      from pva_items where company_id = p_company_id
+    ),
+
+    -- Te beoordelen: actiehouder diende een voorstel in, KAM moet vrijgeven/terugsturen.
+    'te_beoordelen', (
+      select count(*) from pva_items
+      where company_id = p_company_id
+        and concept_status is not null and btrim(concept_status) <> ''
+    ),
+
+    -- Openstaand per prioriteit (alles wat niet afgerond is).
+    'prio_open', (
+      select jsonb_build_object(
+        'Hoog',   count(*) filter (where prio = 'Hoog'),
+        'Middel', count(*) filter (where prio = 'Middel'),
+        'Laag',   count(*) filter (where prio = 'Laag')
+      )
+      from pva_items
+      where company_id = p_company_id and status <> 'Afgerond'
+    ),
+
+    -- Termijn-urgentie (op de machine-leesbare termijn_datum).
+    'termijn', (
+      select jsonb_build_object(
+        'over',         count(*) filter (where termijn_datum < current_date),
+        'binnenkort',   count(*) filter (where termijn_datum >= current_date
+                                           and termijn_datum < current_date + 30),
+        'zonder_datum', count(*) filter (where termijn_datum is null
+                                           and termijn is not null and btrim(termijn) <> '')
+      )
+      from pva_items
+      where company_id = p_company_id and status <> 'Afgerond'
+    ),
+
+    -- RI&E-geldigheid: de meest recente versie van dit bedrijf (of null).
+    'rie', (
+      select case when r.id is null then null else jsonb_build_object(
+        'versie',               r.versie,
+        'status',               r.status,
+        'geldig_tot',           r.geldig_tot,
+        'verloopt_binnenkort',  r.geldig_tot is not null and r.geldig_tot < now() + interval '60 days'
+      ) end
+      from (
+        select id, versie, status, geldig_tot
+        from rie_versies where company_id = p_company_id
+        order by versie desc limit 1
+      ) r
+    ),
+
+    -- Inspecties: lopend vs afgerond + onafgehandelde niet_in_orde-bevindingen.
+    'inspecties', jsonb_build_object(
+      'open', (
+        select count(*) from inspectie
+        where company_id = p_company_id and status in ('concept', 'ingediend')
+      ),
+      'afgerond', (
+        select count(*) from inspectie
+        where company_id = p_company_id and status = 'afgerond'
+      ),
+      'open_bevindingen', (
+        select count(*) from inspectie_bevinding
+        where company_id = p_company_id
+          and resultaat = 'niet_in_orde' and afhandeling = 'geen'
+      )
+    ),
+
+    -- Bewijslast: kwaliteit van afhandeling, niet alleen het vinkje.
+    'bewijs', (
+      select jsonb_build_object(
+        'afgerond_met_bewijs', count(*) filter (where heeft_bewijs),
+        'afgerond_zonder_bewijs', count(*) filter (where not heeft_bewijs)
+      )
+      from (
+        select exists (
+          select 1 from bewijs b
+          where b.pva_item_id = i.id and b.verwijderd_op is null
+        ) as heeft_bewijs
+        from pva_items i
+        where i.company_id = p_company_id and i.status = 'Afgerond'
+      ) s
+    )
+  ) into v;
+
+  return v;
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.deellink_actie_doorgeven(p_token text, p_actie_id uuid, p_naam text, p_email text)
@@ -1880,6 +2042,139 @@ begin
   update public.users set naam = p_naam where id = auth.uid();
 end;
 $function$;
+
+-- ============================================================
+-- Functie-privileges (afwijkend van default — zie migratie 0003)
+-- ============================================================
+
+REVOKE EXECUTE ON FUNCTION public.actie_als_jsonb(p_actie_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.actie_als_jsonb(p_actie_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.actie_doorgeven(p_actie_id uuid, p_naam text, p_email text) TO anon;
+GRANT EXECUTE ON FUNCTION public.actie_doorgeven(p_actie_id uuid, p_naam text, p_email text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.actie_doorgeven(p_actie_id uuid, p_naam text, p_email text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.actie_historie_ophalen(p_actie_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.actie_historie_ophalen(p_actie_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.actie_historie_ophalen(p_actie_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.bevinding_naar_actie(p_bevinding_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.bevinding_naar_actie(p_bevinding_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.bevinding_naar_actie(p_bevinding_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.bevinding_opslaan(p_bevinding_id uuid, p_resultaat text, p_afhandeling text, p_opmerking text) TO anon;
+GRANT EXECUTE ON FUNCTION public.bevinding_opslaan(p_bevinding_id uuid, p_resultaat text, p_afhandeling text, p_opmerking text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.bevinding_opslaan(p_bevinding_id uuid, p_resultaat text, p_afhandeling text, p_opmerking text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.bewijs_lijst(p_actie_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.bewijs_lijst(p_actie_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.bewijs_lijst(p_actie_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.bewijs_registreren(p_actie_id uuid, p_pad text, p_bestandsnaam text, p_type text, p_grootte bigint) TO anon;
+GRANT EXECUTE ON FUNCTION public.bewijs_registreren(p_actie_id uuid, p_pad text, p_bestandsnaam text, p_type text, p_grootte bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.bewijs_registreren(p_actie_id uuid, p_pad text, p_bestandsnaam text, p_type text, p_grootte bigint) TO service_role;
+GRANT EXECUTE ON FUNCTION public.bewijs_verwijderen(p_bewijs_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.bewijs_verwijderen(p_bewijs_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.bewijs_verwijderen(p_bewijs_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.create_deellink(p_persoon_id uuid, p_vervalt_op timestamp with time zone) TO anon;
+GRANT EXECUTE ON FUNCTION public.create_deellink(p_persoon_id uuid, p_vervalt_op timestamp with time zone) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_deellink(p_persoon_id uuid, p_vervalt_op timestamp with time zone) TO service_role;
+GRANT EXECUTE ON FUNCTION public.dashboard_admin_overzicht() TO anon;
+GRANT EXECUTE ON FUNCTION public.dashboard_admin_overzicht() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.dashboard_admin_overzicht() TO service_role;
+GRANT EXECUTE ON FUNCTION public.dashboard_overzicht(p_company_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.dashboard_overzicht(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.dashboard_overzicht(p_company_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.deellink_actie_doorgeven(p_token text, p_actie_id uuid, p_naam text, p_email text) TO anon;
+GRANT EXECUTE ON FUNCTION public.deellink_actie_doorgeven(p_token text, p_actie_id uuid, p_naam text, p_email text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.deellink_actie_doorgeven(p_token text, p_actie_id uuid, p_naam text, p_email text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.deellink_actie_historie(p_token text, p_actie_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.deellink_actie_historie(p_token text, p_actie_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.deellink_actie_historie(p_token text, p_actie_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.deellink_bewijs_lijst(p_token text, p_actie_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.deellink_bewijs_lijst(p_token text, p_actie_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.deellink_bewijs_lijst(p_token text, p_actie_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.deellink_bewijs_pad(p_token text, p_actie_id uuid, p_bestandsnaam text) TO anon;
+GRANT EXECUTE ON FUNCTION public.deellink_bewijs_pad(p_token text, p_actie_id uuid, p_bestandsnaam text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.deellink_bewijs_pad(p_token text, p_actie_id uuid, p_bestandsnaam text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.deellink_bewijs_registreren(p_token text, p_actie_id uuid, p_pad text, p_bestandsnaam text, p_type text, p_grootte bigint) TO anon;
+GRANT EXECUTE ON FUNCTION public.deellink_bewijs_registreren(p_token text, p_actie_id uuid, p_pad text, p_bestandsnaam text, p_type text, p_grootte bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.deellink_bewijs_registreren(p_token text, p_actie_id uuid, p_pad text, p_bestandsnaam text, p_type text, p_grootte bigint) TO service_role;
+GRANT EXECUTE ON FUNCTION public.deellink_concept_update(p_token text, p_actie_id uuid, p_status text, p_opm text) TO anon;
+GRANT EXECUTE ON FUNCTION public.deellink_concept_update(p_token text, p_actie_id uuid, p_status text, p_opm text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.deellink_concept_update(p_token text, p_actie_id uuid, p_status text, p_opm text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.deellink_data(p_token text) TO anon;
+GRANT EXECUTE ON FUNCTION public.deellink_data(p_token text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.deellink_data(p_token text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.geef_actie_vrij(p_actie_id uuid, p_opmerking text, p_bewijs text) TO anon;
+GRANT EXECUTE ON FUNCTION public.geef_actie_vrij(p_actie_id uuid, p_opmerking text, p_bewijs text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.geef_actie_vrij(p_actie_id uuid, p_opmerking text, p_bewijs text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.gen_deellink_token() TO anon;
+GRANT EXECUTE ON FUNCTION public.gen_deellink_token() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.gen_deellink_token() TO service_role;
+GRANT EXECUTE ON FUNCTION public.handle_new_user() TO anon;
+GRANT EXECUTE ON FUNCTION public.handle_new_user() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.handle_new_user() TO service_role;
+GRANT EXECUTE ON FUNCTION public.herinner_kandidaten(p_company_id uuid, p_alleen_ritme boolean) TO anon;
+GRANT EXECUTE ON FUNCTION public.herinner_kandidaten(p_company_id uuid, p_alleen_ritme boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.herinner_kandidaten(p_company_id uuid, p_alleen_ritme boolean) TO service_role;
+GRANT EXECUTE ON FUNCTION public.herinnering_loggen(p_persoon_id uuid, p_bron text, p_acties jsonb, p_email text) TO anon;
+GRANT EXECUTE ON FUNCTION public.herinnering_loggen(p_persoon_id uuid, p_bron text, p_acties jsonb, p_email text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.herinnering_loggen(p_persoon_id uuid, p_bron text, p_acties jsonb, p_email text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.huisstijl_van_bedrijf(p_company_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.huisstijl_van_bedrijf(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.huisstijl_van_bedrijf(p_company_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.import_company(p_dataset jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.import_company(p_dataset jsonb) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.import_rie_content(p_company_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.import_rie_content(p_company_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) TO anon;
+GRANT EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid, p_conclusie text) TO anon;
+GRANT EXECUTE ON FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid, p_conclusie text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid, p_conclusie text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.inspectie_start(p_sjabloon_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.inspectie_start(p_sjabloon_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_start(p_sjabloon_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.intrek_deellink(p_persoon_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.intrek_deellink(p_persoon_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.intrek_deellink(p_persoon_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO anon;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO service_role;
+GRANT EXECUTE ON FUNCTION public.koppel_mij_als_persoon(p_company_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.koppel_mij_als_persoon(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.koppel_mij_als_persoon(p_company_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.mag_bedrijf_beheren(p_company_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.mag_bedrijf_beheren(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.mag_bedrijf_beheren(p_company_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.mag_herinneren(p_persoon_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.mag_herinneren(p_persoon_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.mag_herinneren(p_persoon_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.my_company_id() TO anon;
+GRANT EXECUTE ON FUNCTION public.my_company_id() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.my_company_id() TO service_role;
+GRANT EXECUTE ON FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid, p_tekst text, p_verplicht boolean, p_volgorde integer) TO anon;
+GRANT EXECUTE ON FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid, p_tekst text, p_verplicht boolean, p_volgorde integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid, p_tekst text, p_verplicht boolean, p_volgorde integer) TO service_role;
+GRANT EXECUTE ON FUNCTION public.punt_verwijderen(p_punt_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.punt_verwijderen(p_punt_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.punt_verwijderen(p_punt_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.sjabloon_archiveren(p_sjabloon_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.sjabloon_archiveren(p_sjabloon_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.sjabloon_archiveren(p_sjabloon_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.sjabloon_opslaan(p_sjabloon_id uuid, p_company_id uuid, p_naam text, p_controlesoort text) TO anon;
+GRANT EXECUTE ON FUNCTION public.sjabloon_opslaan(p_sjabloon_id uuid, p_company_id uuid, p_naam text, p_controlesoort text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.sjabloon_opslaan(p_sjabloon_id uuid, p_company_id uuid, p_naam text, p_controlesoort text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.stuur_concept_terug(p_actie_id uuid, p_opmerking text) TO anon;
+GRANT EXECUTE ON FUNCTION public.stuur_concept_terug(p_actie_id uuid, p_opmerking text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.stuur_concept_terug(p_actie_id uuid, p_opmerking text) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.vind_of_maak_persoon(p_company_id uuid, p_naam text, p_email text, p_voorgesteld_door uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.vind_of_maak_persoon(p_company_id uuid, p_naam text, p_email text, p_voorgesteld_door uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.zet_concept_beheerder(p_actie_id uuid, p_status text, p_opm text) TO anon;
+GRANT EXECUTE ON FUNCTION public.zet_concept_beheerder(p_actie_id uuid, p_status text, p_opm text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.zet_concept_beheerder(p_actie_id uuid, p_status text, p_opm text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.zet_herinner_ritme(p_company_id uuid, p_ritme text) TO anon;
+GRANT EXECUTE ON FUNCTION public.zet_herinner_ritme(p_company_id uuid, p_ritme text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.zet_herinner_ritme(p_company_id uuid, p_ritme text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.zet_mijn_naam(p_naam text) TO anon;
+GRANT EXECUTE ON FUNCTION public.zet_mijn_naam(p_naam text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.zet_mijn_naam(p_naam text) TO service_role;
 
 -- ============================================================
 -- Triggers (public)

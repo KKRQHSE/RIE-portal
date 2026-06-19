@@ -99,7 +99,15 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
           )}
         </div>
 
-        <div className="flex gap-3 mb-6">
+        <div className="flex flex-wrap gap-3 mb-6">
+          {magBeheren && (
+            <Link
+              href={`/${company.id}/dashboard`}
+              className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
+            >
+              Dashboard
+            </Link>
+          )}
           <span className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white">
             Plan van Aanpak
           </span>

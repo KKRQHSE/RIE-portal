@@ -1,32 +1,17 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth'
-import LogoutButton from '@/components/LogoutButton'
+import AdminDashboardClient from '@/components/AdminDashboardClient'
+import type { DashboardAdminRegel } from '@/lib/types'
 
 export default async function DashboardPage() {
   const profile = await getSessionProfile()
   if (!profile) redirect('/login')
   if (profile.role !== 'admin') redirect('/')
 
-  return (
-    <main className="min-h-screen bg-surface">
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-xl font-semibold text-ink">Beheer</h1>
-          <LogoutButton />
-        </div>
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <p className="text-sm text-ink/50 font-mono">Dashboard komt in fase 2.</p>
-          <p className="text-sm text-ink/40 mt-2">Ingelogd als {profile.email}</p>
-        </div>
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('dashboard_admin_overzicht')
+  const bedrijven = (error ? [] : (data ?? [])) as DashboardAdminRegel[]
 
-        <Link
-          href="/admin/huisstijl"
-          className="mt-4 inline-block text-sm px-4 py-2 rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors"
-        >
-          Huisstijl beheren
-        </Link>
-      </div>
-    </main>
-  )
+  return <AdminDashboardClient bedrijven={bedrijven} email={profile.email} />
 }

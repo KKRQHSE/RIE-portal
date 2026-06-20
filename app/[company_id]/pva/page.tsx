@@ -3,6 +3,8 @@ import { redirect, notFound } from 'next/navigation'
 import PvaClient from '@/components/PvaClient'
 import type { Ritme } from '@/components/HerinnerBeheer'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
+import { haalPersonen } from '@/lib/personen-data'
+import type { Persoon } from '@/lib/types'
 
 export default async function PvaPage({
   params,
@@ -15,28 +17,23 @@ export default async function PvaPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, company_id, naam')
-    .eq('id', user.id)
-    .single()
+  // Onafhankelijke leesacties tegelijk i.p.v. na elkaar.
+  const [{ data: profile }, { data: company }, { data: items }, huisstijl] =
+    await Promise.all([
+      supabase.from('users').select('role, company_id, naam').eq('id', user.id).single(),
+      supabase
+        .from('companies')
+        .select('id, name, approved_at, approved_by')
+        .eq('id', company_id)
+        .single(),
+      supabase.from('pva_items').select('*').eq('company_id', company_id),
+      haalHuisstijl(company_id),
+    ])
 
   // Klant mag alleen eigen bedrijf zien; admin alles
   if (!profile) redirect('/login')
   if (profile.role !== 'admin' && profile.company_id !== company_id) notFound()
-
-  const { data: company } = await supabase
-    .from('companies')
-    .select('id, name, approved_at, approved_by')
-    .eq('id', company_id)
-    .single()
-
   if (!company) notFound()
-
-  const { data: items } = await supabase
-    .from('pva_items')
-    .select('*')
-    .eq('company_id', company_id)
 
   // Sorteer op nummer als integer (nr is text, bijv. "1".."20")
   const sorted = (items ?? []).sort((a, b) => parseInt(a.nr) - parseInt(b.nr))
@@ -51,53 +48,39 @@ export default async function PvaPage({
   // hoort niet in het adresboek/de dropdown — dus geen koppeling/naamvraag.
   const isClient = profile.role === 'client'
 
-  // Client met naam wordt gegarandeerd zelf een persoon in dit bedrijf
-  // (idempotent: de RPC matcht op e-mail). Pas daarna de lijst ophalen.
-  if (isClient && heeftNaam) {
-    await supabase.rpc('koppel_mij_als_persoon', { p_company_id: company_id })
+  // Beheerdata (personen incl. KAM-koppeling, ritme, module) tegelijk en alleen
+  // voor wie mag beheren. haalPersonen koppelt de KAM alleen als hij nog ontbreekt.
+  let personen: Persoon[] = []
+  let ritme: Ritme = 'uit'
+  let toonInspecties = false
+  if (magBeheren) {
+    const [personenLijst, { data: instelling }, { data: inspectieModule }] =
+      await Promise.all([
+        haalPersonen(supabase, company_id, isClient && heeftNaam ? user.email ?? null : null),
+        supabase
+          .from('herinner_instelling')
+          .select('ritme')
+          .eq('company_id', company_id)
+          .maybeSingle(),
+        supabase
+          .from('bedrijf_modules')
+          .select('actief')
+          .eq('company_id', company_id)
+          .eq('module', 'inspectie')
+          .eq('actief', true)
+          .maybeSingle(),
+      ])
+    personen = personenLijst
+    ritme = (instelling?.ritme ?? 'uit') as Ritme
+    toonInspecties = !!inspectieModule
   }
-
-  // Personen alleen nodig (en zichtbaar) voor wie mag beheren.
-  const { data: personen } = magBeheren
-    ? await supabase
-        .from('personen')
-        .select('id, company_id, naam, email, status, voorgesteld_door, archived_at')
-        .eq('company_id', company_id)
-        .is('archived_at', null)
-        .order('naam', { ascending: true })
-    : { data: [] }
-
-  // Huidig herinner-ritme van dit bedrijf (alleen relevant voor de beheerder).
-  const { data: instelling } = magBeheren
-    ? await supabase
-        .from('herinner_instelling')
-        .select('ritme')
-        .eq('company_id', company_id)
-        .maybeSingle()
-    : { data: null }
-  const ritme = (instelling?.ritme ?? 'uit') as Ritme
-
-  // Inspectiemodule: alleen tonen als die aanstaat voor dit bedrijf én de
-  // gebruiker mag beheren. De /inspecties-pagina dwingt dit ook zelf af.
-  const { data: inspectieModule } = magBeheren
-    ? await supabase
-        .from('bedrijf_modules')
-        .select('actief')
-        .eq('company_id', company_id)
-        .eq('module', 'inspectie')
-        .eq('actief', true)
-        .maybeSingle()
-    : { data: null }
-  const toonInspecties = magBeheren && !!inspectieModule
-
-  const huisstijl = await haalHuisstijl(company_id)
 
   return (
     <PvaClient
       company={company}
       initialItems={sorted}
       magBeheren={magBeheren}
-      personen={personen ?? []}
+      personen={personen}
       huisstijl={huisstijl}
       toonNaamVragen={isClient && !heeftNaam}
       ritme={ritme}

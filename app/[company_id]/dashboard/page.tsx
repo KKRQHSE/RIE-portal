@@ -15,11 +15,33 @@ export default async function CompanyDashboardPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, company_id')
-    .eq('id', user.id)
-    .single()
+  // Onafhankelijke leesacties tegelijk i.p.v. na elkaar: scheelt round-trips naar
+  // Supabase. De RPC's dwingen hun eigen autorisatie af; we controleren daarna.
+  const [
+    { data: profile },
+    { data: company },
+    { data: overzicht, error },
+    { data: inspectieModule },
+    huisstijl,
+  ] = await Promise.all([
+    supabase.from('users').select('role, company_id').eq('id', user.id).single(),
+    supabase
+      .from('companies')
+      .select('id, name, approved_at, approved_by')
+      .eq('id', company_id)
+      .single(),
+    // Alle tegelcijfers in één RPC; autorisatie zit in de RPC zelf.
+    supabase.rpc('dashboard_overzicht', { p_company_id: company_id }),
+    // Inspectiemodule alleen tonen als die aanstaat (zelfde gating als de PvA-pagina).
+    supabase
+      .from('bedrijf_modules')
+      .select('actief')
+      .eq('company_id', company_id)
+      .eq('module', 'inspectie')
+      .eq('actief', true)
+      .maybeSingle(),
+    haalHuisstijl(company_id),
+  ])
 
   // Het dashboard is een beheeroverzicht: admin overal, KAM (client) voor eigen bedrijf.
   if (!profile) redirect('/login')
@@ -27,30 +49,8 @@ export default async function CompanyDashboardPage({
     profile.role === 'admin' ||
     (profile.role === 'client' && profile.company_id === company_id)
   if (!magBeheren) notFound()
-
-  const { data: company } = await supabase
-    .from('companies')
-    .select('id, name, approved_at, approved_by')
-    .eq('id', company_id)
-    .single()
   if (!company) notFound()
-
-  // Alle tegelcijfers in één round-trip; autorisatie zit in de RPC zelf.
-  const { data: overzicht, error } = await supabase.rpc('dashboard_overzicht', {
-    p_company_id: company_id,
-  })
   if (error || !overzicht) notFound()
-
-  // Inspectiemodule alleen tonen als die aanstaat (zelfde gating als de PvA-pagina).
-  const { data: inspectieModule } = await supabase
-    .from('bedrijf_modules')
-    .select('actief')
-    .eq('company_id', company_id)
-    .eq('module', 'inspectie')
-    .eq('actief', true)
-    .maybeSingle()
-
-  const huisstijl = await haalHuisstijl(company_id)
 
   return (
     <DashboardClient

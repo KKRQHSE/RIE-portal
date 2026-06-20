@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import PersonenClient from '@/components/PersonenClient'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
+import { haalPersonen } from '@/lib/personen-data'
 
 export default async function PersonenPage({
   params,
@@ -27,42 +28,34 @@ export default async function PersonenPage({
     (profile.role === 'client' && profile.company_id === company_id)
   if (!magBeheren) notFound()
 
-  const { data: company } = await supabase
-    .from('companies')
-    .select('id, name, approved_at, approved_by')
-    .eq('id', company_id)
-    .single()
-  if (!company) notFound()
-
   const heeftNaam = !!profile.naam?.trim()
   // Alleen de client (KAM) is actiehouder; de admin is systeembeheerder en
   // hoort niet in het adresboek/de dropdown — dus geen koppeling/naamvraag.
   const isClient = profile.role === 'client'
 
-  // Client met naam wordt gegarandeerd zelf een persoon in dit bedrijf
-  // (idempotent: de RPC matcht op e-mail). Pas daarna de lijst ophalen.
-  if (isClient && heeftNaam) {
-    await supabase.rpc('koppel_mij_als_persoon', { p_company_id: company_id })
-  }
+  // Onafhankelijke leesacties tegelijk. haalPersonen koppelt de ingelogde KAM
+  // alleen als hij nog ontbreekt (geen schrijfactie bij elke lading meer).
+  const [{ data: company }, personen, { data: deellinks }, huisstijl] =
+    await Promise.all([
+      supabase
+        .from('companies')
+        .select('id, name, approved_at, approved_by')
+        .eq('id', company_id)
+        .single(),
+      haalPersonen(supabase, company_id, isClient && heeftNaam ? user.email ?? null : null),
+      supabase
+        .from('deellinks')
+        .select('id, company_id, persoon_id, token, vervalt_op, ingetrokken')
+        .eq('company_id', company_id),
+      haalHuisstijl(company_id),
+    ])
 
-  const { data: personen } = await supabase
-    .from('personen')
-    .select('id, company_id, naam, email, status, voorgesteld_door, archived_at')
-    .eq('company_id', company_id)
-    .is('archived_at', null)
-    .order('naam', { ascending: true })
-
-  const { data: deellinks } = await supabase
-    .from('deellinks')
-    .select('id, company_id, persoon_id, token, vervalt_op, ingetrokken')
-    .eq('company_id', company_id)
-
-  const huisstijl = await haalHuisstijl(company_id)
+  if (!company) notFound()
 
   return (
     <PersonenClient
       company={company}
-      initialPersonen={personen ?? []}
+      initialPersonen={personen}
       initialDeellinks={deellinks ?? []}
       huisstijl={huisstijl}
       toonNaamVragen={isClient && !heeftNaam}

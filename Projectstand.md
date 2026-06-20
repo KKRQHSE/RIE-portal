@@ -52,7 +52,8 @@ Werkende Next.js/Supabase-app, in twee browsertest-ronden groen op de kritieke p
 
 ### Spoor 2 (portaal)
 - **Geissler-termijnanker (eerstvolgende stap, vakoordeel):** 18 open PvA-acties bij Geissler hebben kwalitatieve termijnen ("binnen 12 maanden"/"binnen 2 jaar") i.p.v. data; Geissler heeft géén rie_versie met toetsdatum. Kees moet een ankerdatum + horizon-conventie geven, dan kan `termijn_datum` gevuld worden en gaat de "over de termijn"-tegel ook voor Geissler leven. De RPC/UI staat klaar.
-- **Backfill rie_versie_id (wordt migratie 0004):** bestaande modules/vragen/pva_items/fotos nog niet aan een rie_versie_id gekoppeld. Beslissing: wel backfillen. Migratie nog te schrijven, eerst op Alpha/Bravo. (0003 is inmiddels de security-revoke, zie hieronder.)
+- **Backfill rie_versie_id (wordt migratie 0005):** bestaande modules/vragen/pva_items/fotos nog niet aan een rie_versie_id gekoppeld. Beslissing: wel backfillen. Migratie nog te schrijven, eerst op Alpha/Bravo. (0003 = security-revoke; 0004 is inmiddels `module_abonnement`, zie hieronder — daarom schuift de backfill naar 0005.)
+- **Module-abonnement (migratie 0004, WIP):** zelfbeheer per bedrijf van modules met drie toestanden (geen / actief / opgezegd) bovenop de bestaande gebruiks-toggle `actief`. Schermscherm `/[company_id]/modules` (`ModuleBeheer`) + RPC-laag `db/module_abonnement_rpcs.sql` (`module_abonneren` / `module_gebruik_zetten` / `module_opzeggen`, SECURITY DEFINER, gegate via `mag_bedrijf_beheren`, met `module_historie`-auditlog). De inspectie-gating op dashboard/PvA/inspecties filtert nu op `abonnement_status='actief'` én `actief=true`. tsc + build groen; nog te committen + DB-RPC's draaien + browsertest.
 - Werkplekinspectie verder uitbouwen (uit alpha): bredere uitrol, eventueel gast-/mobiele inspecties.
 - Uitgebreid rollenmodel deskundigen (HVK/A&O/arbeidshygiënist): grote aparte uitbreiding, later.
 - Gast de terugstuurreden tonen (kleine afronding).

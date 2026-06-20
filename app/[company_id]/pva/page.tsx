@@ -67,7 +67,7 @@ export default async function PvaPage({
           .select('actief')
           .eq('company_id', company_id)
           .eq('module', 'inspectie')
-          .eq('abonnement_status', 'actief')
+          .eq('module_status', 'actief')
           .eq('actief', true)
           .maybeSingle(),
       ])

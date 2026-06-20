@@ -30,13 +30,13 @@ export default async function InspectiesPage({
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
-    // De module moet een actief abonnement hebben én op 'aan' staan voor dit bedrijf.
+    // De module moet actief zijn én op 'aan' staan voor dit bedrijf.
     supabase
       .from('bedrijf_modules')
       .select('actief')
       .eq('company_id', company_id)
       .eq('module', 'inspectie')
-      .eq('abonnement_status', 'actief')
+      .eq('module_status', 'actief')
       .eq('actief', true)
       .maybeSingle(),
     supabase

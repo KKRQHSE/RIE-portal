@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-20T13:55:53.383Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-06-20T14:16:50.147Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -44,9 +44,9 @@ CREATE TABLE public.bedrijf_modules (
   company_id uuid NOT NULL,
   module text NOT NULL,
   actief boolean DEFAULT true NOT NULL,
-  abonnement_status text DEFAULT 'geen'::text NOT NULL,
+  module_status text DEFAULT 'geen'::text NOT NULL,
   geactiveerd_op timestamp with time zone,
-  opgezegd_op timestamp with time zone
+  gestopt_op timestamp with time zone
 );
 
 CREATE TABLE public.bewijs (
@@ -322,7 +322,7 @@ ALTER TABLE public.personen ADD CONSTRAINT personen_company_id_email_key UNIQUE 
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_company_id_nr_key UNIQUE (company_id, nr);
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_company_id_versie_key UNIQUE (company_id, versie);
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_company_id_nr_key UNIQUE (company_id, nr);
-ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_abonnement_status_check CHECK ((abonnement_status = ANY (ARRAY['geen'::text, 'actief'::text, 'opgezegd'::text])));
+ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_module_status_check CHECK ((module_status = ANY (ARRAY['geen'::text, 'actief'::text, 'gestopt'::text])));
 ALTER TABLE public.companies ADD CONSTRAINT companies_huisstijl_modus_check CHECK ((huisstijl_modus = ANY (ARRAY['default'::text, 'co_branding'::text, 'white_label'::text])));
 ALTER TABLE public.herinner_instelling ADD CONSTRAINT herinner_instelling_ritme_check CHECK ((ritme = ANY (ARRAY['uit'::text, 'dagelijks'::text, 'wekelijks'::text, 'maandelijks'::text])));
 ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_bron_check CHECK ((bron = ANY (ARRAY['handmatig'::text, 'automatisch'::text])));
@@ -1799,7 +1799,7 @@ AS $function$
       and verzonden_op > now() - interval '7 days'
   ) < 2
 $function$;
-CREATE OR REPLACE FUNCTION public.module_abonneren(p_company_id uuid, p_module text)
+CREATE OR REPLACE FUNCTION public.module_activeren(p_company_id uuid, p_module text)
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -1817,24 +1817,24 @@ begin
     raise exception 'Module is verplicht';
   end if;
 
-  select abonnement_status into v_status
+  select module_status into v_status
     from bedrijf_modules
    where company_id = p_company_id and module = v_module;
 
   if v_status = 'actief' then
-    raise exception 'Module is al geabonneerd';
+    raise exception 'Module is al actief';
   end if;
 
-  insert into bedrijf_modules (company_id, module, actief, abonnement_status, geactiveerd_op, opgezegd_op)
+  insert into bedrijf_modules (company_id, module, actief, module_status, geactiveerd_op, gestopt_op)
   values (p_company_id, v_module, true, 'actief', now(), null)
   on conflict (company_id, module) do update
-     set actief            = true,
-         abonnement_status = 'actief',
-         geactiveerd_op    = now(),
-         opgezegd_op       = null;
+     set actief         = true,
+         module_status  = 'actief',
+         geactiveerd_op = now(),
+         gestopt_op     = null;
 
   insert into module_historie (company_id, module, wie, wanneer, wijziging)
-  values (p_company_id, v_module, auth.uid(), now(), 'Geabonneerd op module ' || v_module);
+  values (p_company_id, v_module, auth.uid(), now(), 'Module ' || v_module || ' geactiveerd');
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.module_gebruik_zetten(p_company_id uuid, p_module text, p_aan boolean)
@@ -1859,12 +1859,12 @@ begin
     raise exception 'Aan/uit is verplicht';
   end if;
 
-  select abonnement_status, actief into v_status, v_actief
+  select module_status, actief into v_status, v_actief
     from bedrijf_modules
    where company_id = p_company_id and module = v_module;
 
   if v_status is distinct from 'actief' then
-    raise exception 'Geen actief abonnement op deze module';
+    raise exception 'Module is niet actief';
   end if;
   if v_actief = p_aan then
     return;  -- niets te doen; geen ruis in het logboek
@@ -1879,7 +1879,7 @@ begin
           case when p_aan then 'Gebruik aangezet' else 'Gebruik uitgezet' end);
 end;
 $function$;
-CREATE OR REPLACE FUNCTION public.module_opzeggen(p_company_id uuid, p_module text)
+CREATE OR REPLACE FUNCTION public.module_stopzetten(p_company_id uuid, p_module text)
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -1897,22 +1897,22 @@ begin
     raise exception 'Module is verplicht';
   end if;
 
-  select abonnement_status into v_status
+  select module_status into v_status
     from bedrijf_modules
    where company_id = p_company_id and module = v_module;
 
   if v_status is distinct from 'actief' then
-    raise exception 'Geen actief abonnement om op te zeggen';
+    raise exception 'Module is niet actief';
   end if;
 
   update bedrijf_modules
-     set abonnement_status = 'opgezegd',
-         opgezegd_op        = now(),
-         actief             = false
+     set module_status = 'gestopt',
+         gestopt_op    = now(),
+         actief        = false
    where company_id = p_company_id and module = v_module;
 
   insert into module_historie (company_id, module, wie, wanneer, wijziging)
-  values (p_company_id, v_module, auth.uid(), now(), 'Abonnement opgezegd');
+  values (p_company_id, v_module, auth.uid(), now(), 'Module gestopt');
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.my_company_id()
@@ -2284,15 +2284,15 @@ GRANT EXECUTE ON FUNCTION public.mag_bedrijf_beheren(p_company_id uuid) TO servi
 GRANT EXECUTE ON FUNCTION public.mag_herinneren(p_persoon_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.mag_herinneren(p_persoon_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mag_herinneren(p_persoon_id uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.module_abonneren(p_company_id uuid, p_module text) TO anon;
-GRANT EXECUTE ON FUNCTION public.module_abonneren(p_company_id uuid, p_module text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.module_abonneren(p_company_id uuid, p_module text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.module_activeren(p_company_id uuid, p_module text) TO anon;
+GRANT EXECUTE ON FUNCTION public.module_activeren(p_company_id uuid, p_module text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.module_activeren(p_company_id uuid, p_module text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.module_gebruik_zetten(p_company_id uuid, p_module text, p_aan boolean) TO anon;
 GRANT EXECUTE ON FUNCTION public.module_gebruik_zetten(p_company_id uuid, p_module text, p_aan boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.module_gebruik_zetten(p_company_id uuid, p_module text, p_aan boolean) TO service_role;
-GRANT EXECUTE ON FUNCTION public.module_opzeggen(p_company_id uuid, p_module text) TO anon;
-GRANT EXECUTE ON FUNCTION public.module_opzeggen(p_company_id uuid, p_module text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.module_opzeggen(p_company_id uuid, p_module text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.module_stopzetten(p_company_id uuid, p_module text) TO anon;
+GRANT EXECUTE ON FUNCTION public.module_stopzetten(p_company_id uuid, p_module text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.module_stopzetten(p_company_id uuid, p_module text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO anon;
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO service_role;

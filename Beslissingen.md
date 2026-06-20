@@ -49,56 +49,62 @@ voorafgaande dashboard-reparatie `d3dc2b5` (RI&E-geldigheid-tegel → `/rie`).
 
 ---
 
-## Beslissing 61 — Module-abonnement + zelfbeheer per bedrijf (20 juni 2026)
+## Beslissing 61 — Module-zelfbeheer per bedrijf (20 juni 2026)
 
 **Aanleiding.** Modules (te beginnen met de werkplekinspectie) moeten per bedrijf
-aan/uit kunnen, maar "een module gebruiken" en "een abonnement op een module
-aangaan" zijn twee verschillende dingen. Tot nu toe was er alleen één platte
-`actief`-vlag in `bedrijf_modules` — niet genoeg om later facturatie op te laten
-leunen.
+aan/uit kunnen, maar "een module gebruiken" en "een module bewust in gebruik nemen"
+zijn twee verschillende dingen. Tot nu toe was er alleen één platte `actief`-vlag in
+`bedrijf_modules` — niet genoeg om later facturatie op te laten leunen.
 
 **Besluit.** Drie expliciete toestanden per module per bedrijf, bovenop de
 bestaande gebruiks-toggle:
 
-1. **Geen abonnement** (`abonnement_status = 'geen'`, default) — nooit geactiveerd,
-   niet bruikbaar, niet zichtbaar.
-2. **Abonnement actief** (`'actief'`) — de beheerder zet het *gebruik* vrij aan/uit
-   via de bestaande kolom `actief`. "Uit" pauzeert alleen het gebruik; het
-   abonnement loopt door.
-3. **Opgezegd** (`'opgezegd'`) — een aparte, bewuste handeling die het abonnement
-   beëindigt. Daarna niet meer bruikbaar; opnieuw aanzetten is een nieuwe
-   abonnementsstap.
+1. **Niet actief** (`module_status = 'geen'`, default) — nooit geactiveerd, niet
+   bruikbaar, niet zichtbaar.
+2. **Actief** (`'actief'`) — de beheerder zet het *gebruik* vrij aan/uit via de
+   bestaande kolom `actief`. "Uit" pauzeert alleen het gebruik; de module blijft
+   actief.
+3. **Gestopt** (`'gestopt'`) — een aparte, bewuste handeling die de module
+   beëindigt. Daarna niet meer bruikbaar; opnieuw aanzetten is een nieuwe activatie.
 
-De eerste activatie is de bewuste **abonnementsstap** (bevestiging in de UI;
-`geactiveerd_op` vastgelegd). Opzeggen heeft een eigen knop + bevestiging
-(`opgezegd_op`).
+De eerste activatie is een bewuste stap (bevestiging in de UI; `geactiveerd_op`
+vastgelegd). Stopzetten heeft een eigen knop + bevestiging (`gestopt_op`).
+
+**Terminologie (expliciete keuze).** Bewust **geen 'abonnement'-taal** — niet in de
+UI en niet in de DB/code. Klanten zien neutrale termen (Activeren / Aan-Uit /
+Stopzetten; status Niet actief / Actief / Gestopt). Dit is ná de eerste build
+doorgevoerd via een aparte hernoem-migratie (zie hieronder), zodat het woord nergens
+blijft hangen.
 
 **Afbakening.** *Nu géén* betaalintegratie of incasso (geen Stripe e.d.). We leggen
 alleen de status en de momenten vast, zodat facturatie er later op kan leunen. De
-abonnementsstap is een bewuste statuswijziging, geen betaling.
+activeringsstap is een bewuste statuswijziging, geen betaling.
 
-**Datamodel (additief).** Migratie `0004_module_abonnement.sql`: `bedrijf_modules`
-uitgebreid met `abonnement_status` (check geen/actief/opgezegd, default 'geen'),
-`geactiveerd_op` en `opgezegd_op` (beide nullable timestamptz); nieuwe loggende
-tabel `module_historie` (RLS via `mag_bedrijf_beheren`). De bestaande Alpha-rij
-(inspectie, actief=true) is geïnterpreteerd als lopend abonnement
-(`abonnement_status='actief'`, `geactiveerd_op` gestempeld op het migratiemoment —
-er was geen historisch startmoment bewaard —, `actief` bleef true). Geen
-niet-additieve wijziging nodig.
+**Datamodel.** Migratie `0004_module_abonnement.sql` (additief) zette het model neer
+op `bedrijf_modules` + nieuwe loggende tabel `module_historie` (RLS via
+`mag_bedrijf_beheren`). De bestaande Alpha-rij (inspectie, actief=true) is
+geïnterpreteerd als actieve module (`module_status='actief'`, `geactiveerd_op`
+gestempeld op het migratiemoment — er was geen historisch startmoment bewaard —,
+`actief` bleef true). Migratie `0005_module_terminologie.sql` (niet-additief, vooraf
+getoond en na akkoord gedraaid) hernoemde de terminologie: kolom
+`abonnement_status → module_status`, `opgezegd_op → gestopt_op`, waarde
+`'opgezegd' → 'gestopt'`, en de RPC's (zie onder). `0004` blijft als historie staan;
+de huidige kolomnamen zijn die van `0005`.
 
 **Autorisatie & RPC's.** Alleen wie het bedrijf mag beheren (KAM/admin, bestaande
 `mag_bedrijf_beheren`-check) mag schakelen; gewone gebruikers en gast-actiehouders
 zien hooguit de status. Drie SECURITY DEFINER-RPC's
-(`db/module_abonnement_rpcs.sql`), elk met een regel in `module_historie`:
-`module_abonneren` (eerste of hernieuwde activatie), `module_gebruik_zetten`
-(aan/uit), `module_opzeggen`.
+(`db/module_zelfbeheer_rpcs.sql`), elk met een regel in `module_historie`:
+`module_activeren` (eerste of hernieuwde activatie), `module_gebruik_zetten`
+(aan/uit), `module_stopzetten`.
 
 **UI & gating.** Beheerscherm `/[company_id]/modules` (`ModuleBeheer`) met per
-module de status, "sinds"-datum en de juiste actieknop (echte buttons/links,
-bevestiging bij abonneren en opzeggen). Nav én dashboard tonen een module alleen
-als `abonnement_status='actief'` én `actief=true` — dezelfde gating als waarmee de
+module de status, "actief sinds"-datum en de juiste actieknop (echte buttons/links,
+bevestiging bij activeren en stopzetten). Nav én dashboard tonen een module alleen
+als `module_status='actief'` én `actief=true` — dezelfde gating als waarmee de
 inspectie-tegel al verscheen.
 
 **Bewijs.** Isolatietest `scripts/module_isolatie_test.mjs` 8/8 groen (bedrijf A
-kan abonnementen van bedrijf B niet zien of muteren), testdata opgeruimd;
-`tsc --noEmit` en `next build` groen. Commit `369b845`.
+kan de modules van bedrijf B niet zien of muteren), testdata opgeruimd;
+`tsc --noEmit` en `next build` groen. Commits `369b845` (model + UI) en de
+terminologie-hernoeming (0005).

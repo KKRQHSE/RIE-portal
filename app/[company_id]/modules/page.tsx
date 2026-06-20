@@ -23,11 +23,11 @@ export default async function ModulesPage({
         .select('id, name, approved_at, approved_by')
         .eq('id', company_id)
         .single(),
-      // Alle abonnementsrijen van dit bedrijf. RLS (mag_bedrijf_beheren) zorgt dat
+      // Alle modulerijen van dit bedrijf. RLS (mag_bedrijf_beheren) zorgt dat
       // alleen de beheerder iets terugkrijgt; de UI gate hieronder is de tweede gordel.
       supabase
         .from('bedrijf_modules')
-        .select('company_id, module, actief, abonnement_status, geactiveerd_op, opgezegd_op')
+        .select('company_id, module, actief, module_status, geactiveerd_op, gestopt_op')
         .eq('company_id', company_id),
       haalHuisstijl(company_id),
     ])

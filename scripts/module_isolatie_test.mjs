@@ -1,10 +1,10 @@
 // ============================================================================
-// Module-abonnement — negatieve isolatie-tests (bewijs)
+// Module-zelfbeheer — negatieve isolatie-tests (bewijs)
 // ----------------------------------------------------------------------------
-// Toont aan dat de bedrijfsisolatie van de abonnementenlaag houdt: een ingelogde
-// beheerder van bedrijf A kan GEEN abonnement van bedrijf B zien (0 rijen via RLS
-// op bedrijf_modules / module_historie) of muteren (de SECURITY DEFINER-RPC's
-// module_abonneren / module_gebruik_zetten / module_opzeggen weigeren via
+// Toont aan dat de bedrijfsisolatie van de modulelaag houdt: een ingelogde
+// beheerder van bedrijf A kan GEEN module-toestand van bedrijf B zien (0 rijen via
+// RLS op bedrijf_modules / module_historie) of muteren (de SECURITY DEFINER-RPC's
+// module_activeren / module_gebruik_zetten / module_stopzetten weigeren via
 // mag_bedrijf_beheren).
 //
 // Draaien:   node scripts/module_isolatie_test.mjs
@@ -84,12 +84,12 @@ async function maakBedrijf(label) {
   if (error) throw new Error(`companies insert (${label}): ${error.message}`)
   companyIds.push(comp.id)
 
-  // Een lopend abonnement op de inspectiemodule (service role omzeilt RLS).
+  // Een actieve inspectiemodule (service role omzeilt RLS).
   const { error: e1 } = await admin.from('bedrijf_modules').insert({
     company_id: comp.id,
     module: MODULE,
     actief: true,
-    abonnement_status: 'actief',
+    module_status: 'actief',
     geactiveerd_op: new Date().toISOString(),
   })
   if (e1) throw new Error(`bedrijf_modules insert (${label}): ${e1.message}`)
@@ -122,7 +122,7 @@ async function maakGebruiker(label, companyId) {
 async function statusVan(companyId) {
   const { data } = await admin
     .from('bedrijf_modules')
-    .select('actief, abonnement_status')
+    .select('actief, module_status')
     .eq('company_id', companyId)
     .eq('module', MODULE)
     .single()
@@ -135,49 +135,49 @@ async function run() {
   const clientA = await maakGebruiker('A', A.companyId)
   await maakGebruiker('B', B.companyId) // bewijst dat B een geldige beheerder heeft
 
-  // --- Positieve controle: A ziet zijn EIGEN abonnementsrij ---
+  // --- Positieve controle: A ziet zijn EIGEN modulerij ---
   {
     const { data, error } = await clientA
       .from('bedrijf_modules').select('module').eq('company_id', A.companyId)
-    check('A ziet eigen abonnement (positieve controle)', !error && (data?.length ?? 0) === 1)
+    check('A ziet eigen module (positieve controle)', !error && (data?.length ?? 0) === 1)
   }
 
   // --- Lezen: A mag NIETS van B zien ---
   {
     const { data, error } = await clientA
       .from('bedrijf_modules').select('module').eq('company_id', B.companyId)
-    check('A ziet abonnement van B niet', !error && (data?.length ?? 0) === 0, `${data?.length ?? '?'} rijen`)
+    check('A ziet module-toestand van B niet', !error && (data?.length ?? 0) === 0, `${data?.length ?? '?'} rijen`)
   }
   {
     const { data, error } = await clientA
       .from('module_historie').select('id').eq('company_id', B.companyId)
-    check('A ziet abonnementshistorie van B niet', !error && (data?.length ?? 0) === 0, `${data?.length ?? '?'} rijen`)
+    check('A ziet modulehistorie van B niet', !error && (data?.length ?? 0) === 0, `${data?.length ?? '?'} rijen`)
   }
 
   // --- Muteren: A's RPC-aanroepen op B's company_id moeten WEIGEREN ---
   {
-    const { error } = await clientA.rpc('module_opzeggen', { p_company_id: B.companyId, p_module: MODULE })
-    check('A kan abonnement van B niet opzeggen', !!error, error ? 'geweigerd' : 'GEEN fout!')
+    const { error } = await clientA.rpc('module_stopzetten', { p_company_id: B.companyId, p_module: MODULE })
+    check('A kan module van B niet stopzetten', !!error, error ? 'geweigerd' : 'GEEN fout!')
   }
   {
     const { error } = await clientA.rpc('module_gebruik_zetten', { p_company_id: B.companyId, p_module: MODULE, p_aan: false })
     check('A kan gebruik van B niet uitzetten', !!error, error ? 'geweigerd' : 'GEEN fout!')
   }
   {
-    const { error } = await clientA.rpc('module_abonneren', { p_company_id: B.companyId, p_module: 'audit' })
-    check('A kan B niet op een nieuwe module abonneren', !!error, error ? 'geweigerd' : 'GEEN fout!')
+    const { error } = await clientA.rpc('module_activeren', { p_company_id: B.companyId, p_module: 'audit' })
+    check('A kan bij B geen nieuwe module activeren', !!error, error ? 'geweigerd' : 'GEEN fout!')
   }
 
-  // --- Defensieve dubbelcheck: B's abonnement is ongewijzigd na alle aanvallen ---
+  // --- Defensieve dubbelcheck: B's module is ongewijzigd na alle aanvallen ---
   {
     const s = await statusVan(B.companyId)
-    check('B-abonnement bleef actief + aan na aanvallen van A',
-      !!s && s.abonnement_status === 'actief' && s.actief === true,
-      s ? `status=${s.abonnement_status}, actief=${s.actief}` : 'geen rij')
+    check('B-module bleef actief + aan na aanvallen van A',
+      !!s && s.module_status === 'actief' && s.actief === true,
+      s ? `status=${s.module_status}, actief=${s.actief}` : 'geen rij')
   }
   {
     const { data } = await admin.from('bedrijf_modules').select('module').eq('company_id', B.companyId).eq('module', 'audit')
-    check('A heeft geen audit-abonnement bij B aangemaakt', (data?.length ?? 0) === 0, `${data?.length ?? '?'} rijen`)
+    check('A heeft bij B geen audit-module aangemaakt', (data?.length ?? 0) === 0, `${data?.length ?? '?'} rijen`)
   }
 }
 

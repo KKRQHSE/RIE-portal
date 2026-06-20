@@ -66,19 +66,19 @@ export type Module = {
   volgorde: number | null
 }
 
-// ---- Module-abonnement (zelfbeheer per bedrijf) ----
+// ---- Module-zelfbeheer per bedrijf ----
 
-export type AbonnementStatus = 'geen' | 'actief' | 'opgezegd'
+export type ModuleStatus = 'geen' | 'actief' | 'gestopt'
 
-// Eén rij uit bedrijf_modules: het abonnement van een bedrijf op één module.
-// `actief` is de vrije gebruiks-toggle (aan/uit), losstaand van de abonnementsstatus.
+// Eén rij uit bedrijf_modules: de toestand van een bedrijf op één module.
+// `actief` is de vrije gebruiks-toggle (aan/uit), losstaand van de module-status.
 export type BedrijfModule = {
   company_id: string
   module: string
   actief: boolean
-  abonnement_status: AbonnementStatus
+  module_status: ModuleStatus
   geactiveerd_op: string | null
-  opgezegd_op: string | null
+  gestopt_op: string | null
 }
 
 export type Vraag = {

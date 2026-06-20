@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
-import type { Company, BedrijfModule, AbonnementStatus } from '@/lib/types'
+import type { Company, BedrijfModule, ModuleStatus } from '@/lib/types'
 import { MODULE_CATALOGUS } from '@/lib/modules-catalogus'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
@@ -23,16 +23,16 @@ function formatDatum(iso: string | null): string {
     : d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-const STATUS_BADGE: Record<AbonnementStatus, string> = {
+const STATUS_BADGE: Record<ModuleStatus, string> = {
   geen: 'bg-gray-100 text-gray-600',
   actief: 'bg-green-100 text-green-800',
-  opgezegd: 'bg-gray-100 text-gray-500',
+  gestopt: 'bg-gray-100 text-gray-500',
 }
 
-const STATUS_LABEL: Record<AbonnementStatus, string> = {
-  geen: 'Geen abonnement',
-  actief: 'Abonnement actief',
-  opgezegd: 'Opgezegd',
+const STATUS_LABEL: Record<ModuleStatus, string> = {
+  geen: 'Niet actief',
+  actief: 'Actief',
+  gestopt: 'Gestopt',
 }
 
 export default function ModuleBeheer({
@@ -56,34 +56,34 @@ export default function ModuleBeheer({
           company_id: company.id,
           module,
           actief: false,
-          abonnement_status: 'geen' as AbonnementStatus,
+          module_status: 'geen' as ModuleStatus,
           geactiveerd_op: null,
-          opgezegd_op: null,
+          gestopt_op: null,
         }),
         ...updates,
       },
     }))
   }
 
-  async function abonneren(module: string, titel: string) {
+  async function activeren(module: string, titel: string) {
     if (!confirm(
-      `Module "${titel}" activeren?\n\nDit gaat een abonnement aan voor ${company.name}. ` +
-      `Het abonnement loopt door tot u het bewust opzegt; aan/uit zetten pauzeert alleen ` +
-      `het gebruik.`
+      `Module "${titel}" activeren voor ${company.name}?\n\n` +
+      `De module wordt meteen bruikbaar. Met Aan/Uit pauzeert u later alleen het ` +
+      `gebruik; Stopzetten beëindigt de module helemaal.`
     )) return
     setFout(null)
     setBezig(module)
-    const { error } = await supabase.rpc('module_abonneren', {
+    const { error } = await supabase.rpc('module_activeren', {
       p_company_id: company.id,
       p_module: module,
     })
     setBezig(null)
     if (error) { setFout(error.message); return }
     patch(module, {
-      abonnement_status: 'actief',
+      module_status: 'actief',
       actief: true,
       geactiveerd_op: new Date().toISOString(),
-      opgezegd_op: null,
+      gestopt_op: null,
     })
   }
 
@@ -100,20 +100,20 @@ export default function ModuleBeheer({
     patch(module, { actief: aan })
   }
 
-  async function opzeggen(module: string, titel: string) {
+  async function stopzetten(module: string, titel: string) {
     if (!confirm(
-      `Abonnement op "${titel}" opzeggen?\n\nDe module is daarna niet meer bruikbaar. ` +
-      `U kunt later opnieuw abonneren.`
+      `Module "${titel}" stopzetten?\n\nDe module is daarna niet meer bruikbaar. ` +
+      `U kunt 'm later opnieuw activeren.`
     )) return
     setFout(null)
     setBezig(module)
-    const { error } = await supabase.rpc('module_opzeggen', {
+    const { error } = await supabase.rpc('module_stopzetten', {
       p_company_id: company.id,
       p_module: module,
     })
     setBezig(null)
     if (error) { setFout(error.message); return }
-    patch(module, { abonnement_status: 'opgezegd', actief: false, opgezegd_op: new Date().toISOString() })
+    patch(module, { module_status: 'gestopt', actief: false, gestopt_op: new Date().toISOString() })
   }
 
   const knop =
@@ -130,7 +130,7 @@ export default function ModuleBeheer({
         <div className="mb-6">
           <HuisstijlLogo huisstijl={huisstijl} className="mb-2" />
           <h1 className="text-xl font-semibold text-ink">{company.name}</h1>
-          <p className="text-sm text-ink/50 mt-0.5">Modules &amp; abonnementen</p>
+          <p className="text-sm text-ink/50 mt-0.5">Modules</p>
         </div>
 
         {/* Navigatie terug naar de rest */}
@@ -157,7 +157,7 @@ export default function ModuleBeheer({
         <div className="space-y-3">
           {MODULE_CATALOGUS.map(item => {
             const rij = modules[item.module]
-            const status: AbonnementStatus = rij?.abonnement_status ?? 'geen'
+            const status: ModuleStatus = rij?.module_status ?? 'geen'
             const actief = !!rij?.actief
             const bezigHier = bezig === item.module
             const bruikbaar = status === 'actief' && actief
@@ -180,12 +180,12 @@ export default function ModuleBeheer({
                     <p className="text-sm text-ink/60 leading-relaxed mt-1">{item.omschrijving}</p>
                     {status === 'actief' && rij?.geactiveerd_op && (
                       <p className="text-xs text-ink/40 mt-2">
-                        Abonnement sinds {formatDatum(rij.geactiveerd_op)}
+                        Actief sinds {formatDatum(rij.geactiveerd_op)}
                       </p>
                     )}
-                    {status === 'opgezegd' && rij?.opgezegd_op && (
+                    {status === 'gestopt' && rij?.gestopt_op && (
                       <p className="text-xs text-ink/40 mt-2">
-                        Opgezegd op {formatDatum(rij.opgezegd_op)}
+                        Gestopt op {formatDatum(rij.gestopt_op)}
                       </p>
                     )}
                   </div>
@@ -215,21 +215,21 @@ export default function ModuleBeheer({
                       )}
                       <button
                         type="button"
-                        onClick={() => opzeggen(item.module, item.titel)}
+                        onClick={() => stopzetten(item.module, item.titel)}
                         disabled={bezigHier}
                         className={`${knop} bg-white text-red-700 border-red-200 hover:border-red-400`}
                       >
-                        Opzeggen
+                        Stopzetten
                       </button>
                     </>
                   ) : (
                     <button
                       type="button"
-                      onClick={() => abonneren(item.module, item.titel)}
+                      onClick={() => activeren(item.module, item.titel)}
                       disabled={bezigHier}
                       className={`${knop} bg-accent text-white border-accent hover:opacity-90`}
                     >
-                      {status === 'opgezegd' ? 'Opnieuw abonneren' : 'Abonneren'}
+                      {status === 'gestopt' ? 'Opnieuw activeren' : 'Activeren'}
                     </button>
                   )}
                 </div>

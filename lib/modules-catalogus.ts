@@ -1,4 +1,4 @@
-// De catalogus van abonneerbare modules. Eén plek om een nieuwe module bij te
+// De catalogus van activeerbare modules. Eén plek om een nieuwe module bij te
 // zetten: zodra een module hier staat, verschijnt hij op het modulebeheerscherm.
 // De sleutel `module` is de waarde in bedrijf_modules.module.
 

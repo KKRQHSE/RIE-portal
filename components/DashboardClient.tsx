@@ -171,7 +171,7 @@ export default function DashboardClient({
           </Tegel>
 
           {/* RI&E-geldigheid */}
-          <Tegel titel="RI&E-geldigheid">
+          <Tegel titel="RI&E-geldigheid" href={`/${cid}/rie`}>
             {rie ? (
               <div>
                 <p className="text-sm text-ink">

@@ -32,12 +32,13 @@ export default async function CompanyDashboardPage({
       .single(),
     // Alle tegelcijfers in één RPC; autorisatie zit in de RPC zelf.
     supabase.rpc('dashboard_overzicht', { p_company_id: company_id }),
-    // Inspectiemodule alleen tonen als die aanstaat (zelfde gating als de PvA-pagina).
+    // Inspectiemodule alleen tonen bij actief abonnement én 'aan' (zelfde gating als de PvA-pagina).
     supabase
       .from('bedrijf_modules')
       .select('actief')
       .eq('company_id', company_id)
       .eq('module', 'inspectie')
+      .eq('abonnement_status', 'actief')
       .eq('actief', true)
       .maybeSingle(),
     haalHuisstijl(company_id),

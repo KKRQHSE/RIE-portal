@@ -101,6 +101,7 @@ export default function DashboardClient({
           <Link href={`/${cid}/pva`} className={navRest}>Plan van Aanpak</Link>
           <Link href={`/${cid}/rie`} className={navRest}>Volledige RI&amp;E</Link>
           <Link href={`/${cid}/personen`} className={navRest}>Personen</Link>
+          <Link href={`/${cid}/modules`} className={navRest}>Modules</Link>
           {toonInspecties && (
             <Link href={`/${cid}/inspecties`} className={navRest}>Werkplekinspectie</Link>
           )}

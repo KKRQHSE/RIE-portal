@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-19T18:38:42.468Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-06-20T13:55:53.383Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -43,7 +43,10 @@ CREATE TABLE public.actie_historie (
 CREATE TABLE public.bedrijf_modules (
   company_id uuid NOT NULL,
   module text NOT NULL,
-  actief boolean DEFAULT true NOT NULL
+  actief boolean DEFAULT true NOT NULL,
+  abonnement_status text DEFAULT 'geen'::text NOT NULL,
+  geactiveerd_op timestamp with time zone,
+  opgezegd_op timestamp with time zone
 );
 
 CREATE TABLE public.bewijs (
@@ -183,6 +186,15 @@ CREATE TABLE public.merken (
   created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
+CREATE TABLE public.module_historie (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  module text NOT NULL,
+  wie uuid,
+  wanneer timestamp with time zone DEFAULT now() NOT NULL,
+  wijziging text NOT NULL
+);
+
 CREATE TABLE public.modules (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
@@ -295,6 +307,7 @@ ALTER TABLE public.inspectie_historie ADD CONSTRAINT inspectie_historie_pkey PRI
 ALTER TABLE public.inspectie_sjabloon ADD CONSTRAINT inspectie_sjabloon_pkey PRIMARY KEY (id);
 ALTER TABLE public.inspectie_sjabloon_punt ADD CONSTRAINT inspectie_sjabloon_punt_pkey PRIMARY KEY (id);
 ALTER TABLE public.merken ADD CONSTRAINT merken_pkey PRIMARY KEY (id);
+ALTER TABLE public.module_historie ADD CONSTRAINT module_historie_pkey PRIMARY KEY (id);
 ALTER TABLE public.modules ADD CONSTRAINT modules_pkey PRIMARY KEY (id);
 ALTER TABLE public.personen ADD CONSTRAINT personen_pkey PRIMARY KEY (id);
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_pkey PRIMARY KEY (id);
@@ -309,6 +322,7 @@ ALTER TABLE public.personen ADD CONSTRAINT personen_company_id_email_key UNIQUE 
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_company_id_nr_key UNIQUE (company_id, nr);
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_company_id_versie_key UNIQUE (company_id, versie);
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_company_id_nr_key UNIQUE (company_id, nr);
+ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_abonnement_status_check CHECK ((abonnement_status = ANY (ARRAY['geen'::text, 'actief'::text, 'opgezegd'::text])));
 ALTER TABLE public.companies ADD CONSTRAINT companies_huisstijl_modus_check CHECK ((huisstijl_modus = ANY (ARRAY['default'::text, 'co_branding'::text, 'white_label'::text])));
 ALTER TABLE public.herinner_instelling ADD CONSTRAINT herinner_instelling_ritme_check CHECK ((ritme = ANY (ARRAY['uit'::text, 'dagelijks'::text, 'wekelijks'::text, 'maandelijks'::text])));
 ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_bron_check CHECK ((bron = ANY (ARRAY['handmatig'::text, 'automatisch'::text])));
@@ -349,6 +363,7 @@ ALTER TABLE public.inspectie_historie ADD CONSTRAINT inspectie_historie_wie_fkey
 ALTER TABLE public.inspectie_sjabloon ADD CONSTRAINT inspectie_sjabloon_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.inspectie_sjabloon_punt ADD CONSTRAINT inspectie_sjabloon_punt_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.inspectie_sjabloon_punt ADD CONSTRAINT inspectie_sjabloon_punt_sjabloon_id_fkey FOREIGN KEY (sjabloon_id) REFERENCES inspectie_sjabloon(id) ON DELETE CASCADE;
+ALTER TABLE public.module_historie ADD CONSTRAINT module_historie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.modules ADD CONSTRAINT modules_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.modules ADD CONSTRAINT modules_rie_versie_id_fkey FOREIGN KEY (rie_versie_id) REFERENCES rie_versies(id);
 ALTER TABLE public.personen ADD CONSTRAINT personen_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
@@ -385,6 +400,7 @@ CREATE INDEX idx_vragen_rie_versie ON public.vragen USING btree (rie_versie_id);
 CREATE INDEX inspectie_company_idx ON public.inspectie USING btree (company_id, status);
 CREATE INDEX inspectie_historie_idx ON public.inspectie_historie USING btree (inspectie_id, wanneer DESC);
 CREATE INDEX isp_punt_sjabloon_idx ON public.inspectie_sjabloon_punt USING btree (sjabloon_id, volgorde);
+CREATE INDEX module_historie_company_idx ON public.module_historie USING btree (company_id, wanneer DESC);
 CREATE INDEX modules_company_idx ON public.modules USING btree (company_id);
 CREATE INDEX personen_company_idx ON public.personen USING btree (company_id);
 CREATE INDEX pva_items_company_idx ON public.pva_items USING btree (company_id);
@@ -410,6 +426,7 @@ ALTER TABLE public.inspectie_historie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie_sjabloon ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie_sjabloon_punt ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.merken ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.module_historie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.personen ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pva_items ENABLE ROW LEVEL SECURITY;
@@ -479,6 +496,11 @@ CREATE POLICY merken_admin_all ON public.merken AS PERMISSIVE FOR ALL TO public
   WITH CHECK (is_admin());
 CREATE POLICY merken_select ON public.merken AS PERMISSIVE FOR SELECT TO public
   USING (true);
+CREATE POLICY module_historie_sel ON public.module_historie AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
+CREATE POLICY module_historie_wr ON public.module_historie AS PERMISSIVE FOR ALL TO public
+  USING (mag_bedrijf_beheren(company_id))
+  WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY modules_select ON public.modules AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
 CREATE POLICY personen_select ON public.personen AS PERMISSIVE FOR SELECT TO public
@@ -1777,6 +1799,122 @@ AS $function$
       and verzonden_op > now() - interval '7 days'
   ) < 2
 $function$;
+CREATE OR REPLACE FUNCTION public.module_abonneren(p_company_id uuid, p_module text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_module text;
+  v_status text;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+  v_module := nullif(btrim(coalesce(p_module, '')), '');
+  if v_module is null then
+    raise exception 'Module is verplicht';
+  end if;
+
+  select abonnement_status into v_status
+    from bedrijf_modules
+   where company_id = p_company_id and module = v_module;
+
+  if v_status = 'actief' then
+    raise exception 'Module is al geabonneerd';
+  end if;
+
+  insert into bedrijf_modules (company_id, module, actief, abonnement_status, geactiveerd_op, opgezegd_op)
+  values (p_company_id, v_module, true, 'actief', now(), null)
+  on conflict (company_id, module) do update
+     set actief            = true,
+         abonnement_status = 'actief',
+         geactiveerd_op    = now(),
+         opgezegd_op       = null;
+
+  insert into module_historie (company_id, module, wie, wanneer, wijziging)
+  values (p_company_id, v_module, auth.uid(), now(), 'Geabonneerd op module ' || v_module);
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.module_gebruik_zetten(p_company_id uuid, p_module text, p_aan boolean)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_module text;
+  v_status text;
+  v_actief boolean;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+  v_module := nullif(btrim(coalesce(p_module, '')), '');
+  if v_module is null then
+    raise exception 'Module is verplicht';
+  end if;
+  if p_aan is null then
+    raise exception 'Aan/uit is verplicht';
+  end if;
+
+  select abonnement_status, actief into v_status, v_actief
+    from bedrijf_modules
+   where company_id = p_company_id and module = v_module;
+
+  if v_status is distinct from 'actief' then
+    raise exception 'Geen actief abonnement op deze module';
+  end if;
+  if v_actief = p_aan then
+    return;  -- niets te doen; geen ruis in het logboek
+  end if;
+
+  update bedrijf_modules
+     set actief = p_aan
+   where company_id = p_company_id and module = v_module;
+
+  insert into module_historie (company_id, module, wie, wanneer, wijziging)
+  values (p_company_id, v_module, auth.uid(), now(),
+          case when p_aan then 'Gebruik aangezet' else 'Gebruik uitgezet' end);
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.module_opzeggen(p_company_id uuid, p_module text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_module text;
+  v_status text;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+  v_module := nullif(btrim(coalesce(p_module, '')), '');
+  if v_module is null then
+    raise exception 'Module is verplicht';
+  end if;
+
+  select abonnement_status into v_status
+    from bedrijf_modules
+   where company_id = p_company_id and module = v_module;
+
+  if v_status is distinct from 'actief' then
+    raise exception 'Geen actief abonnement om op te zeggen';
+  end if;
+
+  update bedrijf_modules
+     set abonnement_status = 'opgezegd',
+         opgezegd_op        = now(),
+         actief             = false
+   where company_id = p_company_id and module = v_module;
+
+  insert into module_historie (company_id, module, wie, wanneer, wijziging)
+  values (p_company_id, v_module, auth.uid(), now(), 'Abonnement opgezegd');
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.my_company_id()
  RETURNS uuid
  LANGUAGE sql
@@ -2146,6 +2284,15 @@ GRANT EXECUTE ON FUNCTION public.mag_bedrijf_beheren(p_company_id uuid) TO servi
 GRANT EXECUTE ON FUNCTION public.mag_herinneren(p_persoon_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.mag_herinneren(p_persoon_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mag_herinneren(p_persoon_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.module_abonneren(p_company_id uuid, p_module text) TO anon;
+GRANT EXECUTE ON FUNCTION public.module_abonneren(p_company_id uuid, p_module text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.module_abonneren(p_company_id uuid, p_module text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.module_gebruik_zetten(p_company_id uuid, p_module text, p_aan boolean) TO anon;
+GRANT EXECUTE ON FUNCTION public.module_gebruik_zetten(p_company_id uuid, p_module text, p_aan boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.module_gebruik_zetten(p_company_id uuid, p_module text, p_aan boolean) TO service_role;
+GRANT EXECUTE ON FUNCTION public.module_opzeggen(p_company_id uuid, p_module text) TO anon;
+GRANT EXECUTE ON FUNCTION public.module_opzeggen(p_company_id uuid, p_module text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.module_opzeggen(p_company_id uuid, p_module text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO anon;
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO service_role;

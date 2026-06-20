@@ -2,7 +2,7 @@
 
 > Levend document, de enige plek voor "waar staan we". Status, geen verantwoording: het waarom van keuzes staat in `Beslissingen.md`. Overschrijf vrij bij elke sessie.
 >
-> **Laatst bijgewerkt:** 19 juni 2026 — werkplekinspectie-module live (alpha), managementdashboard gebouwd (KAM + admin), directe DB-tooling + schemadump als bron van waarheid. Open: Geissler-termijnanker, rie_versie-backfill.
+> **Laatst bijgewerkt:** 20 juni 2026 — KAM-dashboard browsergetest (alle tegels klikbaar, RI&E-tegel gerepareerd) en laad-optimalisatie doorgevoerd (loading-skeletten, queries parallel, minder schrijfacties). Werkplekinspectie-module live (alpha), managementdashboard gebouwd (KAM + admin), directe DB-tooling + schemadump als bron van waarheid. Open: Geissler-termijnanker, rie_versie-backfill, admin-dashboard browsertest.
 
 ## Het project in het kort
 
@@ -32,8 +32,9 @@ Werkende Next.js/Supabase-app, in twee browsertest-ronden groen op de kritieke p
 - Bewijs-upload (foto/PDF, beveiligd, naspeurbaar, auto-verkleind), acties doorgeven aan een collega, mobiel.
 - E-mailmeldingen (toewijzen/doorgeven) + herinneringen (handmatig + automatisch, met maximum per persoon en logboek): gebouwd.
 - **Werkplekinspectie-module (alpha):** sjabloonbeheer + inspectie uitvoeren via een loggende RPC-laag; niet-in-orde-bevindingen worden PvA-acties. Per bedrijf aan/uit (`bedrijf_modules`). Negatieve isolatietests 9/9 en E2E 18/18 groen tegen de live DB.
-- **Managementdashboard:** KAM per bedrijf (`/[company_id]/dashboard`, white-label) + admin-roll-up (`/dashboard`), gevoed door één lees-RPC `dashboard_overzicht` / `dashboard_admin_overzicht`. Tegels: te beoordelen, voortgang PvA, termijn-urgentie, prioriteit, RI&E-geldigheid, inspecties, bewijslast.
+- **Managementdashboard:** KAM per bedrijf (`/[company_id]/dashboard`, white-label) + admin-roll-up (`/dashboard`), gevoed door één lees-RPC `dashboard_overzicht` / `dashboard_admin_overzicht`. Tegels: te beoordelen, voortgang PvA, termijn-urgentie, prioriteit, RI&E-geldigheid, inspecties, bewijslast. **KAM-dashboard browsergetest (20 juni): alle 7 tegels klikken door naar de juiste pagina; de RI&E-geldigheid-tegel is gerepareerd (linkt nu naar `/rie`).**
 - **DB-tooling:** directe SQL-runner (`scripts/db_run.mjs`) en schemadumper (`npm run db:schema` → `db/schema.sql`) als reviewbare bron van waarheid naast `supabase/migrations`.
+- **Laad-optimalisatie (20 juni):** elke beveiligde pagina heeft nu een `loading.tsx`-skelet (gedeelde `components/LaadSkeleton`), zodat een klik direct reageert i.p.v. 'dood' aanvoelen; onafhankelijke Supabase-leesacties per pagina draaien parallel via één `Promise.all` i.p.v. een waterval; en `koppel_mij_als_persoon` draait niet meer bij élke PvA-/Personen-lading maar alleen als de KAM nog ontbreekt (`lib/personen-data.ts`). Autorisatie ongewijzigd; tsc + build groen.
 
 ## Wat ligt open
 
@@ -57,11 +58,13 @@ Werkende Next.js/Supabase-app, in twee browsertest-ronden groen op de kritieke p
 - Gast de terugstuurreden tonen (kleine afronding).
 - Leeg paneel rechtsboven (niet-kritiek, vermoedelijk externe widget).
 - Middleware-deprecatie opruimen: Next 16 wil `proxy` i.p.v. `middleware` (dev-warning). Geen haast, maar de middleware regelt auth-redirects — voorzichtig migreren.
+- Admin-roll-up dashboard (`/dashboard`) nog niet in de browser nagelopen (alleen KAM-dashboard per bedrijf is browsergetest). Inloggen als admin, elke bedrijfsregel aanklikken → `/[bedrijf]/dashboard`.
+- Nevengevolg van de nieuwe `loading.tsx`-skeletten: door streaming kan een `notFound()` ná de await geen echte 404-status meer zetten; de gebruiker ziet wél de niet-gevonden-pagina (met `noindex`). Voor dit interne portaal prima; alleen relevant als er ooit een harde 404-status nodig is.
 - **Schema in repo:** supabase/migrations/ (0001, 0002) + `db/schema.sql` als dump. Toekomstige schema-wijzigingen altijd als migratiebestand committen.
 - **Parallelle nachttest-agent:** een tweede agent op main draait tenant-isolatietests (`scripts/nachttest_rls.mjs`). Vond echte lekken en dichtte ze in migratie `0003_revoke_execute_interne_rpcs.sql`: REVOKE EXECUTE op 4 interne helpers (actie_als_jsonb lekte volledige pva-rijen; import_rie_content was destructief; import_company; vind_of_maak_persoon) — alleen service_role houdt toegang. Geverifieerd dat dit géén client-facing RPC's raakt (dashboard/PvA/inspectie blijven werken). Legitieme beveiliging, geen inperking van functionaliteit.
 - ~~Kapot logo~~ — opgelost: /logo.jpg geeft 200 (geldig JPEG aanwezig in /public, geverifieerd 19 juni).
 - ~~E-mailmeldingen + herinneringen~~ — gebouwd (zie boven).
-- ~~Managementdashboard~~ — gebouwd (zie boven); resteert browsertest op fysieke devices + de smaaksuggesties (iconen, 3-koloms op breed scherm).
+- ~~Managementdashboard~~ — gebouwd + KAM-dashboard browsergetest (20 juni, alle tegels klikbaar). Resteert: admin-dashboard browsertest, test op fysieke devices, en de smaaksuggesties (iconen, 3-koloms op breed scherm).
 
 ### Overkoepelend / blokkerend
 - **AVG (blokkeert livegang):** verwerkersovereenkomst, verwerkingsregister, privacyverklaring (Beslissing 33). Datalocatie goed: Supabase EU West (Ierland).

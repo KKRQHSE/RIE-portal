@@ -195,6 +195,35 @@ async function run() {
     const { data } = await admin.from('inspectie_sjabloon').select('gearchiveerd_op').eq('id', B.sjabloonId).single()
     check('B-sjabloon bleef ongewijzigd na aanvallen van A', !!data && data.gearchiveerd_op === null)
   }
+
+  // --- Rapporten-laag (stap 2): bibliotheek + rapport, lezen via RPC ---
+
+  // Positieve controle: A ziet zijn EIGEN bibliotheek en eigen inspectie erin.
+  {
+    const { data, error } = await clientA.rpc('inspectie_bibliotheek', { p_company_id: A.companyId })
+    const eigen = Array.isArray(data) && data.some(r => r.id === A.inspectieId)
+    check('A ziet eigen bibliotheek met eigen inspectie (positieve controle)', !error && eigen,
+      error ? error.message : `${Array.isArray(data) ? data.length : '?'} regels`)
+  }
+
+  // Positieve controle: A kan zijn EIGEN inspectierapport opvragen.
+  {
+    const { data, error } = await clientA.rpc('inspectie_rapport', { p_inspectie_id: A.inspectieId })
+    check('A kan eigen inspectierapport opvragen (positieve controle)',
+      !error && !!data && data.id === A.inspectieId, error ? error.message : 'ok')
+  }
+
+  // Negatief: A mag de bibliotheek van B NIET opvragen (cross-company geweigerd).
+  {
+    const { error } = await clientA.rpc('inspectie_bibliotheek', { p_company_id: B.companyId })
+    check('A kan bibliotheek van B niet opvragen', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+
+  // Negatief: A mag een rapport van B's inspectie NIET opvragen.
+  {
+    const { error } = await clientA.rpc('inspectie_rapport', { p_inspectie_id: B.inspectieId })
+    check('A kan rapport van B niet opvragen', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
 }
 
 async function cleanup() {

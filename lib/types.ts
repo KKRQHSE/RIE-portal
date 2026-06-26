@@ -189,6 +189,67 @@ export type InspectieHistorieRegel = {
   wijziging: string
 }
 
+// ---- Rapporten-bibliotheek (stap 2: lezen/presenteren) ----
+
+// Eén samenvattingsregel uit de RPC inspectie_bibliotheek(p_company_id).
+// Superset van Inspectie (zodat een lopende inspectie ook voortgezet kan worden)
+// plus de cijfers en de uitvoerder voor het archiefoverzicht.
+export type BibliotheekRegel = Inspectie & {
+  aangemaakt_op: string | null
+  uitvoerder_naam: string | null
+  aantal_punten: number
+  aantal_niet_in_orde: number
+  aantal_acties: number
+}
+
+// Eén bevinding zoals de rapportpagina hem toont (uit inspectie_rapport).
+export type RapportBevinding = {
+  id: string
+  volgorde: number
+  punt_tekst_snap: string
+  verplicht: boolean
+  resultaat: BevindingResultaat | null
+  afhandeling: BevindingAfhandeling
+  opmerking: string | null
+  actie_id: string | null
+  actie_nr: string | null
+}
+
+// Een uit de inspectie voortgekomen PvA-actie (gekoppeld via bron_type/bron_id).
+export type RapportActie = {
+  id: string
+  nr: string
+  onderwerp: string | null
+  status: string
+  prio: string | null
+}
+
+// Eén historieregel als tijdlijn-item op het rapport.
+export type RapportHistorie = {
+  id: string
+  wijziging: string
+  wanneer: string
+  wie_naam: string | null
+}
+
+// Payload van de RPC inspectie_rapport(p_inspectie_id): één inspectie volledig.
+export type InspectieRapport = {
+  id: string
+  company_id: string
+  company_naam: string
+  naam: string | null
+  controlesoort: string | null
+  status: InspectieStatus
+  gepland_op: string | null
+  uitgevoerd_op: string | null
+  aangemaakt_op: string | null
+  conclusie: string | null
+  uitvoerder_naam: string | null
+  bevindingen: RapportBevinding[]
+  acties: RapportActie[]
+  historie: RapportHistorie[]
+}
+
 // ---- Managementdashboard ----
 
 // Payload van de RPC dashboard_overzicht(p_company_id): alle tegelcijfers van één bedrijf.

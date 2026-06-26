@@ -5,7 +5,7 @@ import { haalHuisstijl } from '@/lib/huisstijl-data'
 import type {
   InspectieSjabloonPunt,
   SjabloonMetPunten,
-  Inspectie,
+  BibliotheekRegel,
 } from '@/lib/types'
 
 export default async function InspectiesPage({
@@ -26,7 +26,7 @@ export default async function InspectiesPage({
     { data: moduleRij },
     { data: company },
     { data: sjablonen },
-    { data: inspecties },
+    { data: regels },
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
@@ -51,13 +51,10 @@ export default async function InspectiesPage({
       .eq('company_id', company_id)
       .is('gearchiveerd_op', null)
       .order('naam', { ascending: true }),
-    // Recente inspecties (alle statussen) voor het overzicht.
-    supabase
-      .from('inspectie')
-      .select('id, company_id, sjabloon_id, persoon_id, status, gepland_op, uitgevoerd_op, conclusie, sjabloon_naam_snap, controlesoort_snap')
-      .eq('company_id', company_id)
-      .order('uitgevoerd_op', { ascending: false, nullsFirst: true })
-      .limit(50),
+    // De rapporten-bibliotheek: één samenvattingsregel per inspectie (alle
+    // statussen), nieuwste eerst, met de cijfers en de uitvoerder. Autorisatie
+    // zit in de RPC zelf.
+    supabase.rpc('inspectie_bibliotheek', { p_company_id: company_id }),
     haalHuisstijl(company_id),
   ])
 
@@ -90,7 +87,7 @@ export default async function InspectiesPage({
       company={company}
       huisstijl={huisstijl}
       initialSjablonen={sjablonenMetPunten}
-      initialInspecties={(inspecties ?? []) as Inspectie[]}
+      initialRegels={(regels ?? []) as BibliotheekRegel[]}
     />
   )
 }

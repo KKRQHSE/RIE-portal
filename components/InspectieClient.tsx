@@ -1,14 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import type {
   Company,
   SjabloonMetPunten,
   InspectieSjabloonPunt,
-  Inspectie,
+  BibliotheekRegel,
+  InspectieStatus,
 } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
@@ -18,7 +20,7 @@ type Props = {
   company: Company
   huisstijl?: HuisstijlView
   initialSjablonen: SjabloonMetPunten[]
-  initialInspecties: Inspectie[]
+  initialRegels: BibliotheekRegel[]
 }
 
 type View = 'inspecties' | 'sjablonen'
@@ -28,6 +30,18 @@ const STATUS_STIJL: Record<string, string> = {
   ingediend: 'bg-blue-100 text-blue-800',
   afgerond: 'bg-green-100 text-green-800',
   geannuleerd: 'bg-gray-100 text-gray-600',
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  concept: 'Concept',
+  ingediend: 'Ingediend',
+  afgerond: 'Afgerond',
+  geannuleerd: 'Geannuleerd',
+}
+
+// Een inspectie is "klaar" (een echt rapport) zodra ze afgerond of geannuleerd is.
+function isAfgehandeld(status: InspectieStatus): boolean {
+  return status === 'afgerond' || status === 'geannuleerd'
 }
 
 function formatDatum(iso: string | null): string {
@@ -40,13 +54,14 @@ export default function InspectieClient({
   company,
   huisstijl = VEILIGE_HUISSTIJL,
   initialSjablonen,
-  initialInspecties,
+  initialRegels,
 }: Props) {
   const supabase = createClient()
+  const router = useRouter()
   const [view, setView] = useState<View>('inspecties')
   const [sjablonen, setSjablonen] = useState<SjabloonMetPunten[]>(initialSjablonen)
-  const [inspecties, setInspecties] = useState<Inspectie[]>(initialInspecties)
-  const [open, setOpen] = useState<Inspectie | null>(null)
+  const [regels, setRegels] = useState<BibliotheekRegel[]>(initialRegels)
+  const [open, setOpen] = useState<BibliotheekRegel | null>(null)
   const [fout, setFout] = useState<string | null>(null)
 
   // --- Sjabloon-mutaties ---
@@ -89,7 +104,7 @@ export default function InspectieClient({
     setFout(null)
     const { data, error } = await supabase.rpc('inspectie_start', { p_sjabloon_id: sjabloon.id })
     if (error) { setFout(error.message); return }
-    const nieuwe: Inspectie = {
+    const nieuwe: BibliotheekRegel = {
       id: data as string,
       company_id: company.id,
       sjabloon_id: sjabloon.id,
@@ -97,17 +112,36 @@ export default function InspectieClient({
       status: 'concept',
       gepland_op: null,
       uitgevoerd_op: null,
+      aangemaakt_op: new Date().toISOString(),
       conclusie: null,
       sjabloon_naam_snap: sjabloon.naam,
       controlesoort_snap: sjabloon.controlesoort,
+      uitvoerder_naam: null,
+      aantal_punten: sjabloon.punten.length,
+      aantal_niet_in_orde: 0,
+      aantal_acties: 0,
     }
-    setInspecties(prev => [nieuwe, ...prev])
+    setRegels(prev => [nieuwe, ...prev])
     setOpen(nieuwe)
   }
 
-  function statusBijgewerkt(id: string, status: Inspectie['status']) {
-    setInspecties(prev => prev.map(i => (i.id === id ? { ...i, status } : i)))
+  // Klik op een bibliotheekregel: afgehandelde inspecties openen als rapport,
+  // lopende inspecties openen we inline om verder te gaan.
+  function openRegel(regel: BibliotheekRegel) {
+    if (isAfgehandeld(regel.status)) {
+      router.push(`/${company.id}/inspecties/${regel.id}`)
+    } else {
+      setOpen(regel)
+    }
+  }
+
+  function statusBijgewerkt(id: string, status: InspectieStatus) {
+    setRegels(prev => prev.map(i => (i.id === id ? { ...i, status } : i)))
     setOpen(prev => (prev && prev.id === id ? { ...prev, status } : prev))
+    // Afronden voert meteen door naar het rapport: dat ís de bevestiging.
+    if (status === 'afgerond') {
+      router.push(`/${company.id}/inspecties/${id}`)
+    }
   }
 
   return (
@@ -167,11 +201,11 @@ export default function InspectieClient({
             {fout && <p className="text-sm text-red-600 mb-3">{fout}</p>}
 
             {view === 'inspecties' ? (
-              <InspectiesOverzicht
+              <Bibliotheek
                 sjablonen={sjablonen}
-                inspecties={inspecties}
+                regels={regels}
                 onStart={startInspectie}
-                onOpen={setOpen}
+                onOpen={openRegel}
                 onNaarSjablonen={() => setView('sjablonen')}
               />
             ) : (
@@ -190,24 +224,70 @@ export default function InspectieClient({
   )
 }
 
-// ---- Overzicht inspecties + nieuwe starten ----
+// ---- De rapporten-bibliotheek: nieuwe inspectie starten + doorzoekbaar archief ----
 
-function InspectiesOverzicht({
+const ALLE = '__alle__'
+
+function jaarVan(regel: BibliotheekRegel): string | null {
+  const iso = regel.uitgevoerd_op ?? regel.aangemaakt_op
+  if (!iso) return null
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? null : String(d.getFullYear())
+}
+
+function Bibliotheek({
   sjablonen,
-  inspecties,
+  regels,
   onStart,
   onOpen,
   onNaarSjablonen,
 }: {
   sjablonen: SjabloonMetPunten[]
-  inspecties: Inspectie[]
+  regels: BibliotheekRegel[]
   onStart: (s: SjabloonMetPunten) => void
-  onOpen: (i: Inspectie) => void
+  onOpen: (r: BibliotheekRegel) => void
   onNaarSjablonen: () => void
 }) {
   const [keuze, setKeuze] = useState('')
+  const [fStatus, setFStatus] = useState(ALLE)
+  const [fSjabloon, setFSjabloon] = useState(ALLE)
+  const [fUitvoerder, setFUitvoerder] = useState(ALLE)
+  const [fJaar, setFJaar] = useState(ALLE)
+
   const bruikbaar = sjablonen.filter(s => s.punten.length > 0)
   const gekozen = bruikbaar.find(s => s.id === keuze)
+
+  // Distinct filterwaarden uit de aanwezige regels (geen vaste lijsten verzinnen).
+  const statussen = useMemo(
+    () => Array.from(new Set(regels.map(r => r.status))),
+    [regels],
+  )
+  const sjabloonNamen = useMemo(
+    () => Array.from(new Set(regels.map(r => r.sjabloon_naam_snap).filter((v): v is string => !!v))).sort(),
+    [regels],
+  )
+  const uitvoerders = useMemo(
+    () => Array.from(new Set(regels.map(r => r.uitvoerder_naam).filter((v): v is string => !!v))).sort(),
+    [regels],
+  )
+  const jaren = useMemo(
+    () => Array.from(new Set(regels.map(jaarVan).filter((v): v is string => !!v))).sort().reverse(),
+    [regels],
+  )
+
+  const zichtbaar = useMemo(
+    () => regels.filter(r =>
+      (fStatus === ALLE || r.status === fStatus) &&
+      (fSjabloon === ALLE || r.sjabloon_naam_snap === fSjabloon) &&
+      (fUitvoerder === ALLE || r.uitvoerder_naam === fUitvoerder) &&
+      (fJaar === ALLE || jaarVan(r) === fJaar)
+    ),
+    [regels, fStatus, fSjabloon, fUitvoerder, fJaar],
+  )
+
+  const heeftFilters = fStatus !== ALLE || fSjabloon !== ALLE || fUitvoerder !== ALLE || fJaar !== ALLE
+
+  const filterSelect = 'text-sm border border-ink/20 rounded px-2 py-2 min-h-[44px] bg-white'
 
   return (
     <div className="space-y-4">
@@ -243,31 +323,94 @@ function InspectiesOverzicht({
         )}
       </div>
 
-      <div className="space-y-2">
-        {inspecties.length === 0 ? (
-          <p className="text-center text-ink/40 py-8 text-sm">Nog geen inspecties.</p>
-        ) : (
-          inspecties.map(i => (
-            <button
-              key={i.id}
-              onClick={() => onOpen(i)}
-              className="w-full bg-white rounded-lg shadow-sm p-4 text-left hover:bg-gray-50 transition-colors flex items-center justify-between gap-3"
-            >
-              <div className="min-w-0">
-                <p className="font-medium text-ink truncate">{i.sjabloon_naam_snap ?? 'Inspectie'}</p>
-                <p className="text-xs text-ink/50 mt-0.5">
-                  {i.controlesoort_snap ? `${i.controlesoort_snap} · ` : ''}
-                  {i.uitgevoerd_op ? `Uitgevoerd ${formatDatum(i.uitgevoerd_op)}` : 'Nog niet afgerond'}
-                </p>
-              </div>
-              <span className={`text-xs font-medium px-3 py-1 rounded-full shrink-0 ${STATUS_STIJL[i.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                {i.status}
-              </span>
-            </button>
-          ))
-        )}
-      </div>
+      {regels.length === 0 ? (
+        <p className="text-center text-ink/40 py-10 text-sm">Nog geen inspecties uitgevoerd.</p>
+      ) : (
+        <>
+          {/* Filters: alleen tonen wat zin heeft (één status/sjabloon/uitvoerder hoeft niet). */}
+          <div className="flex flex-wrap gap-2">
+            {statussen.length > 1 && (
+              <select value={fStatus} onChange={e => setFStatus(e.target.value)} className={filterSelect} aria-label="Filter op status">
+                <option value={ALLE}>Alle statussen</option>
+                {statussen.map(s => <option key={s} value={s}>{STATUS_LABEL[s] ?? s}</option>)}
+              </select>
+            )}
+            {sjabloonNamen.length > 1 && (
+              <select value={fSjabloon} onChange={e => setFSjabloon(e.target.value)} className={filterSelect} aria-label="Filter op sjabloon">
+                <option value={ALLE}>Alle sjablonen</option>
+                {sjabloonNamen.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            )}
+            {uitvoerders.length > 1 && (
+              <select value={fUitvoerder} onChange={e => setFUitvoerder(e.target.value)} className={filterSelect} aria-label="Filter op uitvoerder">
+                <option value={ALLE}>Alle uitvoerders</option>
+                {uitvoerders.map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+            )}
+            {jaren.length > 1 && (
+              <select value={fJaar} onChange={e => setFJaar(e.target.value)} className={filterSelect} aria-label="Filter op jaar">
+                <option value={ALLE}>Alle jaren</option>
+                {jaren.map(j => <option key={j} value={j}>{j}</option>)}
+              </select>
+            )}
+            {heeftFilters && (
+              <button
+                onClick={() => { setFStatus(ALLE); setFSjabloon(ALLE); setFUitvoerder(ALLE); setFJaar(ALLE) }}
+                className="text-sm px-3 py-2 min-h-[44px] inline-flex items-center text-ink/50 hover:text-ink"
+              >
+                Filters wissen
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            {zichtbaar.length === 0 ? (
+              <p className="text-center text-ink/40 py-8 text-sm">Geen inspecties voor deze filters.</p>
+            ) : (
+              zichtbaar.map(r => <BibliotheekRij key={r.id} regel={r} onOpen={() => onOpen(r)} />)
+            )}
+          </div>
+        </>
+      )}
     </div>
+  )
+}
+
+function BibliotheekRij({ regel, onOpen }: { regel: BibliotheekRegel; onOpen: () => void }) {
+  const afgehandeld = isAfgehandeld(regel.status)
+  const datum = regel.uitgevoerd_op
+    ? `Uitgevoerd ${formatDatum(regel.uitgevoerd_op)}`
+    : afgehandeld ? formatDatum(regel.aangemaakt_op) : 'Nog niet afgerond'
+
+  return (
+    <button
+      onClick={onOpen}
+      className="w-full bg-white rounded-lg shadow-sm p-4 text-left hover:bg-gray-50 transition-colors"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-medium text-ink truncate">{regel.sjabloon_naam_snap ?? 'Inspectie'}</p>
+          <p className="text-xs text-ink/50 mt-0.5">
+            {regel.controlesoort_snap ? `${regel.controlesoort_snap} · ` : ''}
+            {datum}
+            {regel.uitvoerder_naam ? ` · ${regel.uitvoerder_naam}` : ''}
+          </p>
+        </div>
+        <span className={`text-xs font-medium px-3 py-1 rounded-full shrink-0 ${STATUS_STIJL[regel.status] ?? 'bg-gray-100 text-gray-600'}`}>
+          {STATUS_LABEL[regel.status] ?? regel.status}
+        </span>
+      </div>
+
+      {/* Cijfers: aantal punten, niet in orde, eruit voortgekomen acties. */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-ink/60">
+        <span>{regel.aantal_punten} punt{regel.aantal_punten === 1 ? '' : 'en'}</span>
+        <span className={regel.aantal_niet_in_orde > 0 ? 'text-red-600 font-medium' : ''}>
+          {regel.aantal_niet_in_orde} niet in orde
+        </span>
+        <span>{regel.aantal_acties} acti{regel.aantal_acties === 1 ? 'e' : 'es'}</span>
+        {!afgehandeld && <span className="text-accent">· verder gaan</span>}
+      </div>
+    </button>
   )
 }
 

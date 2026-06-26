@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type {
@@ -217,24 +217,38 @@ function BevindingRow({ companyId, nummer, bevinding, readOnly, onPatch, onHisto
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
 
+  // Een lopende achtergrond-autosave van de toelichting (blur). Expliciete
+  // handelingen wachten deze eerst af, zodat zíj het laatste woord hebben in de DB.
+  const autosaveRef = useRef<Promise<boolean> | null>(null)
+
   const heeftActie = bevinding.afhandeling === 'actie' && !!bevinding.actie_id
 
-  async function opslaan(resultaat: BevindingResultaat, afhandeling: InspectieBevinding['afhandeling'], opm: string | null) {
-    setBezig(true)
-    setFout(null)
+  // Kale schrijfactie naar de DB. Zet de knop-busy NIET zelf; de aanroeper bepaalt
+  // of dit een blokkerende handeling (knop) of een achtergrond-autosave is.
+  async function schrijf(resultaat: BevindingResultaat, afhandeling: InspectieBevinding['afhandeling'], opm: string | null) {
     const { error } = await supabase.rpc('bevinding_opslaan', {
       p_bevinding_id: bevinding.id,
       p_resultaat: resultaat,
       p_afhandeling: afhandeling,
       p_opmerking: opm,
     })
-    setBezig(false)
     if (error) {
       setFout(error.message ?? 'Opslaan mislukt')
       return false
     }
     onPatch({ resultaat, afhandeling, opmerking: opm })
     return true
+  }
+
+  // Blokkerende variant voor de expliciete knoppen: toont 'bezig' en wacht een
+  // eventueel lopende toelichting-autosave af, zodat deze handeling als laatste schrijft.
+  async function opslaan(resultaat: BevindingResultaat, afhandeling: InspectieBevinding['afhandeling'], opm: string | null) {
+    setBezig(true)
+    setFout(null)
+    if (autosaveRef.current) { try { await autosaveRef.current } catch { /* afgehandeld in schrijf */ } }
+    const ok = await schrijf(resultaat, afhandeling, opm)
+    setBezig(false)
+    return ok
   }
 
   // Klik op een resultaat-knop.
@@ -262,6 +276,9 @@ function BevindingRow({ companyId, nummer, bevinding, readOnly, onPatch, onHisto
     if (readOnly || bezig) return
     setBezig(true)
     setFout(null)
+    // Laat een eventueel lopende toelichting-autosave eerst afronden, anders kan die
+    // ná deze actie alsnog afhandeling='geen' wegschrijven en de actie ongedaan maken.
+    if (autosaveRef.current) { try { await autosaveRef.current } catch { /* afgehandeld in schrijf */ } }
     const { data, error } = await supabase.rpc('bevinding_naar_actie', { p_bevinding_id: bevinding.id })
     setBezig(false)
     if (error) {
@@ -273,11 +290,18 @@ function BevindingRow({ companyId, nummer, bevinding, readOnly, onPatch, onHisto
   }
 
   // Opmerking bewaren bij blur (alleen als er al een resultaat is gekozen).
+  // Bewust een ACHTERGROND-opslag: zet de knop-busy NIET, zodat een klik op
+  // 'Actie aanmaken' of 'Meteen hersteld' direct ná het typen niet stil wordt
+  // ingeslikt (de blur vuurt vóór de klik). Slaat niets op als de tekst onveranderd is.
   async function blurOpmerking() {
     if (readOnly || bezig) return
     if (!bevinding.resultaat) return
-    if (bevinding.afhandeling === 'meteen_hersteld' && !opmerking.trim()) return
-    await opslaan(bevinding.resultaat, bevinding.afhandeling, opmerking.trim() || null)
+    const opm = opmerking.trim()
+    if (opm === (bevinding.opmerking ?? '')) return // niets gewijzigd
+    if (bevinding.afhandeling === 'meteen_hersteld' && !opm) return
+    const p = schrijf(bevinding.resultaat, bevinding.afhandeling, opm || null)
+    autosaveRef.current = p
+    try { await p } finally { if (autosaveRef.current === p) autosaveRef.current = null }
   }
 
   const RESULTATEN: { key: BevindingResultaat; label: string; actief: string }[] = [

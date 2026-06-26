@@ -13,18 +13,15 @@
 // finally-blok volledig opgeruimd, ook bij een fout. GEEN echte mail
 // (createUser met email_confirm), GEEN app-wijziging.
 //
-//   node scripts/nachttest_rls.mjs
+// TLS: dit netwerk onderschept TLS. Draai met de Windows-certstore i.p.v. de onveilige
+// globale bypass:
+//   node --use-system-ca scripts/nachttest_rls.mjs
 // ============================================================================
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-
-// Lokale omgeving onderschept TLS (zelfde reden als ssl.rejectUnauthorized:false bij de
-// directe pg-verbinding). De fetch-gebaseerde Supabase-client respecteert deze vlag.
-// Alleen voor dit lokale testscript tegen onze eigen Supabase.
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..')

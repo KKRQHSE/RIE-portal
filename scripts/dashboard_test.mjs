@@ -12,13 +12,10 @@
 // ANON_KEY + SUPABASE_SERVICE_ROLE_KEY in .env.local.
 // ============================================================================
 
-// LET OP — alleen voor dit lokale testscript tegen de eigen dev-DB.
-// Op dit netwerk zit een TLS-onderscheppende proxy (UNABLE_TO_VERIFY_LEAF_SIGNATURE),
-// waardoor de strikte cert-verificatie van Node's fetch faalt. We versoepelen die
-// verificatie hier net als de pg-scripts (db_run/dump_schema) doen met
-// ssl.rejectUnauthorized = false. NIET overnemen in app-/productiecode.
-if (!process.env.NODE_TLS_REJECT_UNAUTHORIZED) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-
+// TLS: op dit netwerk zit een onderscheppende proxy (UNABLE_TO_VERIFY_LEAF_SIGNATURE),
+// waardoor de strikte cert-verificatie van Node's fetch faalt. Draai dit script daarom
+// met de Windows-certstore i.p.v. de onveilige globale bypass:
+//   node --use-system-ca scripts/dashboard_test.mjs
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'

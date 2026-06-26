@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-20T14:16:50.147Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-06-26T09:49:25.920Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -1639,6 +1639,57 @@ begin
   values (v_company, p_inspectie_id, auth.uid(), now(), 'Inspectie afgerond');
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.inspectie_bibliotheek(p_company_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v jsonb;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  select coalesce(jsonb_agg(row order by sort_datum desc nulls last), '[]'::jsonb)
+  into v
+  from (
+    select
+      coalesce(i.uitgevoerd_op, i.aangemaakt_op) as sort_datum,
+      jsonb_build_object(
+        'id',                 i.id,
+        'company_id',         i.company_id,
+        'sjabloon_id',        i.sjabloon_id,
+        'persoon_id',         i.persoon_id,
+        'status',             i.status,
+        'gepland_op',         i.gepland_op,
+        'uitgevoerd_op',      i.uitgevoerd_op,
+        'aangemaakt_op',      i.aangemaakt_op,
+        'conclusie',          i.conclusie,
+        'sjabloon_naam_snap', i.sjabloon_naam_snap,
+        'controlesoort_snap', i.controlesoort_snap,
+        -- Uitvoerder = wie de inspectie startte (eerste historieregel met een 'wie').
+        'uitvoerder_naam', (
+          select u.naam
+            from inspectie_historie h
+            left join users u on u.id = h.wie
+           where h.inspectie_id = i.id and h.wie is not null
+           order by h.wanneer asc
+           limit 1
+        ),
+        'aantal_punten',       (select count(*) from inspectie_bevinding b where b.inspectie_id = i.id),
+        'aantal_niet_in_orde', (select count(*) from inspectie_bevinding b where b.inspectie_id = i.id and b.resultaat = 'niet_in_orde'),
+        -- Punten die een actie werden (afhandeling 'actie' met een gekoppeld actie_id).
+        'aantal_acties',       (select count(*) from inspectie_bevinding b where b.inspectie_id = i.id and b.actie_id is not null)
+      ) as row
+    from inspectie i
+    where i.company_id = p_company_id
+  ) s;
+
+  return v;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid, p_conclusie text)
  RETURNS void
  LANGUAGE plpgsql
@@ -1663,6 +1714,98 @@ begin
   update inspectie
      set conclusie = nullif(btrim(coalesce(p_conclusie, '')), '')
    where id = p_inspectie_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.inspectie_rapport(p_inspectie_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_company uuid;
+  v jsonb;
+begin
+  -- Bedrijf server-side afleiden uit de inspectie; nooit van de client vertrouwen.
+  select company_id into v_company from inspectie where id = p_inspectie_id;
+  if v_company is null then
+    raise exception 'Inspectie niet gevonden';
+  end if;
+  if not mag_bedrijf_beheren(v_company) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  select jsonb_build_object(
+    'id',             i.id,
+    'company_id',     i.company_id,
+    'company_naam',   c.name,
+    'naam',           i.sjabloon_naam_snap,
+    'controlesoort',  i.controlesoort_snap,
+    'status',         i.status,
+    'gepland_op',     i.gepland_op,
+    'uitgevoerd_op',  i.uitgevoerd_op,
+    'aangemaakt_op',  i.aangemaakt_op,
+    'conclusie',      i.conclusie,
+    'uitvoerder_naam', (
+      select u.naam
+        from inspectie_historie h
+        left join users u on u.id = h.wie
+       where h.inspectie_id = i.id and h.wie is not null
+       order by h.wanneer asc
+       limit 1
+    ),
+
+    -- Alle bevindingen in bevroren (sjabloon-)volgorde, met evt. actienummer.
+    'bevindingen', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'id',              b.id,
+        'volgorde',        b.volgorde,
+        'punt_tekst_snap', b.punt_tekst_snap,
+        'verplicht',       b.verplicht,
+        'resultaat',       b.resultaat,
+        'afhandeling',     b.afhandeling,
+        'opmerking',       b.opmerking,
+        'actie_id',        b.actie_id,
+        'actie_nr',        pa.nr
+      ) order by b.volgorde, b.id), '[]'::jsonb)
+      from inspectie_bevinding b
+      left join pva_items pa on pa.id = b.actie_id
+      where b.inspectie_id = i.id
+    ),
+
+    -- De eruit voortgekomen acties (PvA-items met deze inspectie als bron).
+    'acties', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'id',        p.id,
+        'nr',        p.nr,
+        'onderwerp', p.onderwerp,
+        'status',    p.status,
+        'prio',      p.prio
+      ) order by (case when p.nr ~ '^[0-9]+$' then p.nr::int else null end) nulls last, p.nr), '[]'::jsonb)
+      from pva_items p
+      where p.company_id = i.company_id
+        and p.bron_type = 'inspectie_bevinding'
+        and p.bron_id in (select b.id from inspectie_bevinding b where b.inspectie_id = i.id)
+    ),
+
+    -- Historie als tijdlijn (oudste eerst), met naam van wie de actie deed.
+    'historie', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'id',       h.id,
+        'wijziging', h.wijziging,
+        'wanneer',  h.wanneer,
+        'wie_naam', u.naam
+      ) order by h.wanneer asc, h.id), '[]'::jsonb)
+      from inspectie_historie h
+      left join users u on u.id = h.wie
+      where h.inspectie_id = i.id
+    )
+  ) into v
+  from inspectie i
+  join companies c on c.id = i.company_id
+  where i.id = p_inspectie_id;
+
+  return v;
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.inspectie_start(p_sjabloon_id uuid)
@@ -2263,9 +2406,15 @@ GRANT EXECUTE ON FUNCTION public.import_rie_content(p_company_id uuid) TO servic
 GRANT EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) TO anon;
 GRANT EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.inspectie_bibliotheek(p_company_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.inspectie_bibliotheek(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_bibliotheek(p_company_id uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid, p_conclusie text) TO anon;
 GRANT EXECUTE ON FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid, p_conclusie text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid, p_conclusie text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.inspectie_rapport(p_inspectie_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.inspectie_rapport(p_inspectie_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_rapport(p_inspectie_id uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.inspectie_start(p_sjabloon_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.inspectie_start(p_sjabloon_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_start(p_sjabloon_id uuid) TO service_role;

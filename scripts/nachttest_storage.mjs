@@ -8,8 +8,9 @@
 // De app zelf gebruikt service-role signed URLs (na geguarde RPC's), dus deze test
 // gaat over het ONDERLIGGENDE storage.objects-RLS: dekt dat de bedrijfsgrens af?
 //
-//   node scripts/nachttest_storage.mjs
+//   node --use-system-ca scripts/nachttest_storage.mjs
 // Maakt NACHTTEST_-bedrijven + één testbestand aan en ruimt alles op.
+// TLS: draai met de Windows-certstore (--use-system-ca) i.p.v. de onveilige globale bypass.
 // ============================================================================
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'node:fs'
@@ -17,7 +18,6 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 function loadEnv() {
   const env = {}

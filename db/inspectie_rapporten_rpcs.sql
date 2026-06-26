@@ -1,7 +1,9 @@
 -- ============================================================================
--- Werkplekinspectie — STAP 2: de RAPPORTEN-laag (lezen/presenteren)
+-- Werkplekinspectie — de RAPPORTEN-laag (lezen/presenteren)
 -- ----------------------------------------------------------------------------
--- Draai dit bestand via: node scripts/db_run.mjs --file db/inspectie_stap2_rapporten_rpcs.sql
+-- (Let op: dit is de rapporten-/bibliotheeklaag, NIET de inspectie-"stap 2" rond
+--  planning/toewijzing/herinneringen — die ligt bij externe review.)
+-- Draai dit bestand via: node scripts/db_run.mjs --file db/inspectie_rapporten_rpcs.sql
 --
 -- Twee ALLEEN-LEZEN RPC's die de bibliotheek (overzicht) en de rapportpagina
 -- (detail) voeden. Geen schemawijziging, geen mutatie, geen logging — een

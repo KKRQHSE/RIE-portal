@@ -196,7 +196,7 @@ async function run() {
     check('B-sjabloon bleef ongewijzigd na aanvallen van A', !!data && data.gearchiveerd_op === null)
   }
 
-  // --- Rapporten-laag (stap 2): bibliotheek + rapport, lezen via RPC ---
+  // --- Rapporten-laag (bibliotheek + rapport), lezen via RPC ---
 
   // Positieve controle: A ziet zijn EIGEN bibliotheek en eigen inspectie erin.
   {

@@ -264,6 +264,30 @@ export type InspectieRapport = {
   historie: RapportHistorie[]
 }
 
+// ---- Centrale inspectie-bibliotheek (de norm, beheerd door admin) ----
+
+export type CentraleRubriek = {
+  id: string
+  naam: string
+  volgorde: number
+  rie_code: string | null          // intern dossierveld; NIET voor de uitvoerder
+  versie: number
+  gewijzigd_op: string
+  gearchiveerd_op: string | null
+}
+
+export type CentraleVraag = {
+  id: string
+  rubriek_id: string
+  tekst: string
+  volgorde: number
+  versie: number
+  gewijzigd_op: string
+  gearchiveerd_op: string | null
+}
+
+export type CentraleRubriekMetVragen = CentraleRubriek & { vragen: CentraleVraag[] }
+
 // ---- Managementdashboard ----
 
 // Payload van de RPC dashboard_overzicht(p_company_id): alle tegelcijfers van één bedrijf.

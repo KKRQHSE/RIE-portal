@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-27T14:57:50.358Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-06-27T15:01:35.680Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -930,6 +930,134 @@ begin
      coalesce(v_bewijs.bestandsnaam, 'bestand'), v_naam, 'beheerder');
 
   return jsonb_build_object('id', p_bewijs_id, 'verwijderd', true);
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.centrale_rubriek_archiveren(p_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  if not is_admin() then
+    raise exception 'Alleen voor beheerders';
+  end if;
+  if not exists (select 1 from centrale_rubriek where id = p_id) then
+    raise exception 'Rubriek niet gevonden';
+  end if;
+
+  update centrale_rubriek
+     set gearchiveerd_op = coalesce(gearchiveerd_op, now())
+   where id = p_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.centrale_rubriek_opslaan(p_id uuid, p_naam text, p_volgorde integer DEFAULT NULL::integer, p_rie_code text DEFAULT NULL::text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_id       uuid;
+  v_oud_naam text;
+begin
+  if not is_admin() then
+    raise exception 'Alleen voor beheerders';
+  end if;
+  if coalesce(btrim(p_naam), '') = '' then
+    raise exception 'Naam is verplicht';
+  end if;
+
+  if p_id is null then
+    insert into centrale_rubriek (naam, volgorde, rie_code)
+    values (
+      btrim(p_naam),
+      coalesce(p_volgorde, (select coalesce(max(volgorde), 0) + 1 from centrale_rubriek)),
+      nullif(btrim(coalesce(p_rie_code, '')), '')
+    )
+    returning id into v_id;
+    return v_id;
+  end if;
+
+  select naam into v_oud_naam from centrale_rubriek where id = p_id;
+  if v_oud_naam is null then
+    raise exception 'Rubriek niet gevonden';
+  end if;
+
+  update centrale_rubriek
+     set naam         = btrim(p_naam),
+         rie_code     = nullif(btrim(coalesce(p_rie_code, '')), ''),
+         volgorde     = coalesce(p_volgorde, volgorde),
+         -- Alleen bij een echte naamswijziging de versie ophogen.
+         versie       = versie + (case when btrim(p_naam) <> v_oud_naam then 1 else 0 end),
+         gewijzigd_op = (case when btrim(p_naam) <> v_oud_naam then now() else gewijzigd_op end)
+   where id = p_id;
+  return p_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.centrale_vraag_archiveren(p_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  if not is_admin() then
+    raise exception 'Alleen voor beheerders';
+  end if;
+  if not exists (select 1 from centrale_vraag where id = p_id) then
+    raise exception 'Vraag niet gevonden';
+  end if;
+
+  update centrale_vraag
+     set gearchiveerd_op = coalesce(gearchiveerd_op, now())
+   where id = p_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.centrale_vraag_opslaan(p_id uuid, p_rubriek_id uuid, p_tekst text, p_volgorde integer DEFAULT NULL::integer)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_id        uuid;
+  v_oud_tekst text;
+begin
+  if not is_admin() then
+    raise exception 'Alleen voor beheerders';
+  end if;
+  if coalesce(btrim(p_tekst), '') = '' then
+    raise exception 'Tekst is verplicht';
+  end if;
+
+  if p_id is null then
+    if not exists (select 1 from centrale_rubriek where id = p_rubriek_id) then
+      raise exception 'Rubriek niet gevonden';
+    end if;
+    insert into centrale_vraag (rubriek_id, tekst, volgorde)
+    values (
+      p_rubriek_id,
+      btrim(p_tekst),
+      coalesce(p_volgorde, (select coalesce(max(volgorde), 0) + 1 from centrale_vraag where rubriek_id = p_rubriek_id))
+    )
+    returning id into v_id;
+    return v_id;
+  end if;
+
+  select tekst into v_oud_tekst from centrale_vraag where id = p_id;
+  if v_oud_tekst is null then
+    raise exception 'Vraag niet gevonden';
+  end if;
+
+  update centrale_vraag
+     set tekst        = btrim(p_tekst),
+         volgorde     = coalesce(p_volgorde, volgorde),
+         -- Alleen bij een echte tekstwijziging de versie ophogen (= normwijziging).
+         versie       = versie + (case when btrim(p_tekst) <> v_oud_tekst then 1 else 0 end),
+         gewijzigd_op = (case when btrim(p_tekst) <> v_oud_tekst then now() else gewijzigd_op end)
+   where id = p_id;
+  return p_id;
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.create_deellink(p_persoon_id uuid, p_vervalt_op timestamp with time zone DEFAULT NULL::timestamp with time zone)
@@ -2583,6 +2711,18 @@ GRANT EXECUTE ON FUNCTION public.bewijs_registreren(p_actie_id uuid, p_pad text,
 GRANT EXECUTE ON FUNCTION public.bewijs_verwijderen(p_bewijs_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.bewijs_verwijderen(p_bewijs_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.bewijs_verwijderen(p_bewijs_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.centrale_rubriek_archiveren(p_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.centrale_rubriek_archiveren(p_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.centrale_rubriek_archiveren(p_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.centrale_rubriek_opslaan(p_id uuid, p_naam text, p_volgorde integer, p_rie_code text) TO anon;
+GRANT EXECUTE ON FUNCTION public.centrale_rubriek_opslaan(p_id uuid, p_naam text, p_volgorde integer, p_rie_code text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.centrale_rubriek_opslaan(p_id uuid, p_naam text, p_volgorde integer, p_rie_code text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.centrale_vraag_archiveren(p_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.centrale_vraag_archiveren(p_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.centrale_vraag_archiveren(p_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.centrale_vraag_opslaan(p_id uuid, p_rubriek_id uuid, p_tekst text, p_volgorde integer) TO anon;
+GRANT EXECUTE ON FUNCTION public.centrale_vraag_opslaan(p_id uuid, p_rubriek_id uuid, p_tekst text, p_volgorde integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.centrale_vraag_opslaan(p_id uuid, p_rubriek_id uuid, p_tekst text, p_volgorde integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.create_deellink(p_persoon_id uuid, p_vervalt_op timestamp with time zone) TO anon;
 GRANT EXECUTE ON FUNCTION public.create_deellink(p_persoon_id uuid, p_vervalt_op timestamp with time zone) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_deellink(p_persoon_id uuid, p_vervalt_op timestamp with time zone) TO service_role;

@@ -90,12 +90,20 @@ export default function AdminDashboardClient({
           </div>
         )}
 
-        <Link
-          href="/admin/huisstijl"
-          className="mt-6 inline-block text-sm px-4 py-2 rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors"
-        >
-          Huisstijl beheren
-        </Link>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/admin/bibliotheek"
+            className="inline-block text-sm px-4 py-2 rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors"
+          >
+            Centrale bibliotheek beheren
+          </Link>
+          <Link
+            href="/admin/huisstijl"
+            className="inline-block text-sm px-4 py-2 rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors"
+          >
+            Huisstijl beheren
+          </Link>
+        </div>
       </div>
     </main>
   )

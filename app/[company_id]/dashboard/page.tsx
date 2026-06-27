@@ -22,6 +22,7 @@ export default async function CompanyDashboardPage({
     { data: company },
     { data: overzicht, error },
     { data: inspectieModule },
+    { data: toolboxModule },
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
@@ -38,6 +39,14 @@ export default async function CompanyDashboardPage({
       .select('actief')
       .eq('company_id', company_id)
       .eq('module', 'inspectie')
+      .eq('module_status', 'actief')
+      .eq('actief', true)
+      .maybeSingle(),
+    supabase
+      .from('bedrijf_modules')
+      .select('actief')
+      .eq('company_id', company_id)
+      .eq('module', 'toolbox')
       .eq('module_status', 'actief')
       .eq('actief', true)
       .maybeSingle(),
@@ -59,6 +68,7 @@ export default async function CompanyDashboardPage({
       overzicht={overzicht as DashboardOverzicht}
       huisstijl={huisstijl}
       toonInspecties={!!inspectieModule}
+      toonToolbox={!!toolboxModule}
     />
   )
 }

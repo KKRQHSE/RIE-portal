@@ -116,6 +116,9 @@ export type Persoon = {
   archived_at: string | null
   // Rol binnen het bedrijf (los van het systeemrecht mag_bedrijf_beheren).
   functiegroep_id: string | null
+  // Dienstverband (voor naar-rato in het toolbox-dashboard); nullable.
+  datum_in_dienst: string | null
+  datum_uit_dienst: string | null
 }
 
 // Een functiegroep is wat iemand in het bedrijf doet (QHSE-er, Uitvoerder, …).
@@ -316,6 +319,66 @@ export type NormRubriek = {
   volgorde: number
   gekoppeld: boolean
   vragen: NormVraag[]
+}
+
+// ---- Toolbox-module ----
+
+export type CentraleToolboxVraag = {
+  id: string
+  toolbox_id: string
+  vraagtekst: string
+  opties: string[]
+  juist_antwoord: number
+  uitleg: string | null
+  volgorde: number
+  versie: number
+  gearchiveerd_op: string | null
+}
+
+export type CentraleToolbox = {
+  id: string
+  titel: string
+  tekst: string
+  video_url: string | null
+  vereist_video: boolean
+  vereist_quiz: boolean
+  quiz_slaaggrens: number
+  quiz_uitleg_modus: 'per_vraag' | 'aan_eind'
+  toegang: 'link' | 'login'
+  volgorde: number
+  versie: number
+  gearchiveerd_op: string | null
+}
+
+export type CentraleToolboxMetVragen = CentraleToolbox & { vragen: CentraleToolboxVraag[] }
+
+// Eén regel uit bedrijf_toolbox_overzicht (KAM-zijde: koppeling + lokale afwijking).
+export type ToolboxOverzichtItem = {
+  toolbox_id: string
+  volgorde: number
+  gekoppeld: boolean
+  centrale_titel: string
+  centrale_tekst: string
+  centrale_video_url: string | null
+  centrale_versie: number
+  vereist_video: boolean
+  vereist_quiz: boolean
+  quiz_uitleg_modus: 'per_vraag' | 'aan_eind'
+  toegang: 'link' | 'login'
+  quiz_aantal: number
+  centraal_vervallen: boolean
+  afwijking: {
+    modus: 'lokaal' | 'uit'
+    lokale_titel: string | null
+    lokale_tekst: string | null
+    lokale_video_url: string | null
+    basis_versie: number
+  } | null
+  norm_gewijzigd: boolean
+  actief: boolean
+  geldende_titel: string
+  geldende_tekst: string
+  geldende_video_url: string | null
 }
 
 // ---- Managementdashboard ----

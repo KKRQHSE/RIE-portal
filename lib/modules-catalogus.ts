@@ -18,4 +18,11 @@ export const MODULE_CATALOGUS: ModuleCatalogusItem[] = [
       'Sjabloonbeheer en werkplekinspecties uitvoeren; niet-in-orde-bevindingen worden automatisch acties in het Plan van Aanpak.',
     pad: 'inspecties',
   },
+  {
+    module: 'toolbox',
+    titel: 'Toolboxen',
+    omschrijving:
+      'Medewerkers aantoonbaar toolboxen laten volgen (tekst + video + optionele quiz, met naam-bevestiging en handtekening), met een live doelstellingen-dashboard per functiegroep.',
+    pad: 'toolbox',
+  },
 ]

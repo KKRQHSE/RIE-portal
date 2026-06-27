@@ -98,6 +98,12 @@ export default function AdminDashboardClient({
             Centrale bibliotheek beheren
           </Link>
           <Link
+            href="/admin/toolboxen"
+            className="inline-block text-sm px-4 py-2 rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors"
+          >
+            Centrale toolboxen beheren
+          </Link>
+          <Link
             href="/admin/huisstijl"
             className="inline-block text-sm px-4 py-2 rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors"
           >

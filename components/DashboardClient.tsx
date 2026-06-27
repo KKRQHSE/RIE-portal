@@ -12,6 +12,7 @@ type Props = {
   overzicht: DashboardOverzicht
   huisstijl?: HuisstijlView
   toonInspecties?: boolean
+  toonToolbox?: boolean
 }
 
 function datumNL(iso: string | null): string {
@@ -60,7 +61,7 @@ function Cijfer({ n, label, kleur }: { n: number; label: string; kleur?: string 
 }
 
 export default function DashboardClient({
-  company, overzicht, huisstijl = VEILIGE_HUISSTIJL, toonInspecties = false,
+  company, overzicht, huisstijl = VEILIGE_HUISSTIJL, toonInspecties = false, toonToolbox = false,
 }: Props) {
   const { pva, te_beoordelen, prio_open, termijn, rie, inspecties, norm_bijgewerkt, bewijs } = overzicht
   const cid = company.id
@@ -104,6 +105,9 @@ export default function DashboardClient({
           <Link href={`/${cid}/modules`} className={navRest}>Modules</Link>
           {toonInspecties && (
             <Link href={`/${cid}/inspecties`} className={navRest}>Werkplekinspectie</Link>
+          )}
+          {toonToolbox && (
+            <Link href={`/${cid}/toolbox`} className={navRest}>Toolboxen</Link>
           )}
         </div>
 

@@ -9,7 +9,7 @@ import type { Persoon } from '@/lib/types'
 type ServerClient = Awaited<ReturnType<typeof createClient>>
 
 const PERSOON_COLS =
-  'id, company_id, naam, email, status, voorgesteld_door, archived_at, functiegroep_id'
+  'id, company_id, naam, email, status, voorgesteld_door, archived_at, functiegroep_id, datum_in_dienst, datum_uit_dienst'
 
 async function selecteerPersonen(
   supabase: ServerClient,

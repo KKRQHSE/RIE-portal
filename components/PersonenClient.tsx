@@ -88,7 +88,7 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
     const { data, error } = await supabase
       .from('personen')
       .insert({ company_id: company.id, naam: naam.trim(), email: email.trim() || null, status: 'actief' })
-      .select('id, company_id, naam, email, status, voorgesteld_door, archived_at, functiegroep_id')
+      .select('id, company_id, naam, email, status, voorgesteld_door, archived_at, functiegroep_id, datum_in_dienst, datum_uit_dienst')
       .single()
     setBezig(false)
     if (error || !data) {
@@ -147,6 +147,20 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
     if (error) {
       setPersonen(prev => prev.map(p => (p.id === persoonId ? { ...p, functiegroep_id: vorige } : p)))
       setFout('Functiegroep wijzigen mislukt. Probeer het opnieuw.')
+    }
+  }
+
+  // Dienstdatum (in/uit) van een persoon zetten — direct op personen (RLS dekt het
+  // eigen bedrijf). Voor de naar-rato-berekening in het toolbox-dashboard.
+  async function zetDienst(persoonId: string, veld: 'datum_in_dienst' | 'datum_uit_dienst', waarde: string) {
+    const datum = waarde || null
+    const vorige = personen.find(p => p.id === persoonId)?.[veld] ?? null
+    setPersonen(prev => prev.map(p => (p.id === persoonId ? { ...p, [veld]: datum } : p)))
+    const supabase = createClient()
+    const { error } = await supabase.from('personen').update({ [veld]: datum }).eq('id', persoonId)
+    if (error) {
+      setPersonen(prev => prev.map(p => (p.id === persoonId ? { ...p, [veld]: vorige } : p)))
+      setFout('Dienstdatum opslaan mislukt. Probeer het opnieuw.')
     }
   }
 
@@ -300,6 +314,20 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
                     </select>
                   </div>
                 )}
+
+                {/* Dienstverband — voor de naar-rato-berekening in het toolbox-dashboard */}
+                <div className="mt-3 flex items-center gap-3 flex-wrap">
+                  <label className="text-xs text-ink/50 flex items-center gap-1.5">
+                    In dienst
+                    <input type="date" defaultValue={p.datum_in_dienst ?? ''} onChange={e => zetDienst(p.id, 'datum_in_dienst', e.target.value)}
+                      aria-label={`Datum in dienst van ${p.naam}`} className="text-sm border border-ink/20 rounded px-2 py-1.5 min-h-[40px] bg-white" />
+                  </label>
+                  <label className="text-xs text-ink/50 flex items-center gap-1.5">
+                    Uit dienst
+                    <input type="date" defaultValue={p.datum_uit_dienst ?? ''} onChange={e => zetDienst(p.id, 'datum_uit_dienst', e.target.value)}
+                      aria-label={`Datum uit dienst van ${p.naam}`} className="text-sm border border-ink/20 rounded px-2 py-1.5 min-h-[40px] bg-white" />
+                  </label>
+                </div>
 
                 {/* Deellink-beheer */}
                 <div className="mt-3 pt-3 border-t border-surface">

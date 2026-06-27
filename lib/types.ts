@@ -403,6 +403,37 @@ export type WerknemerToolbox = {
   afgerond_dit_jaar: boolean
 }
 
+// Live toolbox-doelstellingen-dashboard (RPC toolbox_dashboard).
+export type ToolboxDashboardStatus = 'loopt_achter' | 'op_schema' | 'klaar' | 'geen_doel' | 'uit_dienst'
+
+export type ToolboxDashboardPersoon = {
+  persoon_id: string
+  naam: string
+  functiegroep_naam: string | null
+  doel: number
+  gedaan: number
+  verwacht_nu: number
+  status: ToolboxDashboardStatus
+  datum_in_dienst: string | null
+  datum_uit_dienst: string | null
+}
+
+export type ToolboxDashboardGroep = {
+  functiegroep_id: string
+  naam: string | null
+  aantal_personen: number
+  doel: number
+  gedaan: number
+  pct: number | null
+}
+
+export type ToolboxDashboard = {
+  jaar: number
+  bedrijf: { doel: number; gedaan: number; pct: number | null }
+  per_functiegroep: ToolboxDashboardGroep[]
+  personen: ToolboxDashboardPersoon[]
+}
+
 // ---- Managementdashboard ----
 
 // Payload van de RPC dashboard_overzicht(p_company_id): alle tegelcijfers van één bedrijf.

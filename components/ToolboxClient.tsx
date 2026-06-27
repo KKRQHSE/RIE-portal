@@ -4,12 +4,13 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
-import type { Company, Functiegroep, ToolboxOverzichtItem } from '@/lib/types'
+import type { Company, Functiegroep, ToolboxOverzichtItem, ToolboxDashboard } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
+import ToolboxDashboardView from './ToolboxDashboardView'
 
 type Supa = ReturnType<typeof createClient>
-type View = 'toolboxen' | 'doelstellingen'
+type View = 'dashboard' | 'toolboxen' | 'doelstellingen'
 
 const WAARSCHUWING =
   'Je wijkt af van de centrale toolbox op eigen initiatief. Gevolg: je krijgt centrale ' +
@@ -17,16 +18,17 @@ const WAARSCHUWING =
   'terugzet naar centraal.'
 
 export default function ToolboxClient({
-  company, huisstijl = VEILIGE_HUISSTIJL, initialOverzicht, functiegroepen, initialDoelen,
+  company, huisstijl = VEILIGE_HUISSTIJL, initialOverzicht, functiegroepen, initialDoelen, dashboard,
 }: {
   company: Company
   huisstijl?: HuisstijlView
   initialOverzicht: ToolboxOverzichtItem[]
   functiegroepen: Functiegroep[]
   initialDoelen: Record<string, number>
+  dashboard: ToolboxDashboard | null
 }) {
   const [supabase] = useState<Supa>(() => createClient())
-  const [view, setView] = useState<View>('toolboxen')
+  const [view, setView] = useState<View>('dashboard')
   const [overzicht, setOverzicht] = useState<ToolboxOverzichtItem[]>(initialOverzicht)
   const [fout, setFout] = useState<string | null>(null)
 
@@ -57,14 +59,17 @@ export default function ToolboxClient({
           <span className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white">Toolboxen</span>
         </div>
 
-        <div className="flex gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4">
+          {tab('dashboard', 'Dashboard')}
           {tab('toolboxen', 'Toolboxen')}
           {tab('doelstellingen', 'Doelstellingen')}
         </div>
 
         {fout && <p className="text-sm text-red-600 mb-3">{fout}</p>}
 
-        {view === 'toolboxen' ? (
+        {view === 'dashboard' ? (
+          <ToolboxDashboardView dashboard={dashboard} />
+        ) : view === 'toolboxen' ? (
           <KoppelBeheer companyId={company.id} supabase={supabase} overzicht={overzicht} onPatch={patch} setFout={setFout} />
         ) : (
           <DoelstellingBeheer companyId={company.id} supabase={supabase} functiegroepen={functiegroepen} initialDoelen={initialDoelen} setFout={setFout} />

@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import ToolboxClient from '@/components/ToolboxClient'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
-import type { Functiegroep, ToolboxOverzichtItem } from '@/lib/types'
+import type { Functiegroep, ToolboxOverzichtItem, ToolboxDashboard } from '@/lib/types'
 
 export default async function ToolboxPage({
   params,
@@ -22,6 +22,7 @@ export default async function ToolboxPage({
     { data: overzicht },
     { data: functiegroepen },
     { data: doelstellingen },
+    { data: dashboard },
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
@@ -37,6 +38,7 @@ export default async function ToolboxPage({
     supabase.from('bedrijf_doelstelling')
       .select('functiegroep_id, doel_per_jaar')
       .eq('company_id', company_id),
+    supabase.rpc('toolbox_dashboard', { p_company_id: company_id }),
     haalHuisstijl(company_id),
   ])
 
@@ -58,6 +60,7 @@ export default async function ToolboxPage({
       initialOverzicht={(overzicht ?? []) as ToolboxOverzichtItem[]}
       functiegroepen={(functiegroepen ?? []) as Functiegroep[]}
       initialDoelen={doelMap}
+      dashboard={dashboard as ToolboxDashboard | null}
     />
   )
 }

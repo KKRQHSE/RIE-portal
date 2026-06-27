@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-27T15:26:39.862Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-06-27T15:54:06.737Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -737,12 +737,16 @@ begin
             'volgorde',        q.volgorde,
             'centrale_tekst',  q.tekst,
             'centrale_versie', q.versie,
+            -- Centraal gearchiveerd, maar door dit bedrijf lokaal behouden.
+            'centraal_vervallen', (q.gearchiveerd_op is not null),
             'afwijking', case when a.vraag_id is null then null else jsonb_build_object(
               'modus',        a.modus,
               'lokale_tekst', a.lokale_tekst,
               'basis_versie', a.basis_versie
             ) end,
-            'norm_gewijzigd', (a.vraag_id is not null and q.versie > a.basis_versie),
+            -- 'norm gewijzigd' alleen bij een nog-actieve centrale vraag; bij een
+            -- gearchiveerde vraag geldt 'centraal_vervallen' in plaats daarvan.
+            'norm_gewijzigd', (a.vraag_id is not null and q.gearchiveerd_op is null and q.versie > a.basis_versie),
             'actief',         (a.vraag_id is null or a.modus <> 'uit'),
             'geldende_tekst', case
               when a.vraag_id is null    then q.tekst
@@ -752,11 +756,24 @@ begin
           from centrale_vraag q
           left join bedrijf_vraag_afwijking a
             on a.vraag_id = q.id and a.company_id = p_company_id
-          where q.rubriek_id = r.id and q.gearchiveerd_op is null
+          where q.rubriek_id = r.id
+            -- Actieve vragen, plus gearchiveerde vragen die dit bedrijf lokaal hield.
+            and (q.gearchiveerd_op is null or (a.vraag_id is not null and a.modus = 'lokaal'))
         )
       ) as rub
     from centrale_rubriek r
-    where r.gearchiveerd_op is null
+    where
+      -- Niet-gearchiveerde rubrieken altijd (ook om te kunnen koppelen);
+      -- gearchiveerde rubrieken alleen als dit bedrijf er een lokaal behouden vraag in heeft.
+      r.gearchiveerd_op is null
+      or exists (
+        select 1
+        from bedrijf_rubriek br
+        join centrale_vraag q2 on q2.rubriek_id = r.id and q2.gearchiveerd_op is not null
+        join bedrijf_vraag_afwijking a2 on a2.vraag_id = q2.id
+          and a2.company_id = p_company_id and a2.modus = 'lokaal'
+        where br.company_id = p_company_id and br.rubriek_id = r.id
+      )
   ) s;
 
   return v;
@@ -2216,22 +2233,26 @@ begin
   values (p_company_id, null, 'concept', 'Werkplekinspectie (norm)', null)
   returning id into v_inspectie;
 
-  -- Effectieve vragen: gekoppelde + niet-gearchiveerde rubrieken, niet-gearchiveerde
-  -- vragen, lokale tekst waar afgeweken, en zonder de lokaal uitgezette vragen.
+  -- Effectieve vragen: gekoppelde rubrieken; de geldende tekst (lokaal/centraal);
+  -- zonder uitgezette vragen; archivering laat een LOKAAL behouden vraag staan.
   with eff as (
     select
-      r.naam       as rubriek_naam,
-      r.volgorde   as rub_volg,
-      q.volgorde   as vraag_volg,
-      q.id         as vraag_id,
-      case when a.modus = 'lokaal' then a.lokale_tekst else q.tekst end as tekst,
-      (a.vraag_id is not null and a.modus = 'uit') as uit
+      r.naam     as rubriek_naam,
+      r.volgorde as rub_volg,
+      q.volgorde as vraag_volg,
+      q.id       as vraag_id,
+      case when a.modus = 'lokaal' then a.lokale_tekst else q.tekst end as tekst
     from bedrijf_rubriek br
-    join centrale_rubriek r on r.id = br.rubriek_id and r.gearchiveerd_op is null
-    join centrale_vraag   q on q.rubriek_id = r.id  and q.gearchiveerd_op is null
+    join centrale_rubriek r on r.id = br.rubriek_id
+    join centrale_vraag   q on q.rubriek_id = r.id
     left join bedrijf_vraag_afwijking a
       on a.vraag_id = q.id and a.company_id = p_company_id
     where br.company_id = p_company_id
+      and coalesce(a.modus, '') <> 'uit'
+      and (
+        (q.gearchiveerd_op is null and r.gearchiveerd_op is null)
+        or a.modus = 'lokaal'
+      )
   )
   insert into inspectie_bevinding
     (company_id, inspectie_id, rubriek_naam_snap, punt_tekst_snap, verplicht, volgorde, afhandeling)
@@ -2239,12 +2260,10 @@ begin
     p_company_id, v_inspectie, rubriek_naam, tekst, true,
     row_number() over (order by rub_volg, vraag_volg, vraag_id),
     'geen'
-  from eff
-  where not uit;
+  from eff;
 
   get diagnostics v_aantal = row_count;
   if v_aantal = 0 then
-    -- Rolt de zojuist aangemaakte inspectie mee terug (atomair).
     raise exception 'Koppel eerst rubrieken met vragen voordat je een inspectie start';
   end if;
 

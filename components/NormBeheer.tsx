@@ -209,10 +209,13 @@ function VraagRij({
     })
   }
 
+  const vervallen = vraag.centraal_vervallen
   const status = !afw
     ? { label: 'Volgt de norm', stijl: 'bg-green-50 text-green-700' }
     : afw.modus === 'uit'
     ? { label: 'Uitgezet — wijkt af van de norm', stijl: 'bg-amber-100 text-amber-800' }
+    : vervallen
+    ? { label: 'Centraal vervallen — eigen versie', stijl: 'bg-amber-100 text-amber-800' }
     : { label: 'Lokaal aangepast — wijkt af van de norm', stijl: 'bg-amber-100 text-amber-800' }
 
   return (
@@ -223,6 +226,16 @@ function VraagRij({
         </p>
         <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded ${status.stijl}`}>{status.label}</span>
       </div>
+
+      {/* Signaal: de centrale vraag is vervallen, maar lokaal behouden */}
+      {vervallen && afw?.modus === 'lokaal' && (
+        <div className="rounded bg-amber-50 border border-amber-200 p-2">
+          <p className="text-xs text-amber-800">
+            Deze vraag is centraal vervallen. Je houdt je eigen versie zolang je wilt; met
+            “Mijn versie verwijderen” volg je de norm en verdwijnt de vraag.
+          </p>
+        </div>
+      )}
 
       {/* Signaal: de centrale norm is gewijzigd sinds de afwijking */}
       {vraag.norm_gewijzigd && (
@@ -267,7 +280,7 @@ function VraagRij({
               </button>
               <button type="button" onClick={terugNaarCentraal} disabled={bezig}
                 className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors disabled:opacity-40">
-                Terug naar centraal
+                {vervallen ? 'Mijn versie verwijderen' : 'Terug naar centraal'}
               </button>
             </>
           )}

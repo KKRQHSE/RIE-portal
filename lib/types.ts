@@ -305,6 +305,7 @@ export type NormVraag = {
   centrale_versie: number
   afwijking: NormAfwijking | null
   norm_gewijzigd: boolean        // afgeweken én de centrale norm is sindsdien gewijzigd
+  centraal_vervallen: boolean    // centraal gearchiveerd, maar lokaal behouden
   actief: boolean                // false = lokaal uitgezet
   geldende_tekst: string | null  // effectief: lokaal/centraal, of null bij 'uit'
 }

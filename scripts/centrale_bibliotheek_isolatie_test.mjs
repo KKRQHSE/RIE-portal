@@ -232,6 +232,32 @@ async function run() {
       check('Gestarte inspectie heeft de rubriek-snapshot', ok, `${bev?.length ?? '?'} bevindingen`)
     }
   }
+
+  // --- Een lokale afwijking blijft leven, ook als centraal archiveert ---
+  {
+    await clientA.rpc('vraag_lokaal_aanpassen', { p_company_id: aCompany, p_vraag_id: vraagId, p_lokale_tekst: 'A blijft afwijken na archivering' })
+    // Tweede centrale vraag die A vólgt (geen afwijking).
+    const { data: vraag2 } = await adminClient.rpc('centrale_vraag_opslaan', { p_id: null, p_rubriek_id: rubriekId, p_tekst: 'CBTEST gevolgde vraag?', p_volgorde: 2 })
+    // Admin archiveert beide centrale vragen.
+    await adminClient.rpc('centrale_vraag_archiveren', { p_id: vraagId })
+    await adminClient.rpc('centrale_vraag_archiveren', { p_id: vraag2 })
+
+    const { data: norm } = await clientA.rpc('bedrijf_norm_overzicht', { p_company_id: aCompany })
+    const rub = Array.isArray(norm) ? norm.find(r => r.rubriek_id === rubriekId) : null
+    const vBehouden = rub?.vragen?.find(x => x.vraag_id === vraagId)
+    const vGevolgd = rub?.vragen?.find(x => x.vraag_id === vraag2)
+    check('Lokaal afgeweken vraag blijft na centrale archivering (eigen versie)',
+      !!vBehouden && vBehouden.centraal_vervallen === true && vBehouden.geldende_tekst === 'A blijft afwijken na archivering')
+    check('Gevolgde vraag verdwijnt na centrale archivering', !vGevolgd)
+
+    const { data: insp, error } = await clientA.rpc('inspectie_start_centraal', { p_company_id: aCompany })
+    let ok = false
+    if (!error && insp) {
+      const { data: bev } = await admin.from('inspectie_bevinding').select('punt_tekst_snap').eq('inspectie_id', insp)
+      ok = (bev?.length ?? 0) === 1 && bev[0].punt_tekst_snap === 'A blijft afwijken na archivering'
+    }
+    check('Inspectie vanuit de norm bevat alleen de behouden lokale vraag', ok, error?.message)
+  }
 }
 
 async function cleanup() {

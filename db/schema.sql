@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-27T13:54:24.807Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-06-27T14:57:50.358Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -49,6 +49,21 @@ CREATE TABLE public.bedrijf_modules (
   gestopt_op timestamp with time zone
 );
 
+CREATE TABLE public.bedrijf_rubriek (
+  company_id uuid NOT NULL,
+  rubriek_id uuid NOT NULL,
+  gekoppeld_op timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.bedrijf_vraag_afwijking (
+  company_id uuid NOT NULL,
+  vraag_id uuid NOT NULL,
+  modus text NOT NULL,
+  lokale_tekst text,
+  basis_versie integer NOT NULL,
+  afgeweken_op timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE public.bewijs (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
@@ -61,6 +76,28 @@ CREATE TABLE public.bewijs (
   uploader_type text,
   verwijderd_op timestamp with time zone,
   verwijderd_door text,
+  created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.centrale_rubriek (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  naam text NOT NULL,
+  volgorde integer DEFAULT 0 NOT NULL,
+  rie_code text,
+  versie integer DEFAULT 1 NOT NULL,
+  gewijzigd_op timestamp with time zone DEFAULT now() NOT NULL,
+  gearchiveerd_op timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.centrale_vraag (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  rubriek_id uuid NOT NULL,
+  tekst text NOT NULL,
+  volgorde integer DEFAULT 0 NOT NULL,
+  versie integer DEFAULT 1 NOT NULL,
+  gewijzigd_op timestamp with time zone DEFAULT now() NOT NULL,
+  gearchiveerd_op timestamp with time zone,
   created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -155,7 +192,8 @@ CREATE TABLE public.inspectie_bevinding (
   actie_id uuid,
   opmerking text,
   verplicht boolean DEFAULT false NOT NULL,
-  volgorde integer DEFAULT 0 NOT NULL
+  volgorde integer DEFAULT 0 NOT NULL,
+  rubriek_naam_snap text
 );
 
 CREATE TABLE public.inspectie_historie (
@@ -306,7 +344,11 @@ CREATE TABLE public.vragen (
 
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_pkey PRIMARY KEY (id);
 ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_pkey PRIMARY KEY (company_id, module);
+ALTER TABLE public.bedrijf_rubriek ADD CONSTRAINT bedrijf_rubriek_pkey PRIMARY KEY (company_id, rubriek_id);
+ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT bedrijf_vraag_afwijking_pkey PRIMARY KEY (company_id, vraag_id);
 ALTER TABLE public.bewijs ADD CONSTRAINT bewijs_pkey PRIMARY KEY (id);
+ALTER TABLE public.centrale_rubriek ADD CONSTRAINT centrale_rubriek_pkey PRIMARY KEY (id);
+ALTER TABLE public.centrale_vraag ADD CONSTRAINT centrale_vraag_pkey PRIMARY KEY (id);
 ALTER TABLE public.companies ADD CONSTRAINT companies_pkey PRIMARY KEY (id);
 ALTER TABLE public.deellinks ADD CONSTRAINT deellinks_pkey PRIMARY KEY (id);
 ALTER TABLE public.fotos ADD CONSTRAINT fotos_pkey PRIMARY KEY (id);
@@ -335,6 +377,8 @@ ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_company_id_nr_key UNIQUE (
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_company_id_versie_key UNIQUE (company_id, versie);
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_company_id_nr_key UNIQUE (company_id, nr);
 ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_module_status_check CHECK ((module_status = ANY (ARRAY['geen'::text, 'actief'::text, 'gestopt'::text])));
+ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT afwijking_lokale_tekst CHECK ((((modus = 'lokaal'::text) AND (lokale_tekst IS NOT NULL) AND (btrim(lokale_tekst) <> ''::text)) OR ((modus = 'uit'::text) AND (lokale_tekst IS NULL))));
+ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT afwijking_modus_check CHECK ((modus = ANY (ARRAY['lokaal'::text, 'uit'::text])));
 ALTER TABLE public.companies ADD CONSTRAINT companies_huisstijl_modus_check CHECK ((huisstijl_modus = ANY (ARRAY['default'::text, 'co_branding'::text, 'white_label'::text])));
 ALTER TABLE public.herinner_instelling ADD CONSTRAINT herinner_instelling_ritme_check CHECK ((ritme = ANY (ARRAY['uit'::text, 'dagelijks'::text, 'wekelijks'::text, 'maandelijks'::text])));
 ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_bron_check CHECK ((bron = ANY (ARRAY['handmatig'::text, 'automatisch'::text])));
@@ -351,8 +395,13 @@ ALTER TABLE public.users ADD CONSTRAINT users_role_check CHECK ((role = ANY (ARR
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_pva_item_id_fkey FOREIGN KEY (pva_item_id) REFERENCES pva_items(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_rubriek ADD CONSTRAINT bedrijf_rubriek_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_rubriek ADD CONSTRAINT bedrijf_rubriek_rubriek_id_fkey FOREIGN KEY (rubriek_id) REFERENCES centrale_rubriek(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT bedrijf_vraag_afwijking_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT bedrijf_vraag_afwijking_vraag_id_fkey FOREIGN KEY (vraag_id) REFERENCES centrale_vraag(id) ON DELETE CASCADE;
 ALTER TABLE public.bewijs ADD CONSTRAINT bewijs_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bewijs ADD CONSTRAINT bewijs_pva_item_id_fkey FOREIGN KEY (pva_item_id) REFERENCES pva_items(id) ON DELETE CASCADE;
+ALTER TABLE public.centrale_vraag ADD CONSTRAINT centrale_vraag_rubriek_id_fkey FOREIGN KEY (rubriek_id) REFERENCES centrale_rubriek(id) ON DELETE CASCADE;
 ALTER TABLE public.companies ADD CONSTRAINT companies_merk_id_fkey FOREIGN KEY (merk_id) REFERENCES merken(id) ON DELETE SET NULL;
 ALTER TABLE public.deellinks ADD CONSTRAINT deellinks_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.deellinks ADD CONSTRAINT deellinks_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE CASCADE;
@@ -400,9 +449,12 @@ ALTER TABLE public.vragen ADD CONSTRAINT vragen_rie_versie_id_fkey FOREIGN KEY (
 
 CREATE INDEX actie_historie_company_idx ON public.actie_historie USING btree (company_id);
 CREATE INDEX actie_historie_item_idx ON public.actie_historie USING btree (pva_item_id);
+CREATE INDEX bedrijf_rubriek_company_idx ON public.bedrijf_rubriek USING btree (company_id);
+CREATE INDEX bedrijf_vraag_afwijking_company_idx ON public.bedrijf_vraag_afwijking USING btree (company_id);
 CREATE INDEX bevinding_inspectie_idx ON public.inspectie_bevinding USING btree (inspectie_id);
 CREATE INDEX bewijs_company_idx ON public.bewijs USING btree (company_id);
 CREATE INDEX bewijs_item_idx ON public.bewijs USING btree (pva_item_id);
+CREATE INDEX centrale_vraag_rubriek_idx ON public.centrale_vraag USING btree (rubriek_id, volgorde);
 CREATE INDEX deellinks_token_idx ON public.deellinks USING btree (token);
 CREATE INDEX fotos_company_idx ON public.fotos USING btree (company_id);
 CREATE INDEX functiegroep_company_idx ON public.functiegroep USING btree (company_id, volgorde);
@@ -430,7 +482,11 @@ CREATE INDEX vragen_module_idx ON public.vragen USING btree (module_id);
 
 ALTER TABLE public.actie_historie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_modules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bedrijf_rubriek ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bedrijf_vraag_afwijking ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bewijs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.centrale_rubriek ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.centrale_vraag ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.deellinks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.fotos ENABLE ROW LEVEL SECURITY;
@@ -462,8 +518,28 @@ CREATE POLICY bedrijf_modules_sel ON public.bedrijf_modules AS PERMISSIVE FOR SE
 CREATE POLICY bedrijf_modules_wr ON public.bedrijf_modules AS PERMISSIVE FOR ALL TO public
   USING (mag_bedrijf_beheren(company_id))
   WITH CHECK (mag_bedrijf_beheren(company_id));
+CREATE POLICY bedrijf_rubriek_sel ON public.bedrijf_rubriek AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
+CREATE POLICY bedrijf_rubriek_wr ON public.bedrijf_rubriek AS PERMISSIVE FOR ALL TO public
+  USING (mag_bedrijf_beheren(company_id))
+  WITH CHECK (mag_bedrijf_beheren(company_id));
+CREATE POLICY bedrijf_vraag_afwijking_sel ON public.bedrijf_vraag_afwijking AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
+CREATE POLICY bedrijf_vraag_afwijking_wr ON public.bedrijf_vraag_afwijking AS PERMISSIVE FOR ALL TO public
+  USING (mag_bedrijf_beheren(company_id))
+  WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY bewijs_select ON public.bewijs AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
+CREATE POLICY centrale_rubriek_adm ON public.centrale_rubriek AS PERMISSIVE FOR ALL TO public
+  USING (is_admin())
+  WITH CHECK (is_admin());
+CREATE POLICY centrale_rubriek_sel ON public.centrale_rubriek AS PERMISSIVE FOR SELECT TO public
+  USING ((auth.uid() IS NOT NULL));
+CREATE POLICY centrale_vraag_adm ON public.centrale_vraag AS PERMISSIVE FOR ALL TO public
+  USING (is_admin())
+  WITH CHECK (is_admin());
+CREATE POLICY centrale_vraag_sel ON public.centrale_vraag AS PERMISSIVE FOR SELECT TO public
+  USING ((auth.uid() IS NOT NULL));
 CREATE POLICY companies_admin_update ON public.companies AS PERMISSIVE FOR UPDATE TO public
   USING (is_admin())
   WITH CHECK (is_admin());

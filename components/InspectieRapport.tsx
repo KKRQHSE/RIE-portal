@@ -116,8 +116,17 @@ export default function InspectieRapport({ companyId, rapport, huisstijl = VEILI
           </p>
         ) : (
           <div className="space-y-3">
-            {rapport.bevindingen.map((b, i) => (
-              <article key={b.id} className="bg-white rounded-lg shadow-sm p-4 rapport-card">
+            {rapport.bevindingen.map((b, i) => {
+              const vorige = i > 0 ? rapport.bevindingen[i - 1].rubriek_naam_snap : null
+              const nieuweRubriek = b.rubriek_naam_snap && b.rubriek_naam_snap !== vorige
+              return (
+              <div key={b.id} className="space-y-3">
+                {nieuweRubriek && (
+                  <h3 className="text-xs font-semibold text-ink/50 uppercase tracking-wider pt-2">
+                    {b.rubriek_naam_snap}
+                  </h3>
+                )}
+              <article className="bg-white rounded-lg shadow-sm p-4 rapport-card">
                 <div className="flex items-start gap-3">
                   <span className="font-mono text-xs text-ink/40 mt-1 shrink-0">{i + 1}</span>
                   <div className="flex-1 min-w-0">
@@ -161,7 +170,9 @@ export default function InspectieRapport({ companyId, rapport, huisstijl = VEILI
                   </div>
                 </div>
               </article>
-            ))}
+              </div>
+              )
+            })}
           </div>
         )}
 

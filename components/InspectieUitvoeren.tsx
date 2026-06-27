@@ -43,7 +43,7 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
     const [bev, hist] = await Promise.all([
       supabase
         .from('inspectie_bevinding')
-        .select('id, company_id, inspectie_id, punt_tekst_snap, verplicht, volgorde, resultaat, afhandeling, actie_id, opmerking')
+        .select('id, company_id, inspectie_id, rubriek_naam_snap, punt_tekst_snap, verplicht, volgorde, resultaat, afhandeling, actie_id, opmerking')
         .eq('inspectie_id', inspectie.id)
         .order('volgorde', { ascending: true }),
       supabase
@@ -132,17 +132,28 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
       )}
 
       <div className="space-y-3">
-        {bevindingen.map((b, i) => (
-          <BevindingRow
-            key={b.id}
-            companyId={companyId}
-            nummer={i + 1}
-            bevinding={b}
-            readOnly={readOnly}
-            onPatch={updates => patchBevinding(b.id, updates)}
-            onHistorieGewijzigd={herlaad}
-          />
-        ))}
+        {bevindingen.map((b, i) => {
+          // Rubriekkop tonen zodra de rubriek wisselt (snapshot per bevinding).
+          const vorige = i > 0 ? bevindingen[i - 1].rubriek_naam_snap : null
+          const nieuweRubriek = b.rubriek_naam_snap && b.rubriek_naam_snap !== vorige
+          return (
+            <div key={b.id} className="space-y-3">
+              {nieuweRubriek && (
+                <h3 className="text-xs font-semibold text-ink/50 uppercase tracking-wider pt-2">
+                  {b.rubriek_naam_snap}
+                </h3>
+              )}
+              <BevindingRow
+                companyId={companyId}
+                nummer={i + 1}
+                bevinding={b}
+                readOnly={readOnly}
+                onPatch={updates => patchBevinding(b.id, updates)}
+                onHistorieGewijzigd={herlaad}
+              />
+            </div>
+          )
+        })}
       </div>
 
       {/* Algemene conclusie */}

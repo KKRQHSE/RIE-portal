@@ -107,7 +107,39 @@ export default function InspectieClient({
     setSjablonen(prev => prev.filter(s => s.id !== id))
   }
 
-  // --- Inspectie starten ---
+  // Is er een bruikbare norm (gekoppelde rubriek met minstens één actieve vraag)?
+  const normPunten = useMemo(
+    () => initialNorm.reduce((n, r) => n + (r.gekoppeld ? r.vragen.filter(v => v.actief).length : 0), 0),
+    [initialNorm],
+  )
+
+  // --- Inspectie starten vanuit de centrale norm ---
+  async function startInspectieCentraal() {
+    setFout(null)
+    const { data, error } = await supabase.rpc('inspectie_start_centraal', { p_company_id: company.id })
+    if (error) { setFout(error.message); return }
+    const nieuwe: BibliotheekRegel = {
+      id: data as string,
+      company_id: company.id,
+      sjabloon_id: null,
+      persoon_id: null,
+      status: 'concept',
+      gepland_op: null,
+      uitgevoerd_op: null,
+      aangemaakt_op: new Date().toISOString(),
+      conclusie: null,
+      sjabloon_naam_snap: 'Werkplekinspectie (norm)',
+      controlesoort_snap: null,
+      uitvoerder_naam: null,
+      aantal_punten: normPunten,
+      aantal_niet_in_orde: 0,
+      aantal_acties: 0,
+    }
+    setRegels(prev => [nieuwe, ...prev])
+    setOpen(nieuwe)
+  }
+
+  // --- Inspectie starten vanuit een eigen (vrij) sjabloon ---
   async function startInspectie(sjabloon: SjabloonMetPunten) {
     setFout(null)
     const { data, error } = await supabase.rpc('inspectie_start', { p_sjabloon_id: sjabloon.id })
@@ -219,9 +251,12 @@ export default function InspectieClient({
               <Bibliotheek
                 sjablonen={sjablonen}
                 regels={regels}
+                normPunten={normPunten}
+                onStartCentraal={startInspectieCentraal}
                 onStart={startInspectie}
                 onOpen={openRegel}
                 onNaarSjablonen={() => setView('sjablonen')}
+                onNaarNorm={() => setView('norm')}
               />
             ) : view === 'norm' ? (
               <NormBeheer companyId={company.id} initialNorm={initialNorm} />
@@ -256,15 +291,21 @@ function jaarVan(regel: BibliotheekRegel): string | null {
 function Bibliotheek({
   sjablonen,
   regels,
+  normPunten,
+  onStartCentraal,
   onStart,
   onOpen,
   onNaarSjablonen,
+  onNaarNorm,
 }: {
   sjablonen: SjabloonMetPunten[]
   regels: BibliotheekRegel[]
+  normPunten: number
+  onStartCentraal: () => void
   onStart: (s: SjabloonMetPunten) => void
   onOpen: (r: BibliotheekRegel) => void
   onNaarSjablonen: () => void
+  onNaarNorm: () => void
 }) {
   const [keuze, setKeuze] = useState('')
   const [fStatus, setFStatus] = useState(ALLE)
@@ -309,36 +350,64 @@ function Bibliotheek({
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-lg shadow-sm p-4">
-        <p className="text-sm font-medium text-ink mb-2">Nieuwe inspectie starten</p>
-        {bruikbaar.length === 0 ? (
-          <p className="text-sm text-ink/50">
-            Er zijn nog geen sjablonen met punten.{' '}
-            <button onClick={onNaarSjablonen} className="text-accent hover:underline">Maak eerst een sjabloon</button>.
+      <div className="bg-white rounded-lg shadow-sm p-4 space-y-4">
+        {/* Hoofdpad: volgens de centrale norm */}
+        <div>
+          <p className="text-sm font-medium text-ink">Werkplekinspectie volgens de norm</p>
+          <p className="text-xs text-ink/50 mt-0.5">
+            Gebruikt je gekoppelde centrale rubrieken, inclusief je eigen lokale aanpassingen.
           </p>
-        ) : (
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={keuze}
-              onChange={e => setKeuze(e.target.value)}
-              className="text-sm border border-ink/20 rounded px-3 py-2.5 min-h-[44px] bg-white flex-1 min-w-[180px]"
-            >
-              <option value="">Kies een sjabloon…</option>
-              {bruikbaar.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.naam}{s.controlesoort ? ` — ${s.controlesoort}` : ''} ({s.punten.length})
-                </option>
-              ))}
-            </select>
+          {normPunten > 0 ? (
             <button
-              onClick={() => gekozen && onStart(gekozen)}
-              disabled={!gekozen}
-              className="text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+              onClick={onStartCentraal}
+              className="mt-2 text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity"
             >
-              Starten
+              Inspectie starten ({normPunten} {normPunten === 1 ? 'punt' : 'punten'})
             </button>
-          </div>
-        )}
+          ) : (
+            <p className="text-sm text-ink/50 mt-2">
+              Nog geen gekoppelde rubrieken met vragen.{' '}
+              <button onClick={onNaarNorm} className="text-accent hover:underline">Ga naar Norm</button> om te koppelen.
+            </p>
+          )}
+        </div>
+
+        {/* Alternatief pad: een vrij eigen sjabloon */}
+        <div className="border-t border-surface pt-3">
+          <p className="text-sm font-medium text-ink">Of: vanuit een eigen sjabloon</p>
+          <p className="text-xs text-ink/50 mt-0.5">
+            Een vrije, zelfgemaakte checklist los van de norm.
+          </p>
+          {bruikbaar.length === 0 ? (
+            <p className="text-sm text-ink/50 mt-2">
+              Nog geen eigen sjablonen met punten.{' '}
+              <button onClick={onNaarSjablonen} className="text-accent hover:underline">Maak een sjabloon</button>.
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <select
+                value={keuze}
+                onChange={e => setKeuze(e.target.value)}
+                aria-label="Kies een eigen sjabloon"
+                className="text-sm border border-ink/20 rounded px-3 py-2.5 min-h-[44px] bg-white flex-1 min-w-[180px]"
+              >
+                <option value="">Kies een sjabloon…</option>
+                {bruikbaar.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.naam}{s.controlesoort ? ` — ${s.controlesoort}` : ''} ({s.punten.length})
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => gekozen && onStart(gekozen)}
+                disabled={!gekozen}
+                className="text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+              >
+                Starten
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {regels.length === 0 ? (

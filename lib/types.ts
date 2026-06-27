@@ -186,6 +186,7 @@ export type InspectieBevinding = {
   id: string
   company_id: string
   inspectie_id: string
+  rubriek_naam_snap: string | null   // bevroren rubriek (null = vrij sjabloon zonder rubriek)
   punt_tekst_snap: string
   verplicht: boolean
   volgorde: number
@@ -220,6 +221,7 @@ export type BibliotheekRegel = Inspectie & {
 export type RapportBevinding = {
   id: string
   volgorde: number
+  rubriek_naam_snap: string | null
   punt_tekst_snap: string
   verplicht: boolean
   resultaat: BevindingResultaat | null

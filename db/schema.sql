@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-27T16:02:49.020Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-06-27T18:51:09.814Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -40,6 +40,13 @@ CREATE TABLE public.actie_historie (
   created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
+CREATE TABLE public.bedrijf_doelstelling (
+  company_id uuid NOT NULL,
+  functiegroep_id uuid NOT NULL,
+  doel_per_jaar integer DEFAULT 0 NOT NULL,
+  updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE public.bedrijf_modules (
   company_id uuid NOT NULL,
   module text NOT NULL,
@@ -53,6 +60,23 @@ CREATE TABLE public.bedrijf_rubriek (
   company_id uuid NOT NULL,
   rubriek_id uuid NOT NULL,
   gekoppeld_op timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.bedrijf_toolbox (
+  company_id uuid NOT NULL,
+  toolbox_id uuid NOT NULL,
+  gekoppeld_op timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.bedrijf_toolbox_afwijking (
+  company_id uuid NOT NULL,
+  toolbox_id uuid NOT NULL,
+  modus text NOT NULL,
+  lokale_titel text,
+  lokale_tekst text,
+  lokale_video_url text,
+  basis_versie integer NOT NULL,
+  afgeweken_op timestamp with time zone DEFAULT now() NOT NULL
 );
 
 CREATE TABLE public.bedrijf_vraag_afwijking (
@@ -84,6 +108,37 @@ CREATE TABLE public.centrale_rubriek (
   naam text NOT NULL,
   volgorde integer DEFAULT 0 NOT NULL,
   rie_code text,
+  versie integer DEFAULT 1 NOT NULL,
+  gewijzigd_op timestamp with time zone DEFAULT now() NOT NULL,
+  gearchiveerd_op timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.centrale_toolbox (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  titel text NOT NULL,
+  tekst text DEFAULT ''::text NOT NULL,
+  video_url text,
+  vereist_video boolean DEFAULT true NOT NULL,
+  vereist_quiz boolean DEFAULT false NOT NULL,
+  quiz_slaaggrens integer DEFAULT 70 NOT NULL,
+  quiz_uitleg_modus text DEFAULT 'aan_eind'::text NOT NULL,
+  toegang text DEFAULT 'link'::text NOT NULL,
+  volgorde integer DEFAULT 0 NOT NULL,
+  versie integer DEFAULT 1 NOT NULL,
+  gewijzigd_op timestamp with time zone DEFAULT now() NOT NULL,
+  gearchiveerd_op timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.centrale_toolbox_vraag (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  toolbox_id uuid NOT NULL,
+  vraagtekst text NOT NULL,
+  opties jsonb DEFAULT '[]'::jsonb NOT NULL,
+  juist_antwoord integer DEFAULT 0 NOT NULL,
+  uitleg text,
+  volgorde integer DEFAULT 0 NOT NULL,
   versie integer DEFAULT 1 NOT NULL,
   gewijzigd_op timestamp with time zone DEFAULT now() NOT NULL,
   gearchiveerd_op timestamp with time zone,
@@ -266,7 +321,9 @@ CREATE TABLE public.personen (
   archived_at timestamp with time zone,
   created_at timestamp with time zone DEFAULT now() NOT NULL,
   user_id uuid,
-  functiegroep_id uuid
+  functiegroep_id uuid,
+  datum_in_dienst date,
+  datum_uit_dienst date
 );
 
 CREATE TABLE public.pva_items (
@@ -310,6 +367,28 @@ CREATE TABLE public.rie_versies (
   created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
+CREATE TABLE public.toolbox_deelname (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  persoon_id uuid NOT NULL,
+  toolbox_id uuid,
+  bewijssoort text DEFAULT 'digitaal'::text NOT NULL,
+  titel_snap text NOT NULL,
+  tekst_snap text NOT NULL,
+  video_url_snap text,
+  quiz_snap jsonb DEFAULT '[]'::jsonb NOT NULL,
+  afgerond_op timestamp with time zone DEFAULT now() NOT NULL,
+  video_bekeken boolean DEFAULT false NOT NULL,
+  quiz_resultaat jsonb,
+  naam_bevestigd boolean DEFAULT false NOT NULL,
+  bevestigde_naam text NOT NULL,
+  handtekening text,
+  handtekening_gezet_op timestamp with time zone,
+  presentielijst_pad text,
+  planning_toewijzing_id uuid,
+  created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE public.users (
   id uuid NOT NULL,
   company_id uuid,
@@ -343,11 +422,16 @@ CREATE TABLE public.vragen (
 -- ============================================================
 
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_pkey PRIMARY KEY (id);
+ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT bedrijf_doelstelling_pkey PRIMARY KEY (company_id, functiegroep_id);
 ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_pkey PRIMARY KEY (company_id, module);
 ALTER TABLE public.bedrijf_rubriek ADD CONSTRAINT bedrijf_rubriek_pkey PRIMARY KEY (company_id, rubriek_id);
+ALTER TABLE public.bedrijf_toolbox ADD CONSTRAINT bedrijf_toolbox_pkey PRIMARY KEY (company_id, toolbox_id);
+ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT bedrijf_toolbox_afwijking_pkey PRIMARY KEY (company_id, toolbox_id);
 ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT bedrijf_vraag_afwijking_pkey PRIMARY KEY (company_id, vraag_id);
 ALTER TABLE public.bewijs ADD CONSTRAINT bewijs_pkey PRIMARY KEY (id);
 ALTER TABLE public.centrale_rubriek ADD CONSTRAINT centrale_rubriek_pkey PRIMARY KEY (id);
+ALTER TABLE public.centrale_toolbox ADD CONSTRAINT centrale_toolbox_pkey PRIMARY KEY (id);
+ALTER TABLE public.centrale_toolbox_vraag ADD CONSTRAINT centrale_toolbox_vraag_pkey PRIMARY KEY (id);
 ALTER TABLE public.centrale_vraag ADD CONSTRAINT centrale_vraag_pkey PRIMARY KEY (id);
 ALTER TABLE public.companies ADD CONSTRAINT companies_pkey PRIMARY KEY (id);
 ALTER TABLE public.deellinks ADD CONSTRAINT deellinks_pkey PRIMARY KEY (id);
@@ -366,6 +450,7 @@ ALTER TABLE public.modules ADD CONSTRAINT modules_pkey PRIMARY KEY (id);
 ALTER TABLE public.personen ADD CONSTRAINT personen_pkey PRIMARY KEY (id);
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_pkey PRIMARY KEY (id);
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_pkey PRIMARY KEY (id);
+ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_pkey PRIMARY KEY (id);
 ALTER TABLE public.users ADD CONSTRAINT users_pkey PRIMARY KEY (id);
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_pkey PRIMARY KEY (id);
 ALTER TABLE public.deellinks ADD CONSTRAINT deellinks_persoon_id_key UNIQUE (persoon_id);
@@ -376,9 +461,15 @@ ALTER TABLE public.personen ADD CONSTRAINT personen_company_id_email_key UNIQUE 
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_company_id_nr_key UNIQUE (company_id, nr);
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_company_id_versie_key UNIQUE (company_id, versie);
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_company_id_nr_key UNIQUE (company_id, nr);
+ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT doelstelling_niet_negatief CHECK ((doel_per_jaar >= 0));
 ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_module_status_check CHECK ((module_status = ANY (ARRAY['geen'::text, 'actief'::text, 'gestopt'::text])));
+ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT toolbox_afw_lokaal_check CHECK ((((modus = 'lokaal'::text) AND (lokale_tekst IS NOT NULL) AND (btrim(lokale_tekst) <> ''::text)) OR ((modus = 'uit'::text) AND (lokale_titel IS NULL) AND (lokale_tekst IS NULL) AND (lokale_video_url IS NULL))));
+ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT toolbox_afw_modus_check CHECK ((modus = ANY (ARRAY['lokaal'::text, 'uit'::text])));
 ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT afwijking_lokale_tekst CHECK ((((modus = 'lokaal'::text) AND (lokale_tekst IS NOT NULL) AND (btrim(lokale_tekst) <> ''::text)) OR ((modus = 'uit'::text) AND (lokale_tekst IS NULL))));
 ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT afwijking_modus_check CHECK ((modus = ANY (ARRAY['lokaal'::text, 'uit'::text])));
+ALTER TABLE public.centrale_toolbox ADD CONSTRAINT toolbox_slaaggrens_check CHECK (((quiz_slaaggrens >= 0) AND (quiz_slaaggrens <= 100)));
+ALTER TABLE public.centrale_toolbox ADD CONSTRAINT toolbox_toegang_check CHECK ((toegang = ANY (ARRAY['link'::text, 'login'::text])));
+ALTER TABLE public.centrale_toolbox ADD CONSTRAINT toolbox_uitleg_modus_check CHECK ((quiz_uitleg_modus = ANY (ARRAY['per_vraag'::text, 'aan_eind'::text])));
 ALTER TABLE public.companies ADD CONSTRAINT companies_huisstijl_modus_check CHECK ((huisstijl_modus = ANY (ARRAY['default'::text, 'co_branding'::text, 'white_label'::text])));
 ALTER TABLE public.herinner_instelling ADD CONSTRAINT herinner_instelling_ritme_check CHECK ((ritme = ANY (ARRAY['uit'::text, 'dagelijks'::text, 'wekelijks'::text, 'maandelijks'::text])));
 ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_bron_check CHECK ((bron = ANY (ARRAY['handmatig'::text, 'automatisch'::text])));
@@ -391,16 +482,25 @@ ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT inspectie_bevinding_result
 ALTER TABLE public.merken ADD CONSTRAINT merken_lettertype_check CHECK ((lettertype = ANY (ARRAY['grotesk'::text, 'modern'::text, 'klassiek'::text, 'zakelijk'::text])));
 ALTER TABLE public.personen ADD CONSTRAINT personen_status_check CHECK ((status = ANY (ARRAY['actief'::text, 'voorgesteld'::text])));
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_status_check CHECK ((status = ANY (ARRAY['Open'::text, 'In behandeling'::text, 'Afgerond'::text])));
+ALTER TABLE public.toolbox_deelname ADD CONSTRAINT deelname_bewijssoort_check CHECK ((bewijssoort = ANY (ARRAY['digitaal'::text, 'fysiek_aanwezig'::text])));
+ALTER TABLE public.toolbox_deelname ADD CONSTRAINT deelname_digitaal_bewijs CHECK (((bewijssoort <> 'digitaal'::text) OR ((naam_bevestigd = true) AND (handtekening IS NOT NULL) AND (btrim(handtekening) <> ''::text) AND (handtekening_gezet_op IS NOT NULL))));
 ALTER TABLE public.users ADD CONSTRAINT users_role_check CHECK ((role = ANY (ARRAY['client'::text, 'admin'::text])));
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_pva_item_id_fkey FOREIGN KEY (pva_item_id) REFERENCES pva_items(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT bedrijf_doelstelling_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT bedrijf_doelstelling_functiegroep_id_fkey FOREIGN KEY (functiegroep_id) REFERENCES functiegroep(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_rubriek ADD CONSTRAINT bedrijf_rubriek_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_rubriek ADD CONSTRAINT bedrijf_rubriek_rubriek_id_fkey FOREIGN KEY (rubriek_id) REFERENCES centrale_rubriek(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_toolbox ADD CONSTRAINT bedrijf_toolbox_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_toolbox ADD CONSTRAINT bedrijf_toolbox_toolbox_id_fkey FOREIGN KEY (toolbox_id) REFERENCES centrale_toolbox(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT bedrijf_toolbox_afwijking_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT bedrijf_toolbox_afwijking_toolbox_id_fkey FOREIGN KEY (toolbox_id) REFERENCES centrale_toolbox(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT bedrijf_vraag_afwijking_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT bedrijf_vraag_afwijking_vraag_id_fkey FOREIGN KEY (vraag_id) REFERENCES centrale_vraag(id) ON DELETE CASCADE;
 ALTER TABLE public.bewijs ADD CONSTRAINT bewijs_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bewijs ADD CONSTRAINT bewijs_pva_item_id_fkey FOREIGN KEY (pva_item_id) REFERENCES pva_items(id) ON DELETE CASCADE;
+ALTER TABLE public.centrale_toolbox_vraag ADD CONSTRAINT centrale_toolbox_vraag_toolbox_id_fkey FOREIGN KEY (toolbox_id) REFERENCES centrale_toolbox(id) ON DELETE CASCADE;
 ALTER TABLE public.centrale_vraag ADD CONSTRAINT centrale_vraag_rubriek_id_fkey FOREIGN KEY (rubriek_id) REFERENCES centrale_rubriek(id) ON DELETE CASCADE;
 ALTER TABLE public.companies ADD CONSTRAINT companies_merk_id_fkey FOREIGN KEY (merk_id) REFERENCES merken(id) ON DELETE SET NULL;
 ALTER TABLE public.deellinks ADD CONSTRAINT deellinks_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
@@ -437,6 +537,9 @@ ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_company_id_fkey FOREIGN KE
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE SET NULL;
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_rie_versie_id_fkey FOREIGN KEY (rie_versie_id) REFERENCES rie_versies(id);
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id);
+ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE CASCADE;
+ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_toolbox_id_fkey FOREIGN KEY (toolbox_id) REFERENCES centrale_toolbox(id) ON DELETE SET NULL;
 ALTER TABLE public.users ADD CONSTRAINT users_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL;
 ALTER TABLE public.users ADD CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
@@ -450,10 +553,13 @@ ALTER TABLE public.vragen ADD CONSTRAINT vragen_rie_versie_id_fkey FOREIGN KEY (
 CREATE INDEX actie_historie_company_idx ON public.actie_historie USING btree (company_id);
 CREATE INDEX actie_historie_item_idx ON public.actie_historie USING btree (pva_item_id);
 CREATE INDEX bedrijf_rubriek_company_idx ON public.bedrijf_rubriek USING btree (company_id);
+CREATE INDEX bedrijf_toolbox_afwijking_company_idx ON public.bedrijf_toolbox_afwijking USING btree (company_id);
+CREATE INDEX bedrijf_toolbox_company_idx ON public.bedrijf_toolbox USING btree (company_id);
 CREATE INDEX bedrijf_vraag_afwijking_company_idx ON public.bedrijf_vraag_afwijking USING btree (company_id);
 CREATE INDEX bevinding_inspectie_idx ON public.inspectie_bevinding USING btree (inspectie_id);
 CREATE INDEX bewijs_company_idx ON public.bewijs USING btree (company_id);
 CREATE INDEX bewijs_item_idx ON public.bewijs USING btree (pva_item_id);
+CREATE INDEX centrale_toolbox_vraag_idx ON public.centrale_toolbox_vraag USING btree (toolbox_id, volgorde);
 CREATE INDEX centrale_vraag_rubriek_idx ON public.centrale_vraag USING btree (rubriek_id, volgorde);
 CREATE INDEX deellinks_token_idx ON public.deellinks USING btree (token);
 CREATE INDEX fotos_company_idx ON public.fotos USING btree (company_id);
@@ -473,6 +579,8 @@ CREATE INDEX modules_company_idx ON public.modules USING btree (company_id);
 CREATE INDEX personen_company_idx ON public.personen USING btree (company_id);
 CREATE INDEX pva_items_company_idx ON public.pva_items USING btree (company_id);
 CREATE INDEX pva_items_persoon_idx ON public.pva_items USING btree (persoon_id);
+CREATE INDEX toolbox_deelname_afgerond_idx ON public.toolbox_deelname USING btree (company_id, afgerond_op);
+CREATE INDEX toolbox_deelname_company_idx ON public.toolbox_deelname USING btree (company_id, persoon_id);
 CREATE INDEX vragen_company_idx ON public.vragen USING btree (company_id);
 CREATE INDEX vragen_module_idx ON public.vragen USING btree (module_id);
 
@@ -481,11 +589,16 @@ CREATE INDEX vragen_module_idx ON public.vragen USING btree (module_id);
 -- ============================================================
 
 ALTER TABLE public.actie_historie ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bedrijf_doelstelling ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_rubriek ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bedrijf_toolbox ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bedrijf_toolbox_afwijking ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_vraag_afwijking ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bewijs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.centrale_rubriek ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.centrale_toolbox ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.centrale_toolbox_vraag ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.centrale_vraag ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.deellinks ENABLE ROW LEVEL SECURITY;
@@ -504,6 +617,7 @@ ALTER TABLE public.modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.personen ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pva_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rie_versies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.toolbox_deelname ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vragen ENABLE ROW LEVEL SECURITY;
 
@@ -513,12 +627,18 @@ ALTER TABLE public.vragen ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY historie_select ON public.actie_historie AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
+CREATE POLICY bedrijf_doelstelling_sel ON public.bedrijf_doelstelling AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_modules_sel ON public.bedrijf_modules AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_modules_wr ON public.bedrijf_modules AS PERMISSIVE FOR ALL TO public
   USING (mag_bedrijf_beheren(company_id))
   WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_rubriek_sel ON public.bedrijf_rubriek AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
+CREATE POLICY bedrijf_toolbox_sel ON public.bedrijf_toolbox AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
+CREATE POLICY bedrijf_toolbox_afwijking_sel ON public.bedrijf_toolbox_afwijking AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_vraag_afwijking_sel ON public.bedrijf_vraag_afwijking AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
@@ -528,6 +648,16 @@ CREATE POLICY centrale_rubriek_adm ON public.centrale_rubriek AS PERMISSIVE FOR 
   USING (is_admin())
   WITH CHECK (is_admin());
 CREATE POLICY centrale_rubriek_sel ON public.centrale_rubriek AS PERMISSIVE FOR SELECT TO public
+  USING ((auth.uid() IS NOT NULL));
+CREATE POLICY centrale_toolbox_adm ON public.centrale_toolbox AS PERMISSIVE FOR ALL TO public
+  USING (is_admin())
+  WITH CHECK (is_admin());
+CREATE POLICY centrale_toolbox_sel ON public.centrale_toolbox AS PERMISSIVE FOR SELECT TO public
+  USING ((auth.uid() IS NOT NULL));
+CREATE POLICY centrale_toolbox_vraag_adm ON public.centrale_toolbox_vraag AS PERMISSIVE FOR ALL TO public
+  USING (is_admin())
+  WITH CHECK (is_admin());
+CREATE POLICY centrale_toolbox_vraag_sel ON public.centrale_toolbox_vraag AS PERMISSIVE FOR SELECT TO public
   USING ((auth.uid() IS NOT NULL));
 CREATE POLICY centrale_vraag_adm ON public.centrale_vraag AS PERMISSIVE FOR ALL TO public
   USING (is_admin())
@@ -607,6 +737,8 @@ CREATE POLICY pva_update ON public.pva_items AS PERMISSIVE FOR UPDATE TO public
 CREATE POLICY rie_versies_beheer ON public.rie_versies AS PERMISSIVE FOR ALL TO public
   USING (mag_bedrijf_beheren(company_id))
   WITH CHECK (mag_bedrijf_beheren(company_id));
+CREATE POLICY toolbox_deelname_sel ON public.toolbox_deelname AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY users_select ON public.users AS PERMISSIVE FOR SELECT TO public
   USING (((id = auth.uid()) OR is_admin()));
 CREATE POLICY vragen_select ON public.vragen AS PERMISSIVE FOR SELECT TO public
@@ -2757,6 +2889,14 @@ begin
   return public.actie_als_jsonb(p_actie_id);
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.toolbox_deelname_immutable()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+begin
+  raise exception 'Een afgerond toolbox-record is onveranderlijk';
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.vind_of_maak_persoon(p_company_id uuid, p_naam text, p_email text, p_voorgesteld_door uuid)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -3094,6 +3234,9 @@ GRANT EXECUTE ON FUNCTION public.sjabloon_opslaan(p_sjabloon_id uuid, p_company_
 GRANT EXECUTE ON FUNCTION public.stuur_concept_terug(p_actie_id uuid, p_opmerking text) TO anon;
 GRANT EXECUTE ON FUNCTION public.stuur_concept_terug(p_actie_id uuid, p_opmerking text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.stuur_concept_terug(p_actie_id uuid, p_opmerking text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.toolbox_deelname_immutable() TO anon;
+GRANT EXECUTE ON FUNCTION public.toolbox_deelname_immutable() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.toolbox_deelname_immutable() TO service_role;
 REVOKE EXECUTE ON FUNCTION public.vind_of_maak_persoon(p_company_id uuid, p_naam text, p_email text, p_voorgesteld_door uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.vind_of_maak_persoon(p_company_id uuid, p_naam text, p_email text, p_voorgesteld_door uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.vraag_lokaal_aanpassen(p_company_id uuid, p_vraag_id uuid, p_lokale_tekst text) TO anon;
@@ -3119,7 +3262,7 @@ GRANT EXECUTE ON FUNCTION public.zet_mijn_naam(p_naam text) TO service_role;
 -- Triggers (public)
 -- ============================================================
 
--- (geen niet-interne triggers op public-tabellen)
+CREATE TRIGGER toolbox_deelname_no_update BEFORE UPDATE ON public.toolbox_deelname FOR EACH ROW EXECUTE FUNCTION toolbox_deelname_immutable();
 
 -- ============================================================
 -- Auth-integratie (trigger op auth.users)

@@ -7,6 +7,7 @@ import type {
   SjabloonMetPunten,
   BibliotheekRegel,
   Functiegroep,
+  NormRubriek,
 } from '@/lib/types'
 
 export default async function InspectiesPage({
@@ -29,6 +30,7 @@ export default async function InspectiesPage({
     { data: sjablonen },
     { data: regels },
     { data: functiegroepen },
+    { data: norm },
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
@@ -64,6 +66,8 @@ export default async function InspectiesPage({
       .eq('company_id', company_id)
       .is('gearchiveerd_op', null)
       .order('volgorde', { ascending: true }),
+    // Het centrale norm-overzicht voor dit bedrijf (koppeling + lokale afwijkingen).
+    supabase.rpc('bedrijf_norm_overzicht', { p_company_id: company_id }),
     haalHuisstijl(company_id),
   ])
 
@@ -98,6 +102,7 @@ export default async function InspectiesPage({
       initialSjablonen={sjablonenMetPunten}
       initialRegels={(regels ?? []) as BibliotheekRegel[]}
       functiegroepen={(functiegroepen ?? []) as Functiegroep[]}
+      initialNorm={(norm ?? []) as NormRubriek[]}
     />
   )
 }

@@ -12,10 +12,12 @@ import type {
   BibliotheekRegel,
   InspectieStatus,
   Functiegroep,
+  NormRubriek,
 } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
 import InspectieUitvoeren from './InspectieUitvoeren'
+import NormBeheer from './NormBeheer'
 
 type Props = {
   company: Company
@@ -23,9 +25,10 @@ type Props = {
   initialSjablonen: SjabloonMetPunten[]
   initialRegels: BibliotheekRegel[]
   functiegroepen?: Functiegroep[]
+  initialNorm?: NormRubriek[]
 }
 
-type View = 'inspecties' | 'sjablonen'
+type View = 'inspecties' | 'norm' | 'sjablonen'
 
 const STATUS_STIJL: Record<string, string> = {
   concept: 'bg-blue-100 text-blue-800',
@@ -58,6 +61,7 @@ export default function InspectieClient({
   initialSjablonen,
   initialRegels,
   functiegroepen = [],
+  initialNorm = [],
 }: Props) {
   const supabase = createClient()
   const router = useRouter()
@@ -194,11 +198,18 @@ export default function InspectieClient({
                 Inspecties
               </button>
               <button
+                onClick={() => setView('norm')}
+                className={`text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors
+                  ${view === 'norm' ? 'bg-accent text-white border-accent' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}
+              >
+                Norm
+              </button>
+              <button
                 onClick={() => setView('sjablonen')}
                 className={`text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors
                   ${view === 'sjablonen' ? 'bg-accent text-white border-accent' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}
               >
-                Sjablonen
+                Eigen sjablonen
               </button>
             </div>
 
@@ -212,6 +223,8 @@ export default function InspectieClient({
                 onOpen={openRegel}
                 onNaarSjablonen={() => setView('sjablonen')}
               />
+            ) : view === 'norm' ? (
+              <NormBeheer companyId={company.id} initialNorm={initialNorm} />
             ) : (
               <SjabloonBeheer
                 sjablonen={sjablonen}

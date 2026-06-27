@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-27T15:01:35.680Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-06-27T15:07:02.636Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -708,6 +708,64 @@ begin
       from public.actie_historie where pva_item_id = p_actie_id
     ) h
   ), '[]'::jsonb);
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.bedrijf_norm_overzicht(p_company_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v jsonb;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  select coalesce(jsonb_agg(rub order by rub_volgorde, rub_id), '[]'::jsonb)
+  into v
+  from (
+    select
+      r.volgorde as rub_volgorde,
+      r.id       as rub_id,
+      jsonb_build_object(
+        'rubriek_id', r.id,
+        'naam',       r.naam,
+        'volgorde',   r.volgorde,
+        'gekoppeld',  exists (
+          select 1 from bedrijf_rubriek br
+          where br.company_id = p_company_id and br.rubriek_id = r.id
+        ),
+        'vragen', (
+          select coalesce(jsonb_agg(jsonb_build_object(
+            'vraag_id',        q.id,
+            'volgorde',        q.volgorde,
+            'centrale_tekst',  q.tekst,
+            'centrale_versie', q.versie,
+            'afwijking', case when a.vraag_id is null then null else jsonb_build_object(
+              'modus',        a.modus,
+              'lokale_tekst', a.lokale_tekst,
+              'basis_versie', a.basis_versie
+            ) end,
+            'norm_gewijzigd', (a.vraag_id is not null and q.versie > a.basis_versie),
+            'actief',         (a.vraag_id is null or a.modus <> 'uit'),
+            'geldende_tekst', case
+              when a.vraag_id is null    then q.tekst
+              when a.modus = 'lokaal'    then a.lokale_tekst
+              else null end
+          ) order by q.volgorde, q.id), '[]'::jsonb)
+          from centrale_vraag q
+          left join bedrijf_vraag_afwijking a
+            on a.vraag_id = q.id and a.company_id = p_company_id
+          where q.rubriek_id = r.id and q.gearchiveerd_op is null
+        )
+      ) as rub
+    from centrale_rubriek r
+    where r.gearchiveerd_op is null
+  ) s;
+
+  return v;
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.bevinding_naar_actie(p_bevinding_id uuid)
@@ -2472,6 +2530,40 @@ begin
   delete from inspectie_sjabloon_punt where id = p_punt_id;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.rubriek_koppelen(p_company_id uuid, p_rubriek_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+  if not exists (select 1 from centrale_rubriek where id = p_rubriek_id and gearchiveerd_op is null) then
+    raise exception 'Rubriek niet gevonden of gearchiveerd';
+  end if;
+
+  insert into bedrijf_rubriek (company_id, rubriek_id)
+  values (p_company_id, p_rubriek_id)
+  on conflict (company_id, rubriek_id) do nothing;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.rubriek_ontkoppelen(p_company_id uuid, p_rubriek_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  delete from bedrijf_rubriek
+   where company_id = p_company_id and rubriek_id = p_rubriek_id;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.sjabloon_archiveren(p_sjabloon_id uuid)
  RETURNS void
  LANGUAGE plpgsql
@@ -2624,6 +2716,84 @@ begin
   return v_id;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.vraag_lokaal_aanpassen(p_company_id uuid, p_vraag_id uuid, p_lokale_tekst text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_rubriek uuid;
+  v_versie  integer;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+  if coalesce(btrim(p_lokale_tekst), '') = '' then
+    raise exception 'Lokale tekst is verplicht';
+  end if;
+
+  select rubriek_id, versie into v_rubriek, v_versie
+    from centrale_vraag where id = p_vraag_id and gearchiveerd_op is null;
+  if v_rubriek is null then
+    raise exception 'Vraag niet gevonden';
+  end if;
+  if not exists (select 1 from bedrijf_rubriek br where br.company_id = p_company_id and br.rubriek_id = v_rubriek) then
+    raise exception 'Koppel eerst de rubriek voordat je lokaal afwijkt';
+  end if;
+
+  insert into bedrijf_vraag_afwijking (company_id, vraag_id, modus, lokale_tekst, basis_versie)
+  values (p_company_id, p_vraag_id, 'lokaal', btrim(p_lokale_tekst), v_versie)
+  on conflict (company_id, vraag_id) do update
+    set modus = 'lokaal', lokale_tekst = excluded.lokale_tekst,
+        basis_versie = excluded.basis_versie, afgeweken_op = now();
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.vraag_terug_naar_centraal(p_company_id uuid, p_vraag_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  delete from bedrijf_vraag_afwijking
+   where company_id = p_company_id and vraag_id = p_vraag_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.vraag_uitzetten(p_company_id uuid, p_vraag_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_rubriek uuid;
+  v_versie  integer;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  select rubriek_id, versie into v_rubriek, v_versie
+    from centrale_vraag where id = p_vraag_id and gearchiveerd_op is null;
+  if v_rubriek is null then
+    raise exception 'Vraag niet gevonden';
+  end if;
+  if not exists (select 1 from bedrijf_rubriek br where br.company_id = p_company_id and br.rubriek_id = v_rubriek) then
+    raise exception 'Koppel eerst de rubriek voordat je lokaal afwijkt';
+  end if;
+
+  insert into bedrijf_vraag_afwijking (company_id, vraag_id, modus, lokale_tekst, basis_versie)
+  values (p_company_id, p_vraag_id, 'uit', null, v_versie)
+  on conflict (company_id, vraag_id) do update
+    set modus = 'uit', lokale_tekst = null,
+        basis_versie = excluded.basis_versie, afgeweken_op = now();
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.zet_concept_beheerder(p_actie_id uuid, p_status text, p_opm text DEFAULT NULL::text)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -2696,6 +2866,9 @@ GRANT EXECUTE ON FUNCTION public.actie_doorgeven(p_actie_id uuid, p_naam text, p
 GRANT EXECUTE ON FUNCTION public.actie_historie_ophalen(p_actie_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.actie_historie_ophalen(p_actie_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.actie_historie_ophalen(p_actie_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.bedrijf_norm_overzicht(p_company_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.bedrijf_norm_overzicht(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.bedrijf_norm_overzicht(p_company_id uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.bevinding_naar_actie(p_bevinding_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.bevinding_naar_actie(p_bevinding_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.bevinding_naar_actie(p_bevinding_id uuid) TO service_role;
@@ -2832,6 +3005,12 @@ GRANT EXECUTE ON FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid
 GRANT EXECUTE ON FUNCTION public.punt_verwijderen(p_punt_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.punt_verwijderen(p_punt_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.punt_verwijderen(p_punt_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.rubriek_koppelen(p_company_id uuid, p_rubriek_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.rubriek_koppelen(p_company_id uuid, p_rubriek_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rubriek_koppelen(p_company_id uuid, p_rubriek_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.rubriek_ontkoppelen(p_company_id uuid, p_rubriek_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.rubriek_ontkoppelen(p_company_id uuid, p_rubriek_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rubriek_ontkoppelen(p_company_id uuid, p_rubriek_id uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.sjabloon_archiveren(p_sjabloon_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.sjabloon_archiveren(p_sjabloon_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.sjabloon_archiveren(p_sjabloon_id uuid) TO service_role;
@@ -2846,6 +3025,15 @@ GRANT EXECUTE ON FUNCTION public.stuur_concept_terug(p_actie_id uuid, p_opmerkin
 GRANT EXECUTE ON FUNCTION public.stuur_concept_terug(p_actie_id uuid, p_opmerking text) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.vind_of_maak_persoon(p_company_id uuid, p_naam text, p_email text, p_voorgesteld_door uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.vind_of_maak_persoon(p_company_id uuid, p_naam text, p_email text, p_voorgesteld_door uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.vraag_lokaal_aanpassen(p_company_id uuid, p_vraag_id uuid, p_lokale_tekst text) TO anon;
+GRANT EXECUTE ON FUNCTION public.vraag_lokaal_aanpassen(p_company_id uuid, p_vraag_id uuid, p_lokale_tekst text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.vraag_lokaal_aanpassen(p_company_id uuid, p_vraag_id uuid, p_lokale_tekst text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.vraag_terug_naar_centraal(p_company_id uuid, p_vraag_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.vraag_terug_naar_centraal(p_company_id uuid, p_vraag_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.vraag_terug_naar_centraal(p_company_id uuid, p_vraag_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.vraag_uitzetten(p_company_id uuid, p_vraag_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.vraag_uitzetten(p_company_id uuid, p_vraag_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.vraag_uitzetten(p_company_id uuid, p_vraag_id uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.zet_concept_beheerder(p_actie_id uuid, p_status text, p_opm text) TO anon;
 GRANT EXECUTE ON FUNCTION public.zet_concept_beheerder(p_actie_id uuid, p_status text, p_opm text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.zet_concept_beheerder(p_actie_id uuid, p_status text, p_opm text) TO service_role;

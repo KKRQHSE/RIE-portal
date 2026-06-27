@@ -288,6 +288,33 @@ export type CentraleVraag = {
 
 export type CentraleRubriekMetVragen = CentraleRubriek & { vragen: CentraleVraag[] }
 
+// ---- Klantzijde: norm-overzicht (RPC bedrijf_norm_overzicht) ----
+
+export type NormAfwijking = {
+  modus: 'lokaal' | 'uit'
+  lokale_tekst: string | null
+  basis_versie: number
+}
+
+export type NormVraag = {
+  vraag_id: string
+  volgorde: number
+  centrale_tekst: string
+  centrale_versie: number
+  afwijking: NormAfwijking | null
+  norm_gewijzigd: boolean        // afgeweken én de centrale norm is sindsdien gewijzigd
+  actief: boolean                // false = lokaal uitgezet
+  geldende_tekst: string | null  // effectief: lokaal/centraal, of null bij 'uit'
+}
+
+export type NormRubriek = {
+  rubriek_id: string
+  naam: string
+  volgorde: number
+  gekoppeld: boolean
+  vragen: NormVraag[]
+}
+
 // ---- Managementdashboard ----
 
 // Payload van de RPC dashboard_overzicht(p_company_id): alle tegelcijfers van één bedrijf.

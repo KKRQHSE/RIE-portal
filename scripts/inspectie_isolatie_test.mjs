@@ -117,7 +117,25 @@ async function maakBedrijf(label) {
     .single()
   if (e4) throw new Error(`bevinding insert (${label}): ${e4.message}`)
 
-  return { companyId: comp.id, sjabloonId: sjab.id, inspectieId: insp.id, bevindingId: bev.id }
+  // Functiegroep (rol in het bedrijf) + een persoon, om de koppel-isolatie te toetsen.
+  const { data: fg, error: e5 } = await admin
+    .from('functiegroep')
+    .insert({ company_id: comp.id, naam: `INSPTEST_groep_${label}`, volgorde: 1 })
+    .select('id')
+    .single()
+  if (e5) throw new Error(`functiegroep insert (${label}): ${e5.message}`)
+
+  const { data: pers, error: e6 } = await admin
+    .from('personen')
+    .insert({ company_id: comp.id, naam: `INSPTEST_persoon_${label}`, status: 'actief' })
+    .select('id')
+    .single()
+  if (e6) throw new Error(`persoon insert (${label}): ${e6.message}`)
+
+  return {
+    companyId: comp.id, sjabloonId: sjab.id, inspectieId: insp.id, bevindingId: bev.id,
+    functiegroepId: fg.id, persoonId: pers.id,
+  }
 }
 
 async function maakGebruiker(label, companyId) {
@@ -224,6 +242,95 @@ async function run() {
     const { error } = await clientA.rpc('inspectie_rapport', { p_inspectie_id: B.inspectieId })
     check('A kan rapport van B niet opvragen', !!error, error ? 'geweigerd' : 'GEEN fout!')
   }
+
+  // --- Functiegroepen: zien, muteren en koppelen over bedrijfsgrenzen heen ---
+
+  // Positieve controle: A ziet zijn EIGEN functiegroep wel.
+  {
+    const { data, error } = await clientA.from('functiegroep').select('id').eq('id', A.functiegroepId)
+    check('A ziet eigen functiegroep (positieve controle)', !error && (data?.length ?? 0) === 1)
+  }
+
+  // Lezen: A mag de functiegroep van B NIET zien (0 rijen via RLS).
+  {
+    const { data, error } = await clientA.from('functiegroep').select('id').eq('id', B.functiegroepId)
+    check('A ziet functiegroep van B niet', !error && (data?.length ?? 0) === 0, `${data?.length ?? '?'} rijen`)
+  }
+
+  // Muteren: A mag B's functiegroep niet hernoemen of archiveren.
+  {
+    const { error } = await clientA.rpc('functiegroep_opslaan', {
+      p_id: B.functiegroepId, p_company_id: A.companyId, p_naam: 'Gekaapt', p_volgorde: 99,
+    })
+    check('A kan functiegroep van B niet hernoemen', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+  {
+    const { error } = await clientA.rpc('functiegroep_archiveren', { p_id: B.functiegroepId })
+    check('A kan functiegroep van B niet archiveren', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+
+  // A mag GEEN nieuwe functiegroep aanmaken bij bedrijf B (company_id = B).
+  {
+    const { error } = await clientA.rpc('functiegroep_opslaan', {
+      p_id: null, p_company_id: B.companyId, p_naam: 'INSPTEST_indringer', p_volgorde: 1,
+    })
+    check('A kan geen functiegroep aanmaken bij B', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+
+  // Koppelen: A mag B's functiegroep niet aan zijn EIGEN persoon hangen (cross-company).
+  {
+    const { error } = await clientA.rpc('persoon_functiegroep_zetten', {
+      p_persoon_id: A.persoonId, p_functiegroep_id: B.functiegroepId,
+    })
+    check('A kan B-functiegroep niet aan eigen persoon koppelen', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+
+  // Koppelen: A mag al helemaal niets aan B's persoon doen.
+  {
+    const { error } = await clientA.rpc('persoon_functiegroep_zetten', {
+      p_persoon_id: B.persoonId, p_functiegroep_id: A.functiegroepId,
+    })
+    check('A kan persoon van B geen functiegroep geven', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+
+  // Sjabloon-doelgroep: A mag de doelgroep van B's sjabloon niet zetten.
+  {
+    const { error } = await clientA.rpc('sjabloon_doelgroep_zetten', {
+      p_sjabloon_id: B.sjabloonId, p_doel_functiegroep_id: A.functiegroepId,
+    })
+    check('A kan doelgroep van B-sjabloon niet zetten', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+
+  // Sjabloon-doelgroep: A mag zijn EIGEN sjabloon niet op B's functiegroep richten.
+  {
+    const { error } = await clientA.rpc('sjabloon_doelgroep_zetten', {
+      p_sjabloon_id: A.sjabloonId, p_doel_functiegroep_id: B.functiegroepId,
+    })
+    check('A kan eigen sjabloon niet op B-functiegroep richten', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+
+  // Positieve controle: binnen A werkt het wél (koppelen + doelgroep zetten).
+  {
+    const { error } = await clientA.rpc('persoon_functiegroep_zetten', {
+      p_persoon_id: A.persoonId, p_functiegroep_id: A.functiegroepId,
+    })
+    check('A koppelt eigen functiegroep aan eigen persoon (positieve controle)', !error,
+      error ? error.message : 'ok')
+  }
+  {
+    const { error } = await clientA.rpc('sjabloon_doelgroep_zetten', {
+      p_sjabloon_id: A.sjabloonId, p_doel_functiegroep_id: A.functiegroepId,
+    })
+    check('A richt eigen sjabloon op eigen functiegroep (positieve controle)', !error,
+      error ? error.message : 'ok')
+  }
+
+  // Defensieve dubbelcheck: B's functiegroep is niet stiekem gewijzigd/gearchiveerd.
+  {
+    const { data } = await admin.from('functiegroep').select('naam, gearchiveerd_op').eq('id', B.functiegroepId).single()
+    check('B-functiegroep bleef ongewijzigd na aanvallen van A',
+      !!data && data.gearchiveerd_op === null && data.naam === 'INSPTEST_groep_B')
+  }
 }
 
 async function cleanup() {
@@ -238,6 +345,7 @@ async function cleanup() {
       'inspectie_sjabloon',
       'bedrijf_modules',
       'personen',
+      'functiegroep',
     ]) {
       await admin.from(tbl).delete().in('company_id', companyIds)
     }

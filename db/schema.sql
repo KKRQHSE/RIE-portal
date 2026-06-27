@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-26T09:49:25.920Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-06-27T13:54:24.807Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -103,6 +103,15 @@ CREATE TABLE public.fotos (
   rie_versie_id uuid
 );
 
+CREATE TABLE public.functiegroep (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  naam text NOT NULL,
+  volgorde integer DEFAULT 0 NOT NULL,
+  gearchiveerd_op timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE public.herinner_instelling (
   company_id uuid NOT NULL,
   ritme text DEFAULT 'uit'::text NOT NULL,
@@ -165,7 +174,8 @@ CREATE TABLE public.inspectie_sjabloon (
   controlesoort text,
   actief boolean DEFAULT true NOT NULL,
   gearchiveerd_op timestamp with time zone,
-  aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL
+  aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL,
+  doel_functiegroep_id uuid
 );
 
 CREATE TABLE public.inspectie_sjabloon_punt (
@@ -217,7 +227,8 @@ CREATE TABLE public.personen (
   voorgesteld_door uuid,
   archived_at timestamp with time zone,
   created_at timestamp with time zone DEFAULT now() NOT NULL,
-  user_id uuid
+  user_id uuid,
+  functiegroep_id uuid
 );
 
 CREATE TABLE public.pva_items (
@@ -299,6 +310,7 @@ ALTER TABLE public.bewijs ADD CONSTRAINT bewijs_pkey PRIMARY KEY (id);
 ALTER TABLE public.companies ADD CONSTRAINT companies_pkey PRIMARY KEY (id);
 ALTER TABLE public.deellinks ADD CONSTRAINT deellinks_pkey PRIMARY KEY (id);
 ALTER TABLE public.fotos ADD CONSTRAINT fotos_pkey PRIMARY KEY (id);
+ALTER TABLE public.functiegroep ADD CONSTRAINT functiegroep_pkey PRIMARY KEY (id);
 ALTER TABLE public.herinner_instelling ADD CONSTRAINT herinner_instelling_pkey PRIMARY KEY (company_id);
 ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_pkey PRIMARY KEY (id);
 ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_pkey PRIMARY KEY (id);
@@ -346,6 +358,7 @@ ALTER TABLE public.deellinks ADD CONSTRAINT deellinks_company_id_fkey FOREIGN KE
 ALTER TABLE public.deellinks ADD CONSTRAINT deellinks_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE CASCADE;
 ALTER TABLE public.fotos ADD CONSTRAINT fotos_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.fotos ADD CONSTRAINT fotos_rie_versie_id_fkey FOREIGN KEY (rie_versie_id) REFERENCES rie_versies(id);
+ALTER TABLE public.functiegroep ADD CONSTRAINT functiegroep_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.herinner_instelling ADD CONSTRAINT herinner_instelling_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.herinner_instelling ADD CONSTRAINT herinner_instelling_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
@@ -361,12 +374,14 @@ ALTER TABLE public.inspectie_historie ADD CONSTRAINT inspectie_historie_company_
 ALTER TABLE public.inspectie_historie ADD CONSTRAINT inspectie_historie_inspectie_id_fkey FOREIGN KEY (inspectie_id) REFERENCES inspectie(id) ON DELETE CASCADE;
 ALTER TABLE public.inspectie_historie ADD CONSTRAINT inspectie_historie_wie_fkey FOREIGN KEY (wie) REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE public.inspectie_sjabloon ADD CONSTRAINT inspectie_sjabloon_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.inspectie_sjabloon ADD CONSTRAINT inspectie_sjabloon_doel_functiegroep_id_fkey FOREIGN KEY (doel_functiegroep_id) REFERENCES functiegroep(id) ON DELETE SET NULL;
 ALTER TABLE public.inspectie_sjabloon_punt ADD CONSTRAINT inspectie_sjabloon_punt_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.inspectie_sjabloon_punt ADD CONSTRAINT inspectie_sjabloon_punt_sjabloon_id_fkey FOREIGN KEY (sjabloon_id) REFERENCES inspectie_sjabloon(id) ON DELETE CASCADE;
 ALTER TABLE public.module_historie ADD CONSTRAINT module_historie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.modules ADD CONSTRAINT modules_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.modules ADD CONSTRAINT modules_rie_versie_id_fkey FOREIGN KEY (rie_versie_id) REFERENCES rie_versies(id);
 ALTER TABLE public.personen ADD CONSTRAINT personen_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.personen ADD CONSTRAINT personen_functiegroep_id_fkey FOREIGN KEY (functiegroep_id) REFERENCES functiegroep(id) ON DELETE SET NULL;
 ALTER TABLE public.personen ADD CONSTRAINT personen_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE public.personen ADD CONSTRAINT personen_voorgesteld_door_fkey FOREIGN KEY (voorgesteld_door) REFERENCES personen(id) ON DELETE SET NULL;
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
@@ -390,6 +405,7 @@ CREATE INDEX bewijs_company_idx ON public.bewijs USING btree (company_id);
 CREATE INDEX bewijs_item_idx ON public.bewijs USING btree (pva_item_id);
 CREATE INDEX deellinks_token_idx ON public.deellinks USING btree (token);
 CREATE INDEX fotos_company_idx ON public.fotos USING btree (company_id);
+CREATE INDEX functiegroep_company_idx ON public.functiegroep USING btree (company_id, volgorde);
 CREATE INDEX herinnering_log_company_idx ON public.herinnering_log USING btree (company_id, verzonden_op DESC);
 CREATE INDEX herinnering_log_persoon_idx ON public.herinnering_log USING btree (persoon_id, verzonden_op DESC);
 CREATE INDEX idx_fotos_rie_versie ON public.fotos USING btree (rie_versie_id);
@@ -418,6 +434,7 @@ ALTER TABLE public.bewijs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.deellinks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.fotos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.functiegroep ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.herinner_instelling ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.herinnering_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie ENABLE ROW LEVEL SECURITY;
@@ -459,6 +476,11 @@ CREATE POLICY deellinks_write ON public.deellinks AS PERMISSIVE FOR ALL TO publi
   WITH CHECK (((company_id = my_company_id()) OR is_admin()));
 CREATE POLICY fotos_select ON public.fotos AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
+CREATE POLICY functiegroep_sel ON public.functiegroep AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
+CREATE POLICY functiegroep_wr ON public.functiegroep AS PERMISSIVE FOR ALL TO public
+  USING (mag_bedrijf_beheren(company_id))
+  WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY herinner_instelling_select ON public.herinner_instelling AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY herinner_instelling_write ON public.herinner_instelling AS PERMISSIVE FOR ALL TO public
@@ -1311,6 +1333,76 @@ begin
   );
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.functiegroep_archiveren(p_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_company uuid;
+begin
+  select company_id into v_company from functiegroep where id = p_id;
+  if v_company is null then
+    raise exception 'Functiegroep niet gevonden';
+  end if;
+  if not mag_bedrijf_beheren(v_company) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  update functiegroep
+     set gearchiveerd_op = coalesce(gearchiveerd_op, now())
+   where id = p_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.functiegroep_opslaan(p_id uuid, p_company_id uuid, p_naam text, p_volgorde integer DEFAULT NULL::integer)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_company uuid;
+  v_volg    integer;
+  v_id      uuid;
+begin
+  if coalesce(btrim(p_naam), '') = '' then
+    raise exception 'Naam is verplicht';
+  end if;
+
+  if p_id is null then
+    if not mag_bedrijf_beheren(p_company_id) then
+      raise exception 'Geen toegang tot dit bedrijf';
+    end if;
+
+    v_volg := coalesce(
+      p_volgorde,
+      (select coalesce(max(volgorde), 0) + 1
+         from functiegroep where company_id = p_company_id)
+    );
+
+    insert into functiegroep (company_id, naam, volgorde)
+    values (p_company_id, btrim(p_naam), v_volg)
+    returning id into v_id;
+    return v_id;
+  end if;
+
+  -- Bestaande functiegroep: company_id afleiden, meegestuurd company_id negeren.
+  select company_id into v_company from functiegroep where id = p_id;
+  if v_company is null then
+    raise exception 'Functiegroep niet gevonden';
+  end if;
+  if not mag_bedrijf_beheren(v_company) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  update functiegroep
+     set naam     = btrim(p_naam),
+         volgorde = coalesce(p_volgorde, volgorde)
+   where id = p_id;
+  return p_id;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.geef_actie_vrij(p_actie_id uuid, p_opmerking text DEFAULT NULL::text, p_bewijs text DEFAULT NULL::text)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -2066,6 +2158,37 @@ CREATE OR REPLACE FUNCTION public.my_company_id()
 AS $function$
   select company_id from public.users where id = auth.uid()
 $function$;
+CREATE OR REPLACE FUNCTION public.persoon_functiegroep_zetten(p_persoon_id uuid, p_functiegroep_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_persoon_company uuid;
+  v_groep_company   uuid;
+begin
+  select company_id into v_persoon_company from personen where id = p_persoon_id;
+  if v_persoon_company is null then
+    raise exception 'Persoon niet gevonden';
+  end if;
+  if not mag_bedrijf_beheren(v_persoon_company) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  if p_functiegroep_id is not null then
+    select company_id into v_groep_company from functiegroep where id = p_functiegroep_id;
+    if v_groep_company is null then
+      raise exception 'Functiegroep niet gevonden';
+    end if;
+    if v_groep_company <> v_persoon_company then
+      raise exception 'Functiegroep hoort bij een ander bedrijf';
+    end if;
+  end if;
+
+  update personen set functiegroep_id = p_functiegroep_id where id = p_persoon_id;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid, p_tekst text, p_verplicht boolean DEFAULT false, p_volgorde integer DEFAULT NULL::integer)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -2165,6 +2288,39 @@ begin
   update inspectie_sjabloon
      set actief         = false,
          gearchiveerd_op = coalesce(gearchiveerd_op, now())
+   where id = p_sjabloon_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.sjabloon_doelgroep_zetten(p_sjabloon_id uuid, p_doel_functiegroep_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_sjabloon_company uuid;
+  v_groep_company    uuid;
+begin
+  select company_id into v_sjabloon_company from inspectie_sjabloon where id = p_sjabloon_id;
+  if v_sjabloon_company is null then
+    raise exception 'Sjabloon niet gevonden';
+  end if;
+  if not mag_bedrijf_beheren(v_sjabloon_company) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  if p_doel_functiegroep_id is not null then
+    select company_id into v_groep_company from functiegroep where id = p_doel_functiegroep_id;
+    if v_groep_company is null then
+      raise exception 'Functiegroep niet gevonden';
+    end if;
+    if v_groep_company <> v_sjabloon_company then
+      raise exception 'Functiegroep hoort bij een ander bedrijf';
+    end if;
+  end if;
+
+  update inspectie_sjabloon
+     set doel_functiegroep_id = p_doel_functiegroep_id
    where id = p_sjabloon_id;
 end;
 $function$;
@@ -2381,6 +2537,12 @@ GRANT EXECUTE ON FUNCTION public.deellink_concept_update(p_token text, p_actie_i
 GRANT EXECUTE ON FUNCTION public.deellink_data(p_token text) TO anon;
 GRANT EXECUTE ON FUNCTION public.deellink_data(p_token text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.deellink_data(p_token text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.functiegroep_archiveren(p_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.functiegroep_archiveren(p_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.functiegroep_archiveren(p_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.functiegroep_opslaan(p_id uuid, p_company_id uuid, p_naam text, p_volgorde integer) TO anon;
+GRANT EXECUTE ON FUNCTION public.functiegroep_opslaan(p_id uuid, p_company_id uuid, p_naam text, p_volgorde integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.functiegroep_opslaan(p_id uuid, p_company_id uuid, p_naam text, p_volgorde integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.geef_actie_vrij(p_actie_id uuid, p_opmerking text, p_bewijs text) TO anon;
 GRANT EXECUTE ON FUNCTION public.geef_actie_vrij(p_actie_id uuid, p_opmerking text, p_bewijs text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.geef_actie_vrij(p_actie_id uuid, p_opmerking text, p_bewijs text) TO service_role;
@@ -2445,6 +2607,9 @@ GRANT EXECUTE ON FUNCTION public.module_stopzetten(p_company_id uuid, p_module t
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO anon;
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO service_role;
+GRANT EXECUTE ON FUNCTION public.persoon_functiegroep_zetten(p_persoon_id uuid, p_functiegroep_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.persoon_functiegroep_zetten(p_persoon_id uuid, p_functiegroep_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.persoon_functiegroep_zetten(p_persoon_id uuid, p_functiegroep_id uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid, p_tekst text, p_verplicht boolean, p_volgorde integer) TO anon;
 GRANT EXECUTE ON FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid, p_tekst text, p_verplicht boolean, p_volgorde integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid, p_tekst text, p_verplicht boolean, p_volgorde integer) TO service_role;
@@ -2454,6 +2619,9 @@ GRANT EXECUTE ON FUNCTION public.punt_verwijderen(p_punt_id uuid) TO service_rol
 GRANT EXECUTE ON FUNCTION public.sjabloon_archiveren(p_sjabloon_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.sjabloon_archiveren(p_sjabloon_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.sjabloon_archiveren(p_sjabloon_id uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.sjabloon_doelgroep_zetten(p_sjabloon_id uuid, p_doel_functiegroep_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.sjabloon_doelgroep_zetten(p_sjabloon_id uuid, p_doel_functiegroep_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.sjabloon_doelgroep_zetten(p_sjabloon_id uuid, p_doel_functiegroep_id uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.sjabloon_opslaan(p_sjabloon_id uuid, p_company_id uuid, p_naam text, p_controlesoort text) TO anon;
 GRANT EXECUTE ON FUNCTION public.sjabloon_opslaan(p_sjabloon_id uuid, p_company_id uuid, p_naam text, p_controlesoort text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.sjabloon_opslaan(p_sjabloon_id uuid, p_company_id uuid, p_naam text, p_controlesoort text) TO service_role;

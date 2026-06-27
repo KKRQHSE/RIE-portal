@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-27T15:11:04.614Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-06-27T15:26:39.862Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -520,14 +520,8 @@ CREATE POLICY bedrijf_modules_wr ON public.bedrijf_modules AS PERMISSIVE FOR ALL
   WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_rubriek_sel ON public.bedrijf_rubriek AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
-CREATE POLICY bedrijf_rubriek_wr ON public.bedrijf_rubriek AS PERMISSIVE FOR ALL TO public
-  USING (mag_bedrijf_beheren(company_id))
-  WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_vraag_afwijking_sel ON public.bedrijf_vraag_afwijking AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
-CREATE POLICY bedrijf_vraag_afwijking_wr ON public.bedrijf_vraag_afwijking AS PERMISSIVE FOR ALL TO public
-  USING (mag_bedrijf_beheren(company_id))
-  WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY bewijs_select ON public.bewijs AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
 CREATE POLICY centrale_rubriek_adm ON public.centrale_rubriek AS PERMISSIVE FOR ALL TO public

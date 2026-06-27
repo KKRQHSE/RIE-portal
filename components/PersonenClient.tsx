@@ -4,16 +4,18 @@ import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { voorspelEmail } from '@/lib/email'
-import type { Company, Persoon, Deellink } from '@/lib/types'
+import type { Company, Persoon, Deellink, Functiegroep } from '@/lib/types'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import LogoutButton from './LogoutButton'
 import NaamVragen from './NaamVragen'
 import HuisstijlLogo from './HuisstijlLogo'
+import FunctiegroepBeheer from './FunctiegroepBeheer'
 
 type Props = {
   company: Company
   initialPersonen: Persoon[]
   initialDeellinks: Deellink[]
+  initialFunctiegroepen?: Functiegroep[]
   huisstijl?: HuisstijlView
   toonNaamVragen?: boolean
 }
@@ -29,8 +31,9 @@ function isActief(link: Deellink | undefined): link is Deellink {
   return true
 }
 
-export default function PersonenClient({ company, initialPersonen, initialDeellinks, huisstijl = VEILIGE_HUISSTIJL, toonNaamVragen = false }: Props) {
+export default function PersonenClient({ company, initialPersonen, initialDeellinks, initialFunctiegroepen = [], huisstijl = VEILIGE_HUISSTIJL, toonNaamVragen = false }: Props) {
   const [personen, setPersonen] = useState<Persoon[]>(initialPersonen)
+  const [functiegroepen, setFunctiegroepen] = useState<Functiegroep[]>(initialFunctiegroepen)
   const [links, setLinks] = useState<Record<string, Deellink>>(() =>
     Object.fromEntries(initialDeellinks.map(l => [l.persoon_id, l]))
   )
@@ -85,7 +88,7 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
     const { data, error } = await supabase
       .from('personen')
       .insert({ company_id: company.id, naam: naam.trim(), email: email.trim() || null, status: 'actief' })
-      .select('id, company_id, naam, email, status, voorgesteld_door, archived_at')
+      .select('id, company_id, naam, email, status, voorgesteld_door, archived_at, functiegroep_id')
       .single()
     setBezig(false)
     if (error || !data) {
@@ -129,6 +132,22 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
       if (!cur) return prev
       return { ...prev, [persoonId]: { ...cur, ingetrokken: true } }
     })
+  }
+
+  // Functiegroep (rol binnen het bedrijf) van een persoon zetten/losmaken via de
+  // RPC met cross-company-guard. Optimistisch; bij een fout draaien we terug.
+  async function zetFunctiegroep(persoonId: string, functiegroepId: string | null) {
+    const vorige = personen.find(p => p.id === persoonId)?.functiegroep_id ?? null
+    setPersonen(prev => prev.map(p => (p.id === persoonId ? { ...p, functiegroep_id: functiegroepId } : p)))
+    const supabase = createClient()
+    const { error } = await supabase.rpc('persoon_functiegroep_zetten', {
+      p_persoon_id: persoonId,
+      p_functiegroep_id: functiegroepId,
+    })
+    if (error) {
+      setPersonen(prev => prev.map(p => (p.id === persoonId ? { ...p, functiegroep_id: vorige } : p)))
+      setFout('Functiegroep wijzigen mislukt. Probeer het opnieuw.')
+    }
   }
 
   // Stuurt de actiehouder een uitnodiging met zijn deellink. De mailsleutel zit
@@ -235,6 +254,13 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
           </div>
         </form>
 
+        {/* Functiegroepen beheren — de rollen die je hierboven aan personen koppelt */}
+        <FunctiegroepBeheer
+          companyId={company.id}
+          functiegroepen={functiegroepen}
+          setFunctiegroepen={setFunctiegroepen}
+        />
+
         {/* Lijst */}
         <div className="space-y-3">
           {personen.map(p => {
@@ -258,6 +284,22 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
                     {actief ? 'deellink actief' : 'geen actieve link'}
                   </span>
                 </div>
+
+                {/* Functiegroep (rol in het bedrijf) — los van het portaalrecht */}
+                {functiegroepen.length > 0 && (
+                  <div className="mt-3 flex items-center gap-2 flex-wrap">
+                    <label htmlFor={`fg-${p.id}`} className="text-xs text-ink/50">Functiegroep</label>
+                    <select
+                      id={`fg-${p.id}`}
+                      value={p.functiegroep_id ?? ''}
+                      onChange={e => zetFunctiegroep(p.id, e.target.value || null)}
+                      className="text-sm border border-ink/20 rounded px-2 py-1.5 min-h-[40px] bg-white"
+                    >
+                      <option value="">— geen —</option>
+                      {functiegroepen.map(g => <option key={g.id} value={g.id}>{g.naam}</option>)}
+                    </select>
+                  </div>
+                )}
 
                 {/* Deellink-beheer */}
                 <div className="mt-3 pt-3 border-t border-surface">

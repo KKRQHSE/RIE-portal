@@ -11,6 +11,7 @@ import type {
   InspectieSjabloonPunt,
   BibliotheekRegel,
   InspectieStatus,
+  Functiegroep,
 } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
@@ -21,6 +22,7 @@ type Props = {
   huisstijl?: HuisstijlView
   initialSjablonen: SjabloonMetPunten[]
   initialRegels: BibliotheekRegel[]
+  functiegroepen?: Functiegroep[]
 }
 
 type View = 'inspecties' | 'sjablonen'
@@ -55,6 +57,7 @@ export default function InspectieClient({
   huisstijl = VEILIGE_HUISSTIJL,
   initialSjablonen,
   initialRegels,
+  functiegroepen = [],
 }: Props) {
   const supabase = createClient()
   const router = useRouter()
@@ -87,6 +90,7 @@ export default function InspectieClient({
         controlesoort: controlesoort || null,
         actief: true,
         gearchiveerd_op: null,
+        doel_functiegroep_id: null,
         punten: [],
       },
     ])
@@ -211,6 +215,7 @@ export default function InspectieClient({
             ) : (
               <SjabloonBeheer
                 sjablonen={sjablonen}
+                functiegroepen={functiegroepen}
                 onNieuw={nieuwSjabloon}
                 onArchiveer={archiveerSjabloon}
                 onPatch={patchSjabloon}
@@ -418,12 +423,14 @@ function BibliotheekRij({ regel, onOpen }: { regel: BibliotheekRegel; onOpen: ()
 
 function SjabloonBeheer({
   sjablonen,
+  functiegroepen,
   onNieuw,
   onArchiveer,
   onPatch,
   setFout,
 }: {
   sjablonen: SjabloonMetPunten[]
+  functiegroepen: Functiegroep[]
   onNieuw: (naam: string, controlesoort: string) => void
   onArchiveer: (id: string) => void
   onPatch: (id: string, updates: Partial<SjabloonMetPunten>) => void
@@ -472,6 +479,7 @@ function SjabloonBeheer({
         <SjabloonKaart
           key={s.id}
           sjabloon={s}
+          functiegroepen={functiegroepen}
           onArchiveer={() => onArchiveer(s.id)}
           onPatch={updates => onPatch(s.id, updates)}
           setFout={setFout}
@@ -483,11 +491,13 @@ function SjabloonBeheer({
 
 function SjabloonKaart({
   sjabloon,
+  functiegroepen,
   onArchiveer,
   onPatch,
   setFout,
 }: {
   sjabloon: SjabloonMetPunten
+  functiegroepen: Functiegroep[]
   onArchiveer: () => void
   onPatch: (updates: Partial<SjabloonMetPunten>) => void
   setFout: (v: string | null) => void
@@ -499,6 +509,18 @@ function SjabloonKaart({
   const [bezig, setBezig] = useState(false)
 
   const punten = sjabloon.punten
+  const doelNaam = functiegroepen.find(g => g.id === sjabloon.doel_functiegroep_id)?.naam ?? null
+
+  // Doel-functiegroep: voor welke rol is deze checklist bedoeld (leeg = iedereen).
+  async function zetDoelgroep(functiegroepId: string | null) {
+    setFout(null)
+    const { error } = await supabase.rpc('sjabloon_doelgroep_zetten', {
+      p_sjabloon_id: sjabloon.id,
+      p_doel_functiegroep_id: functiegroepId,
+    })
+    if (error) { setFout(error.message); return }
+    onPatch({ doel_functiegroep_id: functiegroepId })
+  }
 
   async function voegPuntToe() {
     if (!nieuwTekst.trim()) return
@@ -579,6 +601,7 @@ function SjabloonKaart({
           <p className="font-medium text-ink truncate">{sjabloon.naam}</p>
           <p className="text-xs text-ink/50 mt-0.5">
             {sjabloon.controlesoort ? `${sjabloon.controlesoort} · ` : ''}{punten.length} punt{punten.length === 1 ? '' : 'en'}
+            {doelNaam ? ` · voor ${doelNaam}` : ''}
           </p>
         </div>
         <span className="text-ink/30 text-xs shrink-0">{uit ? '▲' : '▼'}</span>
@@ -586,6 +609,22 @@ function SjabloonKaart({
 
       {uit && (
         <div className="border-t border-surface px-4 pb-4 pt-3 space-y-3">
+          {/* Doel-functiegroep: voor welke rol is deze checklist bedoeld */}
+          {functiegroepen.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <label htmlFor={`doel-${sjabloon.id}`} className="text-xs text-ink/50">Doel-functiegroep</label>
+              <select
+                id={`doel-${sjabloon.id}`}
+                value={sjabloon.doel_functiegroep_id ?? ''}
+                onChange={e => zetDoelgroep(e.target.value || null)}
+                className="text-sm border border-ink/20 rounded px-2 py-1.5 min-h-[40px] bg-white"
+              >
+                <option value="">Voor iedereen</option>
+                {functiegroepen.map(g => <option key={g.id} value={g.id}>{g.naam}</option>)}
+              </select>
+            </div>
+          )}
+
           {punten.length === 0 && <p className="text-xs text-ink/40">Nog geen punten.</p>}
 
           <ul className="space-y-2">

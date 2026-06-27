@@ -6,6 +6,7 @@ import type {
   InspectieSjabloonPunt,
   SjabloonMetPunten,
   BibliotheekRegel,
+  Functiegroep,
 } from '@/lib/types'
 
 export default async function InspectiesPage({
@@ -27,6 +28,7 @@ export default async function InspectiesPage({
     { data: company },
     { data: sjablonen },
     { data: regels },
+    { data: functiegroepen },
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
@@ -47,7 +49,7 @@ export default async function InspectiesPage({
     // Actieve sjablonen (niet gearchiveerd).
     supabase
       .from('inspectie_sjabloon')
-      .select('id, company_id, naam, controlesoort, actief, gearchiveerd_op')
+      .select('id, company_id, naam, controlesoort, actief, gearchiveerd_op, doel_functiegroep_id')
       .eq('company_id', company_id)
       .is('gearchiveerd_op', null)
       .order('naam', { ascending: true }),
@@ -55,6 +57,13 @@ export default async function InspectiesPage({
     // statussen), nieuwste eerst, met de cijfers en de uitvoerder. Autorisatie
     // zit in de RPC zelf.
     supabase.rpc('inspectie_bibliotheek', { p_company_id: company_id }),
+    // Actieve functiegroepen voor de doel-functiegroep-keuze op een sjabloon.
+    supabase
+      .from('functiegroep')
+      .select('id, company_id, naam, volgorde, gearchiveerd_op')
+      .eq('company_id', company_id)
+      .is('gearchiveerd_op', null)
+      .order('volgorde', { ascending: true }),
     haalHuisstijl(company_id),
   ])
 
@@ -88,6 +97,7 @@ export default async function InspectiesPage({
       huisstijl={huisstijl}
       initialSjablonen={sjablonenMetPunten}
       initialRegels={(regels ?? []) as BibliotheekRegel[]}
+      functiegroepen={(functiegroepen ?? []) as Functiegroep[]}
     />
   )
 }

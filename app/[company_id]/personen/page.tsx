@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import PersonenClient from '@/components/PersonenClient'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
 import { haalPersonen } from '@/lib/personen-data'
+import type { Functiegroep } from '@/lib/types'
 
 export default async function PersonenPage({
   params,
@@ -35,7 +36,7 @@ export default async function PersonenPage({
 
   // Onafhankelijke leesacties tegelijk. haalPersonen koppelt de ingelogde KAM
   // alleen als hij nog ontbreekt (geen schrijfactie bij elke lading meer).
-  const [{ data: company }, personen, { data: deellinks }, huisstijl] =
+  const [{ data: company }, personen, { data: deellinks }, { data: functiegroepen }, huisstijl] =
     await Promise.all([
       supabase
         .from('companies')
@@ -47,6 +48,13 @@ export default async function PersonenPage({
         .from('deellinks')
         .select('id, company_id, persoon_id, token, vervalt_op, ingetrokken')
         .eq('company_id', company_id),
+      // Actieve functiegroepen van dit bedrijf (RLS schermt op company af).
+      supabase
+        .from('functiegroep')
+        .select('id, company_id, naam, volgorde, gearchiveerd_op')
+        .eq('company_id', company_id)
+        .is('gearchiveerd_op', null)
+        .order('volgorde', { ascending: true }),
       haalHuisstijl(company_id),
     ])
 
@@ -57,6 +65,7 @@ export default async function PersonenPage({
       company={company}
       initialPersonen={personen}
       initialDeellinks={deellinks ?? []}
+      initialFunctiegroepen={(functiegroepen ?? []) as Functiegroep[]}
       huisstijl={huisstijl}
       toonNaamVragen={isClient && !heeftNaam}
     />

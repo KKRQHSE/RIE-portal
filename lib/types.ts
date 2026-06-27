@@ -114,6 +114,18 @@ export type Persoon = {
   status: string
   voorgesteld_door: string | null
   archived_at: string | null
+  // Rol binnen het bedrijf (los van het systeemrecht mag_bedrijf_beheren).
+  functiegroep_id: string | null
+}
+
+// Een functiegroep is wat iemand in het bedrijf doet (QHSE-er, Uitvoerder, …).
+// Per bedrijf beheerd; soft-delete via gearchiveerd_op.
+export type Functiegroep = {
+  id: string
+  company_id: string
+  naam: string
+  volgorde: number
+  gearchiveerd_op: string | null
 }
 
 export type Deellink = {
@@ -134,6 +146,8 @@ export type InspectieSjabloon = {
   controlesoort: string | null
   actief: boolean
   gearchiveerd_op: string | null
+  // Doelrol: voor wie is deze checklist bedoeld. null = voor iedereen.
+  doel_functiegroep_id: string | null
 }
 
 export type InspectieSjabloonPunt = {

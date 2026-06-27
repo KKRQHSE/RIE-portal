@@ -113,6 +113,12 @@ export default function InspectieClient({
     [initialNorm],
   )
 
+  // Telbadge: afwijkende punten waar de centrale norm is bijgewerkt (onbeantwoord).
+  const normSignalen = useMemo(
+    () => initialNorm.reduce((n, r) => n + r.vragen.filter(v => v.norm_gewijzigd).length, 0),
+    [initialNorm],
+  )
+
   // --- Inspectie starten vanuit de centrale norm ---
   async function startInspectieCentraal() {
     setFout(null)
@@ -231,10 +237,18 @@ export default function InspectieClient({
               </button>
               <button
                 onClick={() => setView('norm')}
-                className={`text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors
+                className={`text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center gap-2 rounded-full border transition-colors
                   ${view === 'norm' ? 'bg-accent text-white border-accent' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}
               >
                 Norm
+                {normSignalen > 0 && (
+                  <span
+                    className={`text-xs font-semibold px-1.5 py-0.5 rounded-full tabular-nums ${view === 'norm' ? 'bg-white/25 text-white' : 'bg-blue-100 text-blue-700'}`}
+                    title="Afwijkende punten waar de centrale norm is bijgewerkt"
+                  >
+                    {normSignalen}
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => setView('sjablonen')}

@@ -62,7 +62,7 @@ function Cijfer({ n, label, kleur }: { n: number; label: string; kleur?: string 
 export default function DashboardClient({
   company, overzicht, huisstijl = VEILIGE_HUISSTIJL, toonInspecties = false,
 }: Props) {
-  const { pva, te_beoordelen, prio_open, termijn, rie, inspecties, bewijs } = overzicht
+  const { pva, te_beoordelen, prio_open, termijn, rie, inspecties, norm_bijgewerkt, bewijs } = overzicht
   const cid = company.id
 
   const navItem = 'text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full transition-colors'
@@ -121,6 +121,26 @@ export default function DashboardClient({
                 </p>
                 <p className="text-xs text-ink/50 mt-0.5">
                   Een actiehouder diende een voorstel in — beoordeel het in het Plan van Aanpak →
+                </p>
+              </div>
+            </div>
+          </Link>
+        )}
+
+        {/* Norm bijgewerkt — alleen relevant bij actieve inspectiemodule en afwijkingen. */}
+        {toonInspecties && norm_bijgewerkt > 0 && (
+          <Link
+            href={`/${cid}/inspecties`}
+            className="block bg-blue-50 ring-1 ring-blue-200 rounded-lg p-5 mb-6 hover:bg-blue-100/60 transition-colors"
+          >
+            <div className="flex items-center gap-4">
+              <span className="text-3xl font-semibold text-blue-700">{norm_bijgewerkt}</span>
+              <div>
+                <p className="text-sm font-medium text-ink">
+                  {norm_bijgewerkt === 1 ? 'Afwijkend punt waar' : 'Afwijkende punten waar'} de centrale norm is bijgewerkt
+                </p>
+                <p className="text-xs text-ink/50 mt-0.5">
+                  Bekijk ze in Werkplekinspectie → Norm: overnemen of je eigen versie houden →
                 </p>
               </div>
             </div>

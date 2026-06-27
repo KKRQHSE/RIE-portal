@@ -328,6 +328,7 @@ export type DashboardOverzicht = {
   termijn: { over: number; binnenkort: number; zonder_datum: number }
   rie: { versie: number; status: string; geldig_tot: string | null; verloopt_binnenkort: boolean } | null
   inspecties: { open: number; afgerond: number; open_bevindingen: number }
+  norm_bijgewerkt: number   // afwijkende punten waar de centrale norm is bijgewerkt
   bewijs: { afgerond_met_bewijs: number; afgerond_zonder_bewijs: number }
 }
 

@@ -233,6 +233,28 @@ async function run() {
     }
   }
 
+  // --- Signaal 'norm gewijzigd' + dashboard-telling, en dat 'mijn versie houden' wist ---
+  {
+    await clientA.rpc('vraag_lokaal_aanpassen', { p_company_id: aCompany, p_vraag_id: vraagId, p_lokale_tekst: 'A versie' })
+    // Admin wijzigt de centrale tekst → versie omhoog.
+    await adminClient.rpc('centrale_vraag_opslaan', { p_id: vraagId, p_rubriek_id: rubriekId, p_tekst: 'CBTEST centrale vraag v2?', p_volgorde: 1 })
+
+    const { data: norm } = await clientA.rpc('bedrijf_norm_overzicht', { p_company_id: aCompany })
+    const v = (Array.isArray(norm) ? norm.find(r => r.rubriek_id === rubriekId) : null)?.vragen?.find(x => x.vraag_id === vraagId)
+    check('A ziet norm_gewijzigd na centrale tekstwijziging', v?.norm_gewijzigd === true)
+
+    const { data: dash } = await clientA.rpc('dashboard_overzicht', { p_company_id: aCompany })
+    check('Dashboard telt de bijgewerkte afwijking', (dash?.norm_bijgewerkt ?? 0) >= 1, `${dash?.norm_bijgewerkt}`)
+
+    // 'Mijn versie houden' = afwijking herbevestigen → basis_versie bij, signaal weg.
+    await clientA.rpc('vraag_lokaal_aanpassen', { p_company_id: aCompany, p_vraag_id: vraagId, p_lokale_tekst: 'A versie' })
+    const { data: dash2 } = await clientA.rpc('dashboard_overzicht', { p_company_id: aCompany })
+    check('Signaal verdwijnt na mijn-versie-houden', (dash2?.norm_bijgewerkt ?? 0) === 0, `${dash2?.norm_bijgewerkt}`)
+
+    // Opruimen voor het archiveer-blok hieronder: terug naar centraal.
+    await clientA.rpc('vraag_terug_naar_centraal', { p_company_id: aCompany, p_vraag_id: vraagId })
+  }
+
   // --- Een lokale afwijking blijft leven, ook als centraal archiveert ---
   {
     await clientA.rpc('vraag_lokaal_aanpassen', { p_company_id: aCompany, p_vraag_id: vraagId, p_lokale_tekst: 'A blijft afwijken na archivering' })

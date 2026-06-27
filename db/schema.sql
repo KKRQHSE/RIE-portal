@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-27T15:54:06.737Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-06-27T16:02:49.020Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -1220,7 +1220,6 @@ begin
   end if;
 
   select jsonb_build_object(
-    -- Voortgang PvA: de kop-donut.
     'pva', (
       select jsonb_build_object(
         'totaal',         count(*),
@@ -1234,14 +1233,12 @@ begin
       from pva_items where company_id = p_company_id
     ),
 
-    -- Te beoordelen: actiehouder diende een voorstel in, KAM moet vrijgeven/terugsturen.
     'te_beoordelen', (
       select count(*) from pva_items
       where company_id = p_company_id
         and concept_status is not null and btrim(concept_status) <> ''
     ),
 
-    -- Openstaand per prioriteit (alles wat niet afgerond is).
     'prio_open', (
       select jsonb_build_object(
         'Hoog',   count(*) filter (where prio = 'Hoog'),
@@ -1252,7 +1249,6 @@ begin
       where company_id = p_company_id and status <> 'Afgerond'
     ),
 
-    -- Termijn-urgentie (op de machine-leesbare termijn_datum).
     'termijn', (
       select jsonb_build_object(
         'over',         count(*) filter (where termijn_datum < current_date),
@@ -1265,7 +1261,6 @@ begin
       where company_id = p_company_id and status <> 'Afgerond'
     ),
 
-    -- RI&E-geldigheid: de meest recente versie van dit bedrijf (of null).
     'rie', (
       select case when r.id is null then null else jsonb_build_object(
         'versie',               r.versie,
@@ -1280,7 +1275,6 @@ begin
       ) r
     ),
 
-    -- Inspecties: lopend vs afgerond + onafgehandelde niet_in_orde-bevindingen.
     'inspecties', jsonb_build_object(
       'open', (
         select count(*) from inspectie
@@ -1297,7 +1291,15 @@ begin
       )
     ),
 
-    -- Bewijslast: kwaliteit van afhandeling, niet alleen het vinkje.
+    -- Aantal afwijkende punten waar de centrale norm is bijgewerkt (onbeantwoord).
+    'norm_bijgewerkt', (
+      select count(*)
+      from bedrijf_rubriek br
+      join centrale_vraag q on q.rubriek_id = br.rubriek_id and q.gearchiveerd_op is null
+      join bedrijf_vraag_afwijking a on a.vraag_id = q.id and a.company_id = p_company_id
+      where br.company_id = p_company_id and q.versie > a.basis_versie
+    ),
+
     'bewijs', (
       select jsonb_build_object(
         'afgerond_met_bewijs', count(*) filter (where heeft_bewijs),

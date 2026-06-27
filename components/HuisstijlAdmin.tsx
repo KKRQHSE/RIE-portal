@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { Merk, BedrijfHuisstijl } from '@/lib/types'
+import { kleurUitLogo } from '@/lib/logo-kleur'
 import LogoutButton from './LogoutButton'
 
 const BUCKET = 'merk-assets'
@@ -32,6 +33,65 @@ const LogoPreview = ({ src, alt }: { src: string; alt: string }) => (
   // eslint-disable-next-line @next/next/no-img-element
   <img src={src} alt={alt} className="h-10 w-auto object-contain" />
 )
+
+// Knop "Kleur uit logo halen" → toont een VOORSTEL (kleurstaal + hex + bevestigknop).
+// Niets wordt automatisch overgenomen: pas op "Gebruik deze kleur" roept hij onGebruik
+// aan, dat de bestaande accent-state vult (opslaan gebeurt via de gewone Opslaan-knop).
+function KleurUitLogo({ logoUrl, onGebruik }: { logoUrl: string | null; onGebruik: (hex: string) => void }) {
+  const [bezig, setBezig] = useState(false)
+  const [voorstel, setVoorstel] = useState<string | null>(null)
+  const [melding, setMelding] = useState<string | null>(null)
+
+  async function bepaal() {
+    if (!logoUrl) return
+    setBezig(true)
+    setMelding(null)
+    setVoorstel(null)
+    const res = await kleurUitLogo(logoUrl)
+    setBezig(false)
+    if ('hex' in res) {
+      setVoorstel(res.hex)
+    } else if (res.fout === 'geen-kleur') {
+      setMelding('Geen duidelijke kleur gevonden — kies handmatig.')
+    } else {
+      setMelding('Kon het logo niet uitlezen — kies handmatig.')
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={bepaal}
+        disabled={!logoUrl || bezig}
+        title={logoUrl ? undefined : 'Upload eerst een logo'}
+        className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
+      >
+        {bezig ? 'Bezig…' : 'Kleur uit logo halen'}
+      </button>
+
+      {voorstel && (
+        <span className="inline-flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="inline-block h-5 w-5 rounded border border-ink/20 shrink-0"
+            style={{ backgroundColor: voorstel }}
+          />
+          <span className="text-xs font-mono text-ink/70">{voorstel}</span>
+          <button
+            type="button"
+            onClick={() => { onGebruik(voorstel); setVoorstel(null); setMelding(null) }}
+            className="text-xs px-3 py-1.5 rounded-full bg-ink text-white hover:opacity-90 transition-opacity"
+          >
+            Gebruik deze kleur {voorstel}
+          </button>
+        </span>
+      )}
+
+      {melding && <span className="text-xs text-ink/50">{melding}</span>}
+    </div>
+  )
+}
 
 export default function HuisstijlAdmin({
   initialMerken,
@@ -181,6 +241,7 @@ function MerkKaart({
               />
             </label>
           </div>
+          <KleurUitLogo logoUrl={logoUrl} onGebruik={setAccent} />
           <div className="flex items-center gap-3">
             <button
               onClick={opslaan}
@@ -409,6 +470,12 @@ function KlantForm({
             <span className="text-xs text-ink/40">erft van merk</span>
           )}
         </div>
+      </div>
+
+      {/* Kleur uit het (klant- of merk)logo halen — bron: klantlogo indien aanwezig */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-ink/50 w-28 shrink-0" />
+        <KleurUitLogo logoUrl={klantLogoUrl ?? merkLogoUrl} onGebruik={setAccentOverride} />
       </div>
 
       {/* Mini-preview van de logocombinatie */}

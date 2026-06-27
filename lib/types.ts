@@ -381,6 +381,28 @@ export type ToolboxOverzichtItem = {
   geldende_video_url: string | null
 }
 
+// Wat de werknemer via zijn token ziet (RPC toolbox_voor_token).
+export type WerknemerQuizVraag = {
+  id: string
+  vraagtekst: string
+  opties: string[]
+  juist_antwoord: number
+  uitleg: string | null
+}
+
+export type WerknemerToolbox = {
+  toolbox_id: string
+  titel: string
+  tekst: string
+  video_url: string | null
+  vereist_video: boolean
+  vereist_quiz: boolean
+  quiz_slaaggrens: number
+  quiz_uitleg_modus: 'per_vraag' | 'aan_eind'
+  vragen: WerknemerQuizVraag[]
+  afgerond_dit_jaar: boolean
+}
+
 // ---- Managementdashboard ----
 
 // Payload van de RPC dashboard_overzicht(p_company_id): alle tegelcijfers van één bedrijf.

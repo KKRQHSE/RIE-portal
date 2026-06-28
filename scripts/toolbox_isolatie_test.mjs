@@ -152,6 +152,22 @@ async function run() {
     check('record hoort bij de juiste persoon/bedrijf met bevroren naam', !!data && data.persoon_id === p1.id && data.company_id === aCompany && data.bevestigde_naam === 'TBTEST_P1' && data.bewijssoort === 'digitaal')
   }
 
+  // ÉÉN PER JAAR: tweede afronding zelfde toolbox/persoon/jaar geweigerd (RPC + DB).
+  {
+    const { error } = await anon.rpc('toolbox_afronden_token', { p_token: token, p_toolbox_id: tbId, p_video_bekeken: false, p_quiz_antwoorden: [], p_naam_bevestigd: true, p_handtekening: 'data:image/png;base64,BBBB' })
+    check('tweede afronding zelfde toolbox/jaar geweigerd (RPC)', !!error && /al afgerond/i.test(error.message || ''), error?.message)
+  }
+  {
+    const { error } = await admin.from('toolbox_deelname').insert({ company_id: aCompany, persoon_id: p1.id, toolbox_id: tbId, bewijssoort: 'digitaal', titel_snap: 'x', tekst_snap: 'x', bevestigde_naam: 'TBTEST_P1', naam_bevestigd: true, handtekening: 'data:img', handtekening_gezet_op: new Date().toISOString() })
+    check('tweede afronding zelfde toolbox/jaar geweigerd (DB-constraint, ook directe insert)', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+  {
+    // Een ander kalenderjaar mag wél (toolboxen worden jaarlijks herhaald).
+    const vorigJaar = `${new Date().getUTCFullYear() - 1}-06-01T10:00:00Z`
+    const { data, error } = await admin.from('toolbox_deelname').insert({ company_id: aCompany, persoon_id: p1.id, toolbox_id: tbId, bewijssoort: 'digitaal', titel_snap: 'x', tekst_snap: 'x', bevestigde_naam: 'TBTEST_P1', naam_bevestigd: true, handtekening: 'data:img', handtekening_gezet_op: vorigJaar, afgerond_op: vorigJaar }).select('id').single()
+    check('afronding in een ander kalenderjaar mag wél', !error && !!data, error?.message)
+  }
+
   // ONVERANDERLIJKHEID: zelfs service_role mag het record niet wijzigen.
   {
     const { error } = await admin.from('toolbox_deelname').update({ titel_snap: 'GEHACKT' }).eq('id', deelnameId)

@@ -4,21 +4,13 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import type { WerknemerToolbox } from '@/lib/types'
+import { videoBron } from '@/lib/video-bron'
 import HuisstijlLogo from './HuisstijlLogo'
 import Handtekening from './Handtekening'
+import YouTubeSpeler from './YouTubeSpeler'
+import BestandSpeler from './BestandSpeler'
 
 type Stap = 'inhoud' | 'quiz' | 'naam' | 'mismatch' | 'handtekening' | 'klaar' | 'al_afgerond'
-
-// Best-effort omzetting van een YouTube/Vimeo-link naar een embed-bron.
-function videoEmbed(url: string): string | null {
-  try {
-    const u = new URL(url)
-    if (u.hostname.includes('youtube.com')) { const id = u.searchParams.get('v'); if (id) return `https://www.youtube.com/embed/${id}` }
-    if (u.hostname === 'youtu.be') { const id = u.pathname.slice(1); if (id) return `https://www.youtube.com/embed/${id}` }
-    if (u.hostname.includes('vimeo.com')) { const id = u.pathname.split('/').filter(Boolean).pop(); if (id && /^\d+$/.test(id)) return `https://player.vimeo.com/video/${id}` }
-  } catch { /* geen geldige URL */ }
-  return null
-}
 
 export default function ToolboxGastClient({
   token, persoonNaam, bedrijfNaam, huisstijl = VEILIGE_HUISSTIJL, initialToolboxen,
@@ -34,6 +26,7 @@ export default function ToolboxGastClient({
   const [open, setOpen] = useState<WerknemerToolbox | null>(null)
   const [stap, setStap] = useState<Stap>('inhoud')
   const [videoBekeken, setVideoBekeken] = useState(false)
+  const [videoFout, setVideoFout] = useState(false)
   const [antwoorden, setAntwoorden] = useState<Record<string, number>>({})
   const [nagekeken, setNagekeken] = useState(false)
   const [handtekening, setHandtekening] = useState('')
@@ -42,7 +35,7 @@ export default function ToolboxGastClient({
 
   function openToolbox(t: WerknemerToolbox) {
     // Al dit jaar afgerond → geen tweede flow/tekenscherm, alleen een melding.
-    setOpen(t); setStap(t.afgerond_dit_jaar ? 'al_afgerond' : 'inhoud'); setVideoBekeken(false)
+    setOpen(t); setStap(t.afgerond_dit_jaar ? 'al_afgerond' : 'inhoud'); setVideoBekeken(false); setVideoFout(false)
     setAntwoorden({}); setNagekeken(false); setHandtekening(''); setFout(null)
   }
   function sluit() { setOpen(null) }
@@ -66,7 +59,8 @@ export default function ToolboxGastClient({
     setStap('klaar')
   }
 
-  const embed = open?.video_url ? videoEmbed(open.video_url) : null
+  const bron = open?.video_url ? videoBron(open.video_url) : null
+  const speelbaar = !!bron && (bron.type === 'youtube' || bron.type === 'bestand') && !videoFout
 
   return (
     <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
@@ -119,24 +113,44 @@ export default function ToolboxGastClient({
             {stap === 'inhoud' && (
               <div className="space-y-4">
                 <p className="text-sm text-ink whitespace-pre-wrap">{open.tekst}</p>
-                {open.video_url && (
-                  <div>
-                    {embed ? (
-                      <div className="aspect-video w-full rounded overflow-hidden border border-surface">
-                        <iframe src={embed} title="Toolbox-video" className="w-full h-full" allowFullScreen
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" />
+
+                {/* Video met echte afspeeldetectie (≥90% = bekeken; doorspoelen telt). */}
+                {open.video_url && bron && (
+                  <div className="space-y-2">
+                    {bron.type === 'youtube' && !videoFout && (
+                      <YouTubeSpeler videoId={bron.id} onBekeken={() => setVideoBekeken(true)} onFout={() => setVideoFout(true)} />
+                    )}
+                    {bron.type === 'bestand' && !videoFout && (
+                      <BestandSpeler src={bron.src} onBekeken={() => setVideoBekeken(true)} onFout={() => setVideoFout(true)} />
+                    )}
+
+                    {/* Speelbaar maar nog niet 90% + vereist: korte uitleg, knop nog uit. */}
+                    {speelbaar && open.vereist_video && !videoBekeken && (
+                      <p className="text-xs text-ink/50">“Volgende” wordt actief zodra je de video grotendeels (≈90%) hebt bekeken. Doorspoelen mag.</p>
+                    )}
+                    {speelbaar && videoBekeken && (
+                      <p className="text-xs text-green-700">✓ Video bekeken.</p>
+                    )}
+
+                    {/* Niet automatisch afspeelbaar of laadfout → niet vastlopen. */}
+                    {(!speelbaar) && (
+                      <div className="rounded bg-amber-50 border border-amber-200 p-2 space-y-2">
+                        <p className="text-xs text-amber-800">
+                          {videoFout ? 'De video kon hier niet worden afgespeeld.' : 'Deze video kan hier niet automatisch worden afgespeeld.'}
+                          {' '}Open hem in een nieuw tabblad{open.vereist_video ? ' en bevestig daarna dat je hem hebt bekeken' : ''}.
+                        </p>
+                        <a href={open.video_url} target="_blank" rel="noopener noreferrer" className="text-sm text-accent hover:underline">Open de video in een nieuw tabblad →</a>
+                        {open.vereist_video && (
+                          <label className="flex items-center gap-2 text-sm text-ink/70">
+                            <input type="checkbox" checked={videoBekeken} onChange={e => setVideoBekeken(e.target.checked)} className="accent-[color:var(--color-accent)]" />
+                            Ik heb de video bekeken
+                          </label>
+                        )}
                       </div>
-                    ) : (
-                      <a href={open.video_url} target="_blank" rel="noopener noreferrer" className="text-sm text-accent hover:underline">Open de video in een nieuw tabblad →</a>
                     )}
                   </div>
                 )}
-                {open.vereist_video && (
-                  <label className="flex items-center gap-2 text-sm text-ink/70">
-                    <input type="checkbox" checked={videoBekeken} onChange={e => setVideoBekeken(e.target.checked)} className="accent-[color:var(--color-accent)]" />
-                    Ik heb de video bekeken
-                  </label>
-                )}
+
                 <button onClick={() => setStap(heeftQuiz ? 'quiz' : 'naam')}
                   disabled={open.vereist_video && !videoBekeken}
                   className="text-sm px-5 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium hover:opacity-90 disabled:opacity-40">

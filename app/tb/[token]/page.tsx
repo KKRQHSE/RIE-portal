@@ -7,8 +7,28 @@ import {
   type HuisstijlView,
 } from '@/lib/huisstijl'
 import type { WerknemerToolbox } from '@/lib/types'
+import { parseStorageRef } from '@/lib/video-bron'
+import { createServiceClient } from '@/lib/supabase/service'
 
 const HUISSTIJL_BUCKET = 'merk-assets'
+const VIDEO_GELDIGHEID_SEC = 60 * 60 * 4   // signed video-URL: 4 uur
+
+// Een `storage:bucket/pad`-referentie (privé-bucket) → kortlevende signed URL.
+// Het token is op dit punt al gevalideerd door toolbox_voor_token, dus dit hand
+// alleen voor een geldige werknemer-link een tijdelijke URL uit; de bucket blijft
+// privé. Een gewone publieke URL (YouTube/CDN/publieke bucket) gaat ongewijzigd door.
+async function resolveVideoUrl(url: string | null): Promise<string | null> {
+  if (!url) return url
+  const ref = parseStorageRef(url)
+  if (!ref) return url
+  try {
+    const service = createServiceClient()
+    const { data } = await service.storage.from(ref.bucket).createSignedUrl(ref.path, VIDEO_GELDIGHEID_SEC)
+    return data?.signedUrl ?? null
+  } catch {
+    return null   // niet kunnen signen → de UI toont een nette fallback
+  }
+}
 
 type RawData = {
   persoon?: { id?: string; naam?: string | null } | null
@@ -57,13 +77,21 @@ export default async function ToolboxGastPage({
       }
     : VEILIGE_HUISSTIJL
 
+  // Privé-Storage-video's signen (publieke URL's blijven ongewijzigd).
+  const toolboxen = await Promise.all(
+    ((raw.toolboxen ?? []) as WerknemerToolbox[]).map(async t => ({
+      ...t,
+      video_url: await resolveVideoUrl(t.video_url),
+    })),
+  )
+
   return (
     <ToolboxGastClient
       token={token}
       persoonNaam={persoonNaam}
       bedrijfNaam={bedrijfNaam}
       huisstijl={huisstijl}
-      initialToolboxen={(raw.toolboxen ?? []) as WerknemerToolbox[]}
+      initialToolboxen={toolboxen}
     />
   )
 }

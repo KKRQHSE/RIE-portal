@@ -434,6 +434,50 @@ export type ToolboxDashboard = {
   personen: ToolboxDashboardPersoon[]
 }
 
+// ---- Toolbox juridische export (snapshot-only) ----
+
+export type ToolboxBewijssoort = 'digitaal' | 'fysiek_aanwezig'
+export type ToolboxQuizResultaat = { score: number; totaal: number; pct: number; gehaald: boolean }
+
+export type ToolboxBewijsQuizVraag = {
+  vraagtekst: string
+  opties: string[]
+  juist_antwoord: number
+  uitleg: string | null
+  gekozen: number
+}
+
+// Eén volledig bewijsstuk (RPC toolbox_bewijs) — alles uit het bevroren snapshot.
+export type ToolboxBewijs = {
+  id: string
+  company_id: string
+  bedrijf_naam: string
+  bewijssoort: ToolboxBewijssoort
+  bevestigde_naam: string
+  naam_bevestigd: boolean
+  afgerond_op: string
+  titel_snap: string
+  tekst_snap: string
+  video_url_snap: string | null
+  video_bekeken: boolean
+  quiz_snap: ToolboxBewijsQuizVraag[]
+  quiz_resultaat: ToolboxQuizResultaat | null
+  handtekening: string | null
+  handtekening_gezet_op: string | null
+  presentielijst_pad: string | null
+}
+
+// Eén regel uit het bedrijfsoverzicht (RPC toolbox_bewijs_overzicht).
+export type ToolboxBewijsRegel = {
+  id: string
+  bevestigde_naam: string
+  titel_snap: string
+  afgerond_op: string
+  getekend: boolean
+  bewijssoort: ToolboxBewijssoort
+  quiz_resultaat: ToolboxQuizResultaat | null
+}
+
 // ---- Managementdashboard ----
 
 // Payload van de RPC dashboard_overzicht(p_company_id): alle tegelcijfers van één bedrijf.

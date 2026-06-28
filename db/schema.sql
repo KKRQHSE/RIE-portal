@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-28T11:36:25.816Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-06-28T13:09:12.477Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -2657,7 +2657,7 @@ CREATE OR REPLACE FUNCTION public.mag_bedrijf_beheren(p_company_id uuid)
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-  select public.is_admin() or p_company_id = public.my_company_id()
+  select coalesce(public.is_admin() or p_company_id = public.my_company_id(), false)
 $function$;
 CREATE OR REPLACE FUNCTION public.mag_herinneren(p_persoon_id uuid)
  RETURNS boolean

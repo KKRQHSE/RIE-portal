@@ -8,9 +8,10 @@ import type { Company, Functiegroep, ToolboxOverzichtItem, ToolboxDashboard } fr
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
 import ToolboxDashboardView from './ToolboxDashboardView'
+import ToolboxExport from './ToolboxExport'
 
 type Supa = ReturnType<typeof createClient>
-type View = 'dashboard' | 'toolboxen' | 'doelstellingen'
+type View = 'dashboard' | 'toolboxen' | 'doelstellingen' | 'export'
 
 const WAARSCHUWING =
   'Je wijkt af van de centrale toolbox op eigen initiatief. Gevolg: je krijgt centrale ' +
@@ -63,6 +64,7 @@ export default function ToolboxClient({
           {tab('dashboard', 'Dashboard')}
           {tab('toolboxen', 'Toolboxen')}
           {tab('doelstellingen', 'Doelstellingen')}
+          {tab('export', 'Bewijs & export')}
         </div>
 
         {fout && <p className="text-sm text-red-600 mb-3">{fout}</p>}
@@ -71,8 +73,10 @@ export default function ToolboxClient({
           <ToolboxDashboardView dashboard={dashboard} />
         ) : view === 'toolboxen' ? (
           <KoppelBeheer companyId={company.id} supabase={supabase} overzicht={overzicht} onPatch={patch} setFout={setFout} />
-        ) : (
+        ) : view === 'doelstellingen' ? (
           <DoelstellingBeheer companyId={company.id} supabase={supabase} functiegroepen={functiegroepen} initialDoelen={initialDoelen} setFout={setFout} />
+        ) : (
+          <ToolboxExport companyId={company.id} />
         )}
       </div>
     </main>

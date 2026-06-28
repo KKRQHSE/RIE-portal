@@ -168,6 +168,19 @@ async function run() {
     check('afronding in een ander kalenderjaar mag wél', !error && !!data, error?.message)
   }
 
+  // SERVER-GATE op video: een vereist_video-toolbox weigert afronden zonder gehaalde video.
+  {
+    const { data: tbVideo } = await adminClient.rpc('centrale_toolbox_opslaan', {
+      p_id: null, p_titel: 'TBTEST_video', p_tekst: 'x', p_video_url: 'https://youtu.be/PLACEHOLDER',
+      p_vereist_video: true, p_vereist_quiz: false, p_quiz_slaaggrens: 70,
+      p_quiz_uitleg_modus: 'aan_eind', p_toegang: 'link', p_volgorde: 998,
+    })
+    if (tbVideo) toolboxIds.push(tbVideo)
+    await clientA.rpc('toolbox_koppelen', { p_company_id: aCompany, p_toolbox_id: tbVideo })
+    const { error } = await anon.rpc('toolbox_afronden_token', { p_token: token, p_toolbox_id: tbVideo, p_video_bekeken: false, p_quiz_antwoorden: [], p_naam_bevestigd: true, p_handtekening: 'data:image/png;base64,CCCC' })
+    check('server weigert afronden zonder gehaalde video (vereist_video)', !!error && /video.*bekeken/i.test(error.message || ''), error?.message)
+  }
+
   // ONVERANDERLIJKHEID: zelfs service_role mag het record niet wijzigen.
   {
     const { error } = await admin.from('toolbox_deelname').update({ titel_snap: 'GEHACKT' }).eq('id', deelnameId)

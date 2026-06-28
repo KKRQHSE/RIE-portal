@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-28T13:12:22.360Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-06-28T17:29:26.865Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -581,6 +581,7 @@ CREATE INDEX pva_items_company_idx ON public.pva_items USING btree (company_id);
 CREATE INDEX pva_items_persoon_idx ON public.pva_items USING btree (persoon_id);
 CREATE INDEX toolbox_deelname_afgerond_idx ON public.toolbox_deelname USING btree (company_id, afgerond_op);
 CREATE INDEX toolbox_deelname_company_idx ON public.toolbox_deelname USING btree (company_id, persoon_id);
+CREATE UNIQUE INDEX toolbox_deelname_uniek_per_jaar ON public.toolbox_deelname USING btree (company_id, persoon_id, toolbox_id, jaar_utc(afgerond_op)) WHERE (toolbox_id IS NOT NULL);
 CREATE INDEX vragen_company_idx ON public.vragen USING btree (company_id);
 CREATE INDEX vragen_module_idx ON public.vragen USING btree (module_id);
 
@@ -2608,6 +2609,13 @@ CREATE OR REPLACE FUNCTION public.is_admin()
 AS $function$
   select coalesce((select role = 'admin' from public.users where id = auth.uid()), false)
 $function$;
+CREATE OR REPLACE FUNCTION public.jaar_utc(p_ts timestamp with time zone)
+ RETURNS integer
+ LANGUAGE sql
+ IMMUTABLE
+AS $function$
+  select extract(year from (p_ts at time zone 'UTC'))::int
+$function$;
 CREATE OR REPLACE FUNCTION public.koppel_mij_als_persoon(p_company_id uuid)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -3088,7 +3096,6 @@ begin
   if v_persoon.id is null or v_persoon.archived_at is not null then raise exception 'Persoon niet gevonden'; end if;
   v_company := v_persoon.company_id;
 
-  -- Geen handtekening onder een weersproken naam.
   if not coalesce(p_naam_bevestigd, false) then
     raise exception 'Naam niet bevestigd — er kan geen bewijs worden vastgelegd';
   end if;
@@ -3096,7 +3103,16 @@ begin
     raise exception 'Handtekening ontbreekt';
   end if;
 
-  -- Geldende toolbox (gekoppeld, niet uit, link-toegang, evt. lokaal i.p.v. archief).
+  -- Eén afronding per toolbox per kalenderjaar: weiger een tweede netjes.
+  if exists (
+    select 1 from public.toolbox_deelname d
+    where d.persoon_id = v_persoon.id
+      and d.toolbox_id = p_toolbox_id
+      and public.jaar_utc(d.afgerond_op) = public.jaar_utc(now())
+  ) then
+    raise exception 'Deze toolbox is dit jaar al afgerond';
+  end if;
+
   select t.*, a.modus as afw_modus, a.lokale_titel, a.lokale_tekst, a.lokale_video_url
     into v_t
   from public.bedrijf_toolbox bt
@@ -3112,7 +3128,6 @@ begin
   v_tekst := case when v_t.afw_modus='lokaal' then v_t.lokale_tekst else v_t.tekst end;
   v_video := case when v_t.afw_modus='lokaal' and v_t.lokale_video_url is not null then v_t.lokale_video_url else v_t.video_url end;
 
-  -- Quiz server-side nakijken (nooit de client-score vertrouwen) + snapshot opbouwen.
   with q as (
     select (row_number() over (order by volgorde, id))::int - 1 as idx,
            vraagtekst, opties, juist_antwoord, uitleg
@@ -3133,10 +3148,9 @@ begin
     v_gehaald := v_pct >= v_t.quiz_slaaggrens;
     v_resultaat := jsonb_build_object('score', v_score, 'totaal', v_totaal, 'pct', v_pct, 'gehaald', v_gehaald);
   else
-    v_resultaat := null;  -- geen quiz
+    v_resultaat := null;
   end if;
 
-  -- Telt-mee afdwingen.
   if v_t.vereist_video and not coalesce(p_video_bekeken, false) then
     raise exception 'De video moet bekeken zijn om af te ronden';
   end if;
@@ -3776,6 +3790,9 @@ GRANT EXECUTE ON FUNCTION public.intrek_deellink(p_persoon_id uuid) TO service_r
 GRANT EXECUTE ON FUNCTION public.is_admin() TO anon;
 GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_admin() TO service_role;
+GRANT EXECUTE ON FUNCTION public.jaar_utc(p_ts timestamp with time zone) TO anon;
+GRANT EXECUTE ON FUNCTION public.jaar_utc(p_ts timestamp with time zone) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.jaar_utc(p_ts timestamp with time zone) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.koppel_mij_als_persoon(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.koppel_mij_als_persoon(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.koppel_mij_als_persoon(p_company_id uuid) TO service_role;

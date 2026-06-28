@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-28T11:27:11.167Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-06-28T11:36:25.816Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -3171,7 +3171,7 @@ declare
 begin
   select company_id into v_company from toolbox_deelname where id = p_deelname_id;
   if v_company is null then raise exception 'Deelname niet gevonden'; end if;
-  if not mag_bedrijf_beheren(v_company) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not coalesce(mag_bedrijf_beheren(v_company), false) then raise exception 'Geen toegang tot dit bedrijf'; end if;
 
   select jsonb_build_object(
     'id',                    d.id,
@@ -3192,7 +3192,7 @@ begin
     'presentielijst_pad',    d.presentielijst_pad
   ) into v
   from toolbox_deelname d
-  join companies c on c.id = d.company_id          -- enige join: bedrijfsnaam (metadata)
+  join companies c on c.id = d.company_id
   where d.id = p_deelname_id;
   return v;
 end;
@@ -3206,7 +3206,7 @@ AS $function$
 declare
   v jsonb;
 begin
-  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not coalesce(mag_bedrijf_beheren(p_company_id), false) then raise exception 'Geen toegang tot dit bedrijf'; end if;
 
   select coalesce(jsonb_agg(jsonb_build_object(
     'id',              d.id,
@@ -3221,7 +3221,7 @@ begin
   from toolbox_deelname d
   where d.company_id = p_company_id
     and d.afgerond_op >= p_van
-    and d.afgerond_op < (p_tot + 1);   -- p_tot inclusief (hele einddag meenemen)
+    and d.afgerond_op < (p_tot + 1);
   return v;
 end;
 $function$;
@@ -3827,10 +3827,10 @@ GRANT EXECUTE ON FUNCTION public.stuur_concept_terug(p_actie_id uuid, p_opmerkin
 GRANT EXECUTE ON FUNCTION public.toolbox_afronden_token(p_token text, p_toolbox_id uuid, p_video_bekeken boolean, p_quiz_antwoorden jsonb, p_naam_bevestigd boolean, p_handtekening text) TO anon;
 GRANT EXECUTE ON FUNCTION public.toolbox_afronden_token(p_token text, p_toolbox_id uuid, p_video_bekeken boolean, p_quiz_antwoorden jsonb, p_naam_bevestigd boolean, p_handtekening text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_afronden_token(p_token text, p_toolbox_id uuid, p_video_bekeken boolean, p_quiz_antwoorden jsonb, p_naam_bevestigd boolean, p_handtekening text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.toolbox_bewijs(p_deelname_id uuid) TO anon;
+REVOKE EXECUTE ON FUNCTION public.toolbox_bewijs(p_deelname_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.toolbox_bewijs(p_deelname_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_bewijs(p_deelname_id uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.toolbox_bewijs_overzicht(p_company_id uuid, p_van date, p_tot date) TO anon;
+REVOKE EXECUTE ON FUNCTION public.toolbox_bewijs_overzicht(p_company_id uuid, p_van date, p_tot date) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.toolbox_bewijs_overzicht(p_company_id uuid, p_van date, p_tot date) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_bewijs_overzicht(p_company_id uuid, p_van date, p_tot date) TO service_role;
 GRANT EXECUTE ON FUNCTION public.toolbox_dashboard(p_company_id uuid) TO anon;

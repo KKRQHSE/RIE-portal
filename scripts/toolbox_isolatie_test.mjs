@@ -188,6 +188,56 @@ async function run() {
     check('P2 staat als niet meer in dienst', dp2?.status === 'uit_dienst', dp2?.status)
     check('Uitgestroomde P2 valt uit de bedrijfs-noemer', data?.bedrijf?.doel === dp1?.doel, `bedrijf ${data?.bedrijf?.doel} vs P1 ${dp1?.doel}`)
   }
+
+  // --- JURIDISCHE EXPORT ---
+  const jaar = new Date().getFullYear()
+
+  // Positief: KAM A haalt eigen bewijsstuk + bedrijfsoverzicht op.
+  {
+    const { data, error } = await clientA.rpc('toolbox_bewijs', { p_deelname_id: deelnameId })
+    check('KAM A haalt eigen bewijsstuk op (positieve controle)',
+      !error && data?.id === deelnameId && data?.bevestigde_naam === 'TBTEST_P1' && data?.bedrijf_naam?.startsWith('TBTEST_A'),
+      error?.message)
+  }
+  {
+    const { data, error } = await clientA.rpc('toolbox_bewijs_overzicht', { p_company_id: aCompany, p_van: `${jaar}-01-01`, p_tot: `${jaar}-12-31` })
+    const heeft = Array.isArray(data) && data.some(r => r.id === deelnameId && r.getekend === true)
+    check('KAM A haalt eigen bedrijfsoverzicht op (positieve controle)', !error && heeft, error?.message)
+  }
+
+  // Cross-company: B mag bewijsstuk/overzicht van A NIET ophalen.
+  {
+    const { error } = await clientB.rpc('toolbox_bewijs', { p_deelname_id: deelnameId })
+    check('B kan bewijsstuk van A niet ophalen', !!error)
+  }
+  {
+    const { error } = await clientB.rpc('toolbox_bewijs_overzicht', { p_company_id: aCompany, p_van: `${jaar}-01-01`, p_tot: `${jaar}-12-31` })
+    check('B kan bedrijfsoverzicht van A niet ophalen', !!error)
+  }
+
+  // Werknemer-token (anon, niet ingelogd) mag NIET exporteren (RPC niet aan anon gegrant).
+  {
+    const { error } = await anon.rpc('toolbox_bewijs', { p_deelname_id: deelnameId })
+    check('Werknemer (anon) kan geen bewijsstuk exporteren', !!error)
+  }
+  {
+    const { error } = await anon.rpc('toolbox_bewijs_overzicht', { p_company_id: aCompany, p_van: `${jaar}-01-01`, p_tot: `${jaar}-12-31` })
+    check('Werknemer (anon) kan geen overzicht exporteren', !!error)
+  }
+
+  // Snapshot-only: bewijsstuk blijft VOLLEDIG nadat de centrale toolbox is GEARCHIVEERD.
+  {
+    await adminClient.rpc('centrale_toolbox_archiveren', { p_id: tbId })
+    const { data, error } = await clientA.rpc('toolbox_bewijs', { p_deelname_id: deelnameId })
+    const volledig = !error && data?.titel_snap === 'TBTEST_toolbox' && data?.tekst_snap === 'Lees dit.' && data?.bevestigde_naam === 'TBTEST_P1'
+    check('Bewijsstuk blijft volledig na archivering centrale toolbox (snapshot-only)', volledig, error?.message)
+  }
+
+  // Export muteert niets: het record is onveranderd.
+  {
+    const { data } = await admin.from('toolbox_deelname').select('titel_snap, bevestigde_naam').eq('id', deelnameId).single()
+    check('Export muteert niets (record onveranderd)', !!data && data.titel_snap === 'TBTEST_toolbox' && data.bevestigde_naam === 'TBTEST_P1')
+  }
 }
 
 async function cleanup() {

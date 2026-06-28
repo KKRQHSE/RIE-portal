@@ -7,7 +7,7 @@ import type { WerknemerToolbox } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 import Handtekening from './Handtekening'
 
-type Stap = 'inhoud' | 'quiz' | 'naam' | 'mismatch' | 'handtekening' | 'klaar'
+type Stap = 'inhoud' | 'quiz' | 'naam' | 'mismatch' | 'handtekening' | 'klaar' | 'al_afgerond'
 
 // Best-effort omzetting van een YouTube/Vimeo-link naar een embed-bron.
 function videoEmbed(url: string): string | null {
@@ -41,7 +41,8 @@ export default function ToolboxGastClient({
   const [fout, setFout] = useState<string | null>(null)
 
   function openToolbox(t: WerknemerToolbox) {
-    setOpen(t); setStap('inhoud'); setVideoBekeken(false)
+    // Al dit jaar afgerond → geen tweede flow/tekenscherm, alleen een melding.
+    setOpen(t); setStap(t.afgerond_dit_jaar ? 'al_afgerond' : 'inhoud'); setVideoBekeken(false)
     setAntwoorden({}); setNagekeken(false); setHandtekening(''); setFout(null)
   }
   function sluit() { setOpen(null) }
@@ -99,6 +100,20 @@ export default function ToolboxGastClient({
               <h2 className="text-lg font-semibold text-ink">{open.titel}</h2>
               <button onClick={sluit} className="text-xs text-ink/40 hover:text-ink shrink-0">Sluiten</button>
             </div>
+
+            {/* Al dit jaar afgerond — geen tweede flow, geen tekenscherm */}
+            {stap === 'al_afgerond' && (
+              <div className="space-y-3">
+                <div className="rounded bg-green-50 border border-green-200 p-3">
+                  <p className="text-sm font-medium text-green-800">Je hebt deze toolbox dit jaar al afgerond.</p>
+                  <p className="text-sm text-ink/70 mt-1">
+                    Je deelname is vastgelegd en bewaard — je hoeft hem dit jaar niet opnieuw te doen.
+                    Volgend kalenderjaar staat hij weer voor je klaar.
+                  </p>
+                </div>
+                <button onClick={sluit} className="text-sm px-5 py-2 min-h-[44px] rounded-full border border-ink/20 bg-white text-ink/70 hover:border-ink/40">Terug naar het overzicht</button>
+              </div>
+            )}
 
             {/* STAP: inhoud (tekst + video) */}
             {stap === 'inhoud' && (

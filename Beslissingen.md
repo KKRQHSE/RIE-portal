@@ -108,3 +108,37 @@ inspectie-tegel al verscheen.
 kan de modules van bedrijf B niet zien of muteren), testdata opgeruimd;
 `tsc --noEmit` en `next build` groen. Commits `369b845` (model + UI) en de
 terminologie-hernoeming (0005).
+
+## Beslissing 62 — Per-bedrijf-RPC's: null-veilige guard aan de bron + anon-EXECUTE standaard ingetrokken (28 juni 2026)
+
+**Context.** Tijdens de toolbox-export bleek een tenant-lek in het RPC-patroon.
+`mag_bedrijf_beheren(...)` gaf voor een caller zónder auth (anon, geen token) NULL
+terug (`is_admin() or p_company_id = my_company_id()` = `false or null` = null), en
+de standaardguard `if not mag_bedrijf_beheren(...) then raise` ving die NULL niet af
+(`not null` = null → de IF werd overgeslagen → de raise gemist). Daarbij krijgt een
+nieuwe SECURITY DEFINER-functie standaard EXECUTE voor anon/PUBLIC. Combinatie: een
+anonieme caller met de publieke anon-key kon per-bedrijf-RPC's bereiken zónder dat de
+guard raiste.
+
+**Besluit (norm voor alle huidige én toekomstige RPC's).**
+1. **Bron-fix (migratie 0022):** `mag_bedrijf_beheren` geeft NOOIT meer NULL terug —
+   `coalesce(..., false)`. Daarmee is elke `if not mag_bedrijf_beheren(...)`-guard
+   automatisch veilig, ook in later geschreven code. Geen gedragswijziging voor
+   admin/KAM; RLS blijft gelijk (null en false weigeren allebei). `is_admin()`
+   coalesce't al naar false.
+2. **Tweede laag (migratie 0023):** EXECUTE voor anon/PUBLIC wordt INGETROKKEN op
+   alle per-bedrijf- (`mag_bedrijf_beheren`) en admin-only (`is_admin`) RPC's; alleen
+   `authenticated` (ingelogde KAM/admin) + `service_role` houden EXECUTE. Bewust met
+   rust gelaten: de gast/actiehouder- en werknemer-**token-RPC's** (deellink_* en
+   toolbox_voor_token / toolbox_afronden_token) en de RLS-helpers (is_admin,
+   my_company_id, mag_bedrijf_beheren).
+3. **Standaard voor nieuwe RPC's:** een nieuwe per-bedrijf/admin-RPC krijgt bij
+   aanmaak `revoke execute ... from public, anon` + `grant ... to authenticated,
+   service_role`. Een nieuwe RPC is alleen anon/token-toegankelijk als dat een
+   bewuste, gedocumenteerde keuze is (token-flow).
+
+**Bewijs.** `scripts/security_hardening_test.mjs` (25/25): exhaustief (alle 57
+gehardende RPC's zonder anon-EXECUTE, 9 token-RPC's mét), runtime (anon afgewezen op
+reads/writes/admin), regressie (KAM/admin werkt; token-flow mét token door, zónder
+token niet). Bestaande isolatietests blijven groen (toolbox 27, bibliotheek 34,
+inspectie 25). Eerder al gedicht voor de export-RPC's in 0021.

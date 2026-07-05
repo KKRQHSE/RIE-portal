@@ -243,3 +243,40 @@ gevoelig veld; A-token kan geen foto aan B's incident hangen; foto van A niet le
 door B of anon, KAM van A wél); `security_hardening_test.mjs` **25/25** (13 token-RPC's);
 `tsc` + `next build` groen; schema gedumpt (86 functies). Browsertest van het formulier
 (mobiel, foto-upload, bevestiging) is een aanbevolen handmatige stap.
+
+### Fase 3 — KAM-afhandeling (Deel 2, ingelogd), migratie 0027
+
+**Module + route.** 'incidenten' toegevoegd aan `MODULE_CATALOGUS` (pad `incidenten`);
+de KAM-pagina `/[company_id]/incidenten` is geguard zoals de andere modules (ingelogd
++ `mag_bedrijf_beheren` + `bedrijf_modules` actief). Lijst van binnengekomen meldingen
+(datum, korte omschrijving, locatie, statusbadge) → detailscherm met Deel 1 (lezen) +
+foto's + Deel 2-formulier (status, directe/basis oorzaken aanvinken uit de vaste
+lijsten + toelichting, maatregel-vlaggen, telefonische melding, besproken-in-toolbox-
+datum, en de gevoelige slachtoffer-/letselvelden in een apart gemarkeerd blok).
+
+**Mutatie-RPC's (SECURITY DEFINER, null-veilige guard, anon dicht — Beslissing 62):**
+`incident_deel2_opslaan` (guard op `p_company_id`, incident moet bij het bedrijf horen,
+status/medische-waarde gevalideerd, onbekende oorzaakcodes weggefilterd, `afgehandeld_op`
+gestempeld bij status 'afgehandeld' en gewist bij terugzetten), en meldlink-beheer
+`incident_meldlink_zorg` / `_roteren` / `_intrekken`. anon-EXECUTE ingetrokken; toegevoegd
+aan de `HARDENED`-lijst van `security_hardening_test.mjs` (nu 61 gehardende RPC's). Lezen
+(lijst/detail/foto's) gaat via de RLS-select-policy + de ingelogde sessie; foto's worden
+in een KAM-route (`/api/incident/foto-download`) met service-role signed URL's geleverd
+ná de RLS-scoped select — cross-company komt er niet doorheen.
+
+**Meldlink + QR.** De meldlink-kaart toont de deelbare URL (`/melden/<token>`) met kopieer-
+knop, roteren (met inline bevestiging — géén native `confirm()`) en in-/uitschakelen. De
+**QR-code** is een zelfstandige, dependency-vrije encoder (`lib/qr.ts`, EC-niveau L,
+versies 1-10, byte-modus) → inline-SVG. Bewust géén npm-dependency en géén externe QR-
+service (dat zou het bedrijfstoken naar een derde lekken). Geverifieerd met
+`scripts/qr_selftest.ts` (Node 24 strip-types): codeword-totalen per versie == spec,
+format-info round-trip, en volledige encode→decode round-trip over kort/lang + byte/
+numeriek (0 fouten). Aanbevolen: één keer met een echte scanner bevestigen.
+
+**Bewijs.** Migratie 0027 toegepast; `incident_isolatie_test.mjs` **20/20** (Fase 2 +
+Deel-2-guards: B kan A niet muteren via A's of eigen company_id, anon dicht, onbekende
+oorzaakcode gefilterd, gevoelig veld opgeslagen, `afgehandeld_op` gestempeld, meldlink-
+beheer alleen eigen bedrijf); `security_hardening_test.mjs` **25/25** (61 gehardende, 13
+token-RPC's); QR-zelftest groen; `tsc` + `next build` groen. Browsertest van het KAM-
+scherm (lijst → detail → Deel 2 opslaan, QR scannen) is een aanbevolen handmatige stap;
+de module moet per bedrijf geactiveerd zijn (Modulebeheer).

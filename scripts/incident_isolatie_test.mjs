@@ -180,6 +180,85 @@ async function run() {
     const { data: aDl } = await kamA.storage.from(BUCKET).download(padA)
     check('positieve controle: KAM van A kan EIGEN foto downloaden', !!aDl)
   }
+
+  // ===== FASE 3 — KAM-afhandeling (Deel 2) + meldlink-beheer =====
+
+  // 9. KAM van A vult Deel 2 in (incl. gevoelige velden); onbekende oorzaakcode gefilterd.
+  {
+    const { error } = await kamA.rpc('incident_deel2_opslaan', {
+      p_company_id: A, p_incident_id: incidentA, p_status: 'in_onderzoek',
+      p_directe_oorzaken: [7, 999], p_basis_oorzaken: [5],
+      p_oorzaak_toelichting: 'PBM niet gedragen', p_onderzoeksrapportage_bijgevoegd: true,
+      p_telefonische_melding_directie: true, p_telefonische_melding_aan: 'Directeur',
+      p_maatregelen_in_actielijst: true, p_tra_aanpassen: false, p_andere_maatregelen: 'Extra toezicht',
+      p_besproken_in_toolbox_datum: '2026-07-10', p_functie_slachtoffer: 'Monteur', p_medische_dienst_bezocht: 'ja',
+    })
+    const { data: row } = await admin.from('incident')
+      .select('status, directe_oorzaken, medische_dienst_bezocht, afgehandeld_op').eq('id', incidentA).single()
+    const ok = !error && row?.status === 'in_onderzoek'
+      && Array.isArray(row?.directe_oorzaken) && row.directe_oorzaken.includes(7) && !row.directe_oorzaken.includes(999)
+      && row?.medische_dienst_bezocht === 'ja'
+    check('KAM van A vult Deel 2 (onbekende oorzaakcode gefilterd, gevoelig veld opgeslagen)', ok, error ? error.message : '')
+  }
+
+  // 10. Status 'afgehandeld' zet afgehandeld_op; terugzetten wist het.
+  {
+    await kamA.rpc('incident_deel2_opslaan', {
+      p_company_id: A, p_incident_id: incidentA, p_status: 'afgehandeld',
+      p_directe_oorzaken: [], p_basis_oorzaken: [], p_oorzaak_toelichting: null,
+      p_onderzoeksrapportage_bijgevoegd: false, p_telefonische_melding_directie: false, p_telefonische_melding_aan: null,
+      p_maatregelen_in_actielijst: false, p_tra_aanpassen: false, p_andere_maatregelen: null,
+      p_besproken_in_toolbox_datum: null, p_functie_slachtoffer: null, p_medische_dienst_bezocht: null,
+    })
+    const { data: r1 } = await admin.from('incident').select('afgehandeld_op').eq('id', incidentA).single()
+    check('status afgehandeld stempelt afgehandeld_op', !!r1?.afgehandeld_op)
+  }
+
+  // 11. KAM van B kan Deel 2 van A NIET muteren — via A's company_id (guard).
+  {
+    const { error } = await kamB.rpc('incident_deel2_opslaan', {
+      p_company_id: A, p_incident_id: incidentA, p_status: 'open',
+      p_directe_oorzaken: [], p_basis_oorzaken: [], p_oorzaak_toelichting: 'HACK',
+      p_onderzoeksrapportage_bijgevoegd: false, p_telefonische_melding_directie: false, p_telefonische_melding_aan: null,
+      p_maatregelen_in_actielijst: false, p_tra_aanpassen: false, p_andere_maatregelen: null,
+      p_besproken_in_toolbox_datum: null, p_functie_slachtoffer: null, p_medische_dienst_bezocht: null,
+    })
+    check('KAM van B kan Deel 2 van A NIET muteren (guard op A)', !!error, error ? 'geweigerd' : 'GEMUTEERD!')
+  }
+
+  // 12. KAM van B kan met EIGEN company_id niet aan A's incident komen (niet gevonden).
+  {
+    const { error } = await kamB.rpc('incident_deel2_opslaan', {
+      p_company_id: B, p_incident_id: incidentA, p_status: 'open',
+      p_directe_oorzaken: [], p_basis_oorzaken: [], p_oorzaak_toelichting: 'HACK2',
+      p_onderzoeksrapportage_bijgevoegd: false, p_telefonische_melding_directie: false, p_telefonische_melding_aan: null,
+      p_maatregelen_in_actielijst: false, p_tra_aanpassen: false, p_andere_maatregelen: null,
+      p_besproken_in_toolbox_datum: null, p_functie_slachtoffer: null, p_medische_dienst_bezocht: null,
+    })
+    check('KAM van B kan A-incident niet raken via eigen company_id (niet gevonden)', !!error, error ? 'geweigerd' : 'GEMUTEERD!')
+  }
+
+  // 13. anon kan Deel 2 NIET opslaan (anon-EXECUTE ingetrokken).
+  {
+    const { error } = await anon.rpc('incident_deel2_opslaan', {
+      p_company_id: A, p_incident_id: incidentA, p_status: 'open',
+      p_directe_oorzaken: [], p_basis_oorzaken: [], p_oorzaak_toelichting: null,
+      p_onderzoeksrapportage_bijgevoegd: false, p_telefonische_melding_directie: false, p_telefonische_melding_aan: null,
+      p_maatregelen_in_actielijst: false, p_tra_aanpassen: false, p_andere_maatregelen: null,
+      p_besproken_in_toolbox_datum: null, p_functie_slachtoffer: null, p_medische_dienst_bezocht: null,
+    })
+    check('anon kan Deel 2 NIET opslaan', !!error)
+  }
+
+  // 14. Meldlink-beheer: KAM van A mag; KAM van B en anon niet (op A).
+  {
+    const { data: aZorg, error: aErr } = await kamA.rpc('incident_meldlink_zorg', { p_company_id: A })
+    check('KAM van A kan eigen meldlink beheren (zorg)', !aErr && !!aZorg)
+    const { error: bErr } = await kamB.rpc('incident_meldlink_roteren', { p_company_id: A })
+    check('KAM van B kan meldlink van A NIET roteren', !!bErr)
+    const { error: anonErr } = await anon.rpc('incident_meldlink_intrekken', { p_company_id: A, p_ingetrokken: true })
+    check('anon kan meldlink van A NIET intrekken', !!anonErr)
+  }
 }
 
 async function cleanup() {

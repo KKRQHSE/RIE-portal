@@ -70,6 +70,8 @@ const HARDENED = [
   'centrale_rubriek_opslaan','centrale_rubriek_archiveren','centrale_vraag_opslaan','centrale_vraag_archiveren',
   'centrale_toolbox_opslaan','centrale_toolbox_archiveren','centrale_toolbox_vraag_opslaan','centrale_toolbox_vraag_archiveren',
   'dashboard_admin_overzicht',
+  // Incidenten — KAM-afhandeling (migratie 0027), per-bedrijf, anon dicht.
+  'incident_deel2_opslaan','incident_meldlink_zorg','incident_meldlink_roteren','incident_meldlink_intrekken',
 ]
 // Bewust anon/token-toegankelijk (moeten anon-EXECUTE houden).
 const TOKEN_ANON = [

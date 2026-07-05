@@ -25,4 +25,11 @@ export const MODULE_CATALOGUS: ModuleCatalogusItem[] = [
       'Medewerkers aantoonbaar toolboxen laten volgen (tekst + video + optionele quiz, met naam-bevestiging en handtekening), met een live doelstellingen-dashboard per functiegroep.',
     pad: 'toolbox',
   },
+  {
+    module: 'incidenten',
+    titel: 'Incidenten & ongevallen',
+    omschrijving:
+      'Laagdrempelig incidenten en bijna-incidenten melden via een vaste bedrijfseigen meldlink/QR (geen login), en als KAM afhandelen: oorzaakclassificatie, maatregelen en een doorklikbaar dashboard.',
+    pad: 'incidenten',
+  },
 ]

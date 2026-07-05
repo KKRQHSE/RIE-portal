@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-05T20:23:03.814Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-05T20:44:10.807Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -2371,6 +2371,61 @@ begin
   from jsonb_array_elements(coalesce(v_dataset->'fotos','[]'::jsonb)) as f;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.incident_deel2_opslaan(p_company_id uuid, p_incident_id uuid, p_status text, p_directe_oorzaken integer[], p_basis_oorzaken integer[], p_oorzaak_toelichting text, p_onderzoeksrapportage_bijgevoegd boolean, p_telefonische_melding_directie boolean, p_telefonische_melding_aan text, p_maatregelen_in_actielijst boolean, p_tra_aanpassen boolean, p_andere_maatregelen text, p_besproken_in_toolbox_datum date, p_functie_slachtoffer text, p_medische_dienst_bezocht text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_directe integer[];
+  v_basis   integer[];
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen rechten voor dit bedrijf';
+  end if;
+  if not exists (select 1 from public.incident where id = p_incident_id and company_id = p_company_id) then
+    raise exception 'Incident niet gevonden';
+  end if;
+  if coalesce(p_status,'') not in ('open','in_onderzoek','afgehandeld') then
+    raise exception 'Ongeldige status';
+  end if;
+  if p_medische_dienst_bezocht is not null
+     and p_medische_dienst_bezocht not in ('ja','nee','onbekend') then
+    raise exception 'Ongeldige waarde medische dienst';
+  end if;
+
+  -- Alleen bestaande oorzaakcodes bewaren (onbekende stil negeren).
+  select coalesce(array_agg(c order by c), '{}') into v_directe
+  from unnest(coalesce(p_directe_oorzaken,'{}')) c
+  where exists (select 1 from public.incident_directe_oorzaak d where d.code = c);
+
+  select coalesce(array_agg(c order by c), '{}') into v_basis
+  from unnest(coalesce(p_basis_oorzaken,'{}')) c
+  where exists (select 1 from public.incident_basis_oorzaak b where b.code = c);
+
+  update public.incident set
+    status                          = p_status,
+    directe_oorzaken                = v_directe,
+    basis_oorzaken                  = v_basis,
+    oorzaak_toelichting             = nullif(btrim(coalesce(p_oorzaak_toelichting,'')), ''),
+    onderzoeksrapportage_bijgevoegd = coalesce(p_onderzoeksrapportage_bijgevoegd, false),
+    telefonische_melding_directie   = coalesce(p_telefonische_melding_directie, false),
+    telefonische_melding_aan        = nullif(btrim(coalesce(p_telefonische_melding_aan,'')), ''),
+    maatregelen_in_actielijst       = coalesce(p_maatregelen_in_actielijst, false),
+    tra_aanpassen                   = coalesce(p_tra_aanpassen, false),
+    andere_maatregelen              = nullif(btrim(coalesce(p_andere_maatregelen,'')), ''),
+    besproken_in_toolbox_datum      = p_besproken_in_toolbox_datum,
+    functie_slachtoffer             = nullif(btrim(coalesce(p_functie_slachtoffer,'')), ''),
+    medische_dienst_bezocht         = p_medische_dienst_bezocht,
+    afgehandeld_op                  = case
+                                        when p_status = 'afgehandeld' then coalesce(afgehandeld_op, now())
+                                        else null
+                                      end,
+    laatst_bijgewerkt_op            = now()
+  where id = p_incident_id and company_id = p_company_id;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.incident_foto_pad_token(p_token text, p_incident_id uuid, p_bestandsnaam text)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -2502,6 +2557,78 @@ begin
   ) returning id into v_id;
 
   return v_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.incident_meldlink_intrekken(p_company_id uuid, p_ingetrokken boolean)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_link public.incident_meldlink;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen rechten voor dit bedrijf';
+  end if;
+
+  update public.incident_meldlink
+    set ingetrokken = coalesce(p_ingetrokken, true)
+  where company_id = p_company_id
+  returning * into v_link;
+
+  if v_link.company_id is null then raise exception 'Geen meldlink'; end if;
+  return jsonb_build_object('token', v_link.token, 'ingetrokken', v_link.ingetrokken);
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.incident_meldlink_roteren(p_company_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_token text;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen rechten voor dit bedrijf';
+  end if;
+
+  v_token := replace(gen_random_uuid()::text,'-','') || replace(gen_random_uuid()::text,'-','');
+  insert into public.incident_meldlink (company_id, token, ingetrokken, aangemaakt_op, aangemaakt_door)
+  values (p_company_id, v_token, false, now(), auth.uid())
+  on conflict (company_id) do update
+    set token = excluded.token, ingetrokken = false,
+        aangemaakt_op = now(), aangemaakt_door = auth.uid();
+
+  return jsonb_build_object('token', v_token, 'ingetrokken', false);
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.incident_meldlink_zorg(p_company_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_link public.incident_meldlink;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen rechten voor dit bedrijf';
+  end if;
+
+  select * into v_link from public.incident_meldlink where company_id = p_company_id;
+  if v_link.company_id is null then
+    insert into public.incident_meldlink (company_id, token, aangemaakt_door)
+    values (
+      p_company_id,
+      replace(gen_random_uuid()::text,'-','') || replace(gen_random_uuid()::text,'-',''),
+      auth.uid()
+    )
+    returning * into v_link;
+  end if;
+
+  return jsonb_build_object('token', v_link.token, 'ingetrokken', v_link.ingetrokken);
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text DEFAULT NULL::text)
@@ -4009,6 +4136,9 @@ REVOKE EXECUTE ON FUNCTION public.import_company(p_dataset jsonb) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.import_company(p_dataset jsonb) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.import_rie_content(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.import_rie_content(p_company_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.incident_deel2_opslaan(p_company_id uuid, p_incident_id uuid, p_status text, p_directe_oorzaken integer[], p_basis_oorzaken integer[], p_oorzaak_toelichting text, p_onderzoeksrapportage_bijgevoegd boolean, p_telefonische_melding_directie boolean, p_telefonische_melding_aan text, p_maatregelen_in_actielijst boolean, p_tra_aanpassen boolean, p_andere_maatregelen text, p_besproken_in_toolbox_datum date, p_functie_slachtoffer text, p_medische_dienst_bezocht text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.incident_deel2_opslaan(p_company_id uuid, p_incident_id uuid, p_status text, p_directe_oorzaken integer[], p_basis_oorzaken integer[], p_oorzaak_toelichting text, p_onderzoeksrapportage_bijgevoegd boolean, p_telefonische_melding_directie boolean, p_telefonische_melding_aan text, p_maatregelen_in_actielijst boolean, p_tra_aanpassen boolean, p_andere_maatregelen text, p_besproken_in_toolbox_datum date, p_functie_slachtoffer text, p_medische_dienst_bezocht text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.incident_deel2_opslaan(p_company_id uuid, p_incident_id uuid, p_status text, p_directe_oorzaken integer[], p_basis_oorzaken integer[], p_oorzaak_toelichting text, p_onderzoeksrapportage_bijgevoegd boolean, p_telefonische_melding_directie boolean, p_telefonische_melding_aan text, p_maatregelen_in_actielijst boolean, p_tra_aanpassen boolean, p_andere_maatregelen text, p_besproken_in_toolbox_datum date, p_functie_slachtoffer text, p_medische_dienst_bezocht text) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.incident_foto_pad_token(p_token text, p_incident_id uuid, p_bestandsnaam text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.incident_foto_pad_token(p_token text, p_incident_id uuid, p_bestandsnaam text) TO anon;
 GRANT EXECUTE ON FUNCTION public.incident_foto_pad_token(p_token text, p_incident_id uuid, p_bestandsnaam text) TO authenticated;
@@ -4025,6 +4155,15 @@ REVOKE EXECUTE ON FUNCTION public.incident_melden_token(p_token text, p_datum da
 GRANT EXECUTE ON FUNCTION public.incident_melden_token(p_token text, p_datum date, p_tijd time without time zone, p_locatie text, p_project text, p_omschrijving text, p_naam_melder text, p_gevolgen text[]) TO anon;
 GRANT EXECUTE ON FUNCTION public.incident_melden_token(p_token text, p_datum date, p_tijd time without time zone, p_locatie text, p_project text, p_omschrijving text, p_naam_melder text, p_gevolgen text[]) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.incident_melden_token(p_token text, p_datum date, p_tijd time without time zone, p_locatie text, p_project text, p_omschrijving text, p_naam_melder text, p_gevolgen text[]) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.incident_meldlink_intrekken(p_company_id uuid, p_ingetrokken boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.incident_meldlink_intrekken(p_company_id uuid, p_ingetrokken boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.incident_meldlink_intrekken(p_company_id uuid, p_ingetrokken boolean) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.incident_meldlink_roteren(p_company_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.incident_meldlink_roteren(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.incident_meldlink_roteren(p_company_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.incident_meldlink_zorg(p_company_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.incident_meldlink_zorg(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.incident_meldlink_zorg(p_company_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) TO service_role;

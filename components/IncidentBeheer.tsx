@@ -43,9 +43,29 @@ export default function IncidentBeheer({
   const [incidenten, setIncidenten] = useState<Incident[]>(initialIncidenten)
   const [meldlink, setMeldlink] = useState<Meldlink | null>(initialMeldlink)
   const [openId, setOpenId] = useState<string | null>(null)
+  const [periode, setPeriode] = useState<'jaar' | '12m' | 'alles'>('jaar')
+  const [filter, setFilter] = useState<{ soort: 'status' | 'gevolg'; waarde: string } | null>(null)
 
   const gevolgLabel = (code: string) => gevolgOpties.find(g => g.code === code)?.omschrijving ?? code
   const open = incidenten.find(i => i.id === openId) ?? null
+
+  // Periode-ondergrens (client-side; de lijst is al RLS-scoped op het eigen bedrijf).
+  const periodeVanaf = (() => {
+    if (periode === 'alles') return null
+    const d = new Date()
+    if (periode === 'jaar') return `${d.getFullYear()}-01-01`
+    d.setMonth(d.getMonth() - 12)
+    return d.toISOString().slice(0, 10)
+  })()
+  const inPeriode = (i: Incident) => !periodeVanaf || i.datum >= periodeVanaf
+  const periodeIncidenten = incidenten.filter(inPeriode)
+  const zichtbaar = periodeIncidenten.filter(i =>
+    !filter
+      ? true
+      : filter.soort === 'status'
+        ? i.status === filter.waarde
+        : i.gevolgen.includes(filter.waarde),
+  )
 
   return (
     <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
@@ -88,12 +108,49 @@ export default function IncidentBeheer({
               onWijzig={setMeldlink}
             />
 
-            <h2 className="text-sm font-semibold text-ink/70 mt-8 mb-2">Binnengekomen meldingen</h2>
-            {incidenten.length === 0 ? (
-              <p className="text-center text-ink/40 py-10 text-sm">Er zijn nog geen meldingen.</p>
+            {/* Periodekeuze */}
+            <div className="flex items-center gap-2 mt-8 mb-3">
+              <span className="text-sm font-semibold text-ink/70">Overzicht</span>
+              <div className="ml-auto flex gap-1">
+                {([['jaar', 'Dit jaar'], ['12m', 'Laatste 12 mnd'], ['alles', 'Alles']] as const).map(([w, lbl]) => (
+                  <button key={w} onClick={() => { setPeriode(w); setFilter(null) }}
+                    className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${periode === w ? 'bg-ink text-white border-ink' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}>
+                    {lbl}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <IncidentDashboard
+              incidenten={periodeIncidenten}
+              gevolgOpties={gevolgOpties}
+              directeOorzaken={directeOorzaken}
+              basisOorzaken={basisOorzaken}
+              filter={filter}
+              onFilter={setFilter}
+            />
+
+            <div className="flex items-center gap-2 mt-8 mb-2">
+              <h2 className="text-sm font-semibold text-ink/70">
+                {filter
+                  ? `Meldingen — ${filter.soort === 'status' ? STATUS_LABEL[filter.waarde as Incident['status']] : gevolgLabel(filter.waarde)}`
+                  : 'Alle meldingen'}
+                <span className="text-ink/40 font-normal"> ({zichtbaar.length})</span>
+              </h2>
+              {filter && (
+                <button onClick={() => setFilter(null)} className="text-xs text-accent hover:underline" style={{ color: 'var(--color-accent)' }}>
+                  toon alle
+                </button>
+              )}
+            </div>
+
+            {zichtbaar.length === 0 ? (
+              <p className="text-center text-ink/40 py-10 text-sm">
+                {periodeIncidenten.length === 0 ? 'Er zijn nog geen meldingen in deze periode.' : 'Geen meldingen in deze selectie.'}
+              </p>
             ) : (
               <div className="space-y-2">
-                {incidenten.map(i => (
+                {zichtbaar.map(i => (
                   <button key={i.id} onClick={() => setOpenId(i.id)}
                     className="w-full text-left bg-white rounded-lg shadow-sm p-4 hover:bg-gray-50 transition-colors">
                     <div className="flex items-start justify-between gap-3">
@@ -122,6 +179,109 @@ export default function IncidentBeheer({
         )}
       </div>
     </main>
+  )
+}
+
+// ============================================================
+// Dashboard (niveau 1): aantallen per status/gevolg + meest voorkomende oorzaken.
+// Klik op een status- of gevolg-tegel filtert de lijst eronder (niveau 2).
+// ============================================================
+function IncidentDashboard({
+  incidenten, gevolgOpties, directeOorzaken, basisOorzaken, filter, onFilter,
+}: {
+  incidenten: Incident[]
+  gevolgOpties: GevolgOptie[]
+  directeOorzaken: OorzaakOptie[]
+  basisOorzaken: OorzaakOptie[]
+  filter: { soort: 'status' | 'gevolg'; waarde: string } | null
+  onFilter: (f: { soort: 'status' | 'gevolg'; waarde: string } | null) => void
+}) {
+  const totaal = incidenten.length
+  const statusTelling = (s: Incident['status']) => incidenten.filter(i => i.status === s).length
+  const gevolgTelling = (code: string) => incidenten.filter(i => i.gevolgen.includes(code)).length
+
+  const telOorzaken = (kies: (i: Incident) => number[], opties: OorzaakOptie[]) => {
+    const telling = new Map<number, number>()
+    for (const i of incidenten) for (const c of kies(i)) telling.set(c, (telling.get(c) ?? 0) + 1)
+    return [...telling.entries()]
+      .map(([code, aantal]) => ({ code, aantal, label: opties.find(o => o.code === code)?.omschrijving ?? String(code) }))
+      .sort((a, b) => b.aantal - a.aantal)
+      .slice(0, 5)
+  }
+  const topDirecte = telOorzaken(i => i.directe_oorzaken, directeOorzaken)
+  const topBasis = telOorzaken(i => i.basis_oorzaken, basisOorzaken)
+
+  const actief = (soort: 'status' | 'gevolg', waarde: string) => filter?.soort === soort && filter.waarde === waarde
+  const klik = (soort: 'status' | 'gevolg', waarde: string) => onFilter(actief(soort, waarde) ? null : { soort, waarde })
+
+  const statusKleur: Record<Incident['status'], string> = {
+    open: 'text-amber-700', in_onderzoek: 'text-blue-700', afgehandeld: 'text-green-700',
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="bg-white rounded-lg shadow-sm p-3">
+          <div className="text-2xl font-semibold text-ink">{totaal}</div>
+          <div className="text-xs text-ink/50 mt-0.5">Meldingen totaal</div>
+        </div>
+        {(['open', 'in_onderzoek', 'afgehandeld'] as const).map(s => (
+          <button key={s} onClick={() => klik('status', s)}
+            className={`text-left bg-white rounded-lg shadow-sm p-3 border-2 transition-colors ${actief('status', s) ? 'border-accent' : 'border-transparent hover:border-ink/10'}`}
+            style={actief('status', s) ? { borderColor: 'var(--color-accent)' } : undefined}>
+            <div className={`text-2xl font-semibold ${statusKleur[s]}`}>{statusTelling(s)}</div>
+            <div className="text-xs text-ink/50 mt-0.5">{STATUS_LABEL[s]}</div>
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm p-3">
+        <div className="text-xs font-medium text-ink/60 mb-2">Naar gevolg</div>
+        <div className="flex flex-wrap gap-1.5">
+          {gevolgOpties.map(g => {
+            const n = gevolgTelling(g.code)
+            return (
+              <button key={g.code} onClick={() => klik('gevolg', g.code)}
+                className={`text-xs px-2.5 py-1.5 rounded-full border transition-colors ${actief('gevolg', g.code) ? 'bg-accent text-white border-accent' : 'bg-white text-ink/70 border-ink/15 hover:border-ink/40'}`}
+                style={actief('gevolg', g.code) ? { backgroundColor: 'var(--color-accent)', borderColor: 'var(--color-accent)' } : undefined}>
+                {g.omschrijving} <span className="font-semibold">{n}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-2">
+        <OorzaakTop titel="Meest voorkomende directe oorzaken" rijen={topDirecte} />
+        <OorzaakTop titel="Meest voorkomende basisoorzaken" rijen={topBasis} />
+      </div>
+    </div>
+  )
+}
+
+function OorzaakTop({ titel, rijen }: { titel: string; rijen: Array<{ code: number; aantal: number; label: string }> }) {
+  const max = Math.max(1, ...rijen.map(r => r.aantal))
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-3">
+      <div className="text-xs font-medium text-ink/60 mb-2">{titel}</div>
+      {rijen.length === 0 ? (
+        <p className="text-xs text-ink/40">Nog niet ingevuld.</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {rijen.map(r => (
+            <li key={r.code} className="text-xs">
+              <div className="flex justify-between gap-2 text-ink/70">
+                <span className="truncate">{String(r.code).padStart(2, '0')} {r.label}</span>
+                <span className="font-semibold shrink-0">{r.aantal}</span>
+              </div>
+              <div className="h-1 rounded bg-ink/5 mt-0.5 overflow-hidden">
+                <div className="h-full rounded" style={{ width: `${(r.aantal / max) * 100}%`, backgroundColor: 'var(--color-accent)' }} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 

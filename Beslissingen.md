@@ -280,3 +280,31 @@ beheer alleen eigen bedrijf); `security_hardening_test.mjs` **25/25** (61 gehard
 token-RPC's); QR-zelftest groen; `tsc` + `next build` groen. Browsertest van het KAM-
 scherm (lijst → detail → Deel 2 opslaan, QR scannen) is een aanbevolen handmatige stap;
 de module moet per bedrijf geactiveerd zijn (Modulebeheer).
+
+### Fase 4 — dashboard (doorklikbaar, drie niveaus)
+
+**Opzet.** Bovenaan de KAM-pagina een dashboard met kiesbare periode (Dit jaar /
+Laatste 12 maanden / Alles). **Niveau 1 — aantallen:** totaal, uitsplitsing naar status
+(open/in onderzoek/afgehandeld) en naar gevolg (letsel/schade/milieu/brand/bijna-
+incident/…), plus de vijf meest voorkomende directe- en basisoorzaken (met balkjes).
+**Niveau 2:** klikken op een status- of gevolg-tegel filtert de meldingenlijst eronder
+(met "toon alle"). **Niveau 3:** klikken op een lijstregel opent het volledige incident
+(Deel 1 + Deel 2 + foto's) — het bestaande detailscherm.
+
+**Bewuste keuze — client-side aggregatie.** De KAM-pagina laadt de incidenten al
+RLS-gescoped op het eigen bedrijf; het dashboard rekent daarover in de client (tellingen
+per status/gevolg/oorzaak, periodefilter). Geen extra RPC/migratie en geen nieuw
+serveroppervlak, dus de beveiliging blijft ongewijzigd (de bestaande isolatietest dekt
+het). Als het volume per bedrijf groot wordt, kan dit later door een lees-only
+aggregatie-RPC vervangen worden (zoals `dashboard_overzicht` bij het managementdashboard)
+zonder de UI te wijzigen.
+
+**Bewijs.** `tsc` + `next build` groen (dashboard compileert in de bestaande route). Geen
+nieuwe DB-migratie. Browsertest (periodewissel, tegel → gefilterde lijst → detail) is een
+aanbevolen handmatige stap.
+
+**Samengevat is de incidenten-module compleet (fasen 1-4):** open melden (Deel 1) →
+KAM-afhandeling (Deel 2) → doorklikbaar dashboard, met AVG-borging (gezondheidsgegevens
+alleen KAM-only, foto's privé), per-bedrijf-isolatie op elke laag (RLS + guards + storage),
+en de gereserveerde haken (`actie_ids`, `toolbox_push_id`) klaar voor de latere koppeling
+aan de QHSE-actielijst en de verplichte-toolbox-na-ongeval.

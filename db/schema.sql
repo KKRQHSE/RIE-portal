@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-06-28T17:29:26.865Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-05T20:08:30.582Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -223,6 +223,71 @@ CREATE TABLE public.herinnering_log (
   email text
 );
 
+CREATE TABLE public.incident (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  datum date NOT NULL,
+  tijd time without time zone,
+  locatie text NOT NULL,
+  project text,
+  omschrijving text NOT NULL,
+  naam_melder text,
+  gevolgen text[] DEFAULT '{}'::text[] NOT NULL,
+  aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL,
+  status text DEFAULT 'open'::text NOT NULL,
+  directe_oorzaken integer[] DEFAULT '{}'::integer[] NOT NULL,
+  basis_oorzaken integer[] DEFAULT '{}'::integer[] NOT NULL,
+  oorzaak_toelichting text,
+  onderzoeksrapportage_bijgevoegd boolean DEFAULT false NOT NULL,
+  telefonische_melding_directie boolean DEFAULT false NOT NULL,
+  telefonische_melding_aan text,
+  maatregelen_in_actielijst boolean DEFAULT false NOT NULL,
+  tra_aanpassen boolean DEFAULT false NOT NULL,
+  andere_maatregelen text,
+  besproken_in_toolbox_datum date,
+  functie_slachtoffer text,
+  medische_dienst_bezocht text,
+  actie_ids uuid[] DEFAULT '{}'::uuid[] NOT NULL,
+  toolbox_push_id uuid,
+  afgehandeld_op timestamp with time zone,
+  laatst_bijgewerkt_op timestamp with time zone
+);
+
+CREATE TABLE public.incident_basis_oorzaak (
+  code integer NOT NULL,
+  omschrijving text NOT NULL
+);
+
+CREATE TABLE public.incident_directe_oorzaak (
+  code integer NOT NULL,
+  omschrijving text NOT NULL
+);
+
+CREATE TABLE public.incident_foto (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  incident_id uuid NOT NULL,
+  company_id uuid NOT NULL,
+  storage_pad text NOT NULL,
+  bestandsnaam text,
+  type text,
+  grootte bigint,
+  aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.incident_gevolg_soort (
+  code text NOT NULL,
+  omschrijving text NOT NULL,
+  volgorde integer DEFAULT 0 NOT NULL
+);
+
+CREATE TABLE public.incident_meldlink (
+  company_id uuid NOT NULL,
+  token text NOT NULL,
+  ingetrokken boolean DEFAULT false NOT NULL,
+  aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL,
+  aangemaakt_door uuid
+);
+
 CREATE TABLE public.inspectie (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
@@ -439,6 +504,12 @@ ALTER TABLE public.fotos ADD CONSTRAINT fotos_pkey PRIMARY KEY (id);
 ALTER TABLE public.functiegroep ADD CONSTRAINT functiegroep_pkey PRIMARY KEY (id);
 ALTER TABLE public.herinner_instelling ADD CONSTRAINT herinner_instelling_pkey PRIMARY KEY (company_id);
 ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_pkey PRIMARY KEY (id);
+ALTER TABLE public.incident ADD CONSTRAINT incident_pkey PRIMARY KEY (id);
+ALTER TABLE public.incident_basis_oorzaak ADD CONSTRAINT incident_basis_oorzaak_pkey PRIMARY KEY (code);
+ALTER TABLE public.incident_directe_oorzaak ADD CONSTRAINT incident_directe_oorzaak_pkey PRIMARY KEY (code);
+ALTER TABLE public.incident_foto ADD CONSTRAINT incident_foto_pkey PRIMARY KEY (id);
+ALTER TABLE public.incident_gevolg_soort ADD CONSTRAINT incident_gevolg_soort_pkey PRIMARY KEY (code);
+ALTER TABLE public.incident_meldlink ADD CONSTRAINT incident_meldlink_pkey PRIMARY KEY (company_id);
 ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_pkey PRIMARY KEY (id);
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT inspectie_bevinding_pkey PRIMARY KEY (id);
 ALTER TABLE public.inspectie_historie ADD CONSTRAINT inspectie_historie_pkey PRIMARY KEY (id);
@@ -456,6 +527,7 @@ ALTER TABLE public.vragen ADD CONSTRAINT vragen_pkey PRIMARY KEY (id);
 ALTER TABLE public.deellinks ADD CONSTRAINT deellinks_persoon_id_key UNIQUE (persoon_id);
 ALTER TABLE public.deellinks ADD CONSTRAINT deellinks_token_key UNIQUE (token);
 ALTER TABLE public.fotos ADD CONSTRAINT fotos_company_id_nr_key UNIQUE (company_id, nr);
+ALTER TABLE public.incident_meldlink ADD CONSTRAINT incident_meldlink_token_key UNIQUE (token);
 ALTER TABLE public.modules ADD CONSTRAINT modules_company_id_code_key UNIQUE (company_id, code);
 ALTER TABLE public.personen ADD CONSTRAINT personen_company_id_email_key UNIQUE (company_id, email);
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_company_id_nr_key UNIQUE (company_id, nr);
@@ -473,6 +545,8 @@ ALTER TABLE public.centrale_toolbox ADD CONSTRAINT toolbox_uitleg_modus_check CH
 ALTER TABLE public.companies ADD CONSTRAINT companies_huisstijl_modus_check CHECK ((huisstijl_modus = ANY (ARRAY['default'::text, 'co_branding'::text, 'white_label'::text])));
 ALTER TABLE public.herinner_instelling ADD CONSTRAINT herinner_instelling_ritme_check CHECK ((ritme = ANY (ARRAY['uit'::text, 'dagelijks'::text, 'wekelijks'::text, 'maandelijks'::text])));
 ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_bron_check CHECK ((bron = ANY (ARRAY['handmatig'::text, 'automatisch'::text])));
+ALTER TABLE public.incident ADD CONSTRAINT incident_medische_dienst_check CHECK (((medische_dienst_bezocht IS NULL) OR (medische_dienst_bezocht = ANY (ARRAY['ja'::text, 'nee'::text, 'onbekend'::text]))));
+ALTER TABLE public.incident ADD CONSTRAINT incident_status_check CHECK ((status = ANY (ARRAY['open'::text, 'in_onderzoek'::text, 'afgehandeld'::text])));
 ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_status_check CHECK ((status = ANY (ARRAY['concept'::text, 'ingediend'::text, 'afgerond'::text, 'geannuleerd'::text])));
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT bevinding_actie_id_klopt CHECK ((((afhandeling = 'actie'::text) AND (actie_id IS NOT NULL)) OR ((afhandeling <> 'actie'::text) AND (actie_id IS NULL))));
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT bevinding_afhandeling_klopt CHECK ((((resultaat IS NULL) AND (afhandeling = 'geen'::text)) OR ((resultaat = 'in_orde'::text) AND (afhandeling = 'geen'::text)) OR ((resultaat = 'nvt'::text) AND (afhandeling = 'geen'::text)) OR ((resultaat = 'niet_in_orde'::text) AND (afhandeling = ANY (ARRAY['geen'::text, 'meteen_hersteld'::text, 'actie'::text])))));
@@ -513,6 +587,10 @@ ALTER TABLE public.herinner_instelling ADD CONSTRAINT herinner_instelling_update
 ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_door_fkey FOREIGN KEY (door) REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE CASCADE;
+ALTER TABLE public.incident ADD CONSTRAINT incident_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.incident_foto ADD CONSTRAINT incident_foto_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.incident_foto ADD CONSTRAINT incident_foto_incident_id_fkey FOREIGN KEY (incident_id) REFERENCES incident(id) ON DELETE CASCADE;
+ALTER TABLE public.incident_meldlink ADD CONSTRAINT incident_meldlink_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE SET NULL;
 ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_sjabloon_id_fkey FOREIGN KEY (sjabloon_id) REFERENCES inspectie_sjabloon(id) ON DELETE SET NULL;
@@ -571,6 +649,11 @@ CREATE INDEX idx_modules_rie_versie ON public.modules USING btree (rie_versie_id
 CREATE INDEX idx_pva_items_rie_versie ON public.pva_items USING btree (rie_versie_id);
 CREATE INDEX idx_pva_items_termijn_datum ON public.pva_items USING btree (termijn_datum);
 CREATE INDEX idx_vragen_rie_versie ON public.vragen USING btree (rie_versie_id);
+CREATE INDEX incident_company_aangemaakt_idx ON public.incident USING btree (company_id, aangemaakt_op);
+CREATE INDEX incident_company_datum_idx ON public.incident USING btree (company_id, datum);
+CREATE INDEX incident_company_status_idx ON public.incident USING btree (company_id, status);
+CREATE INDEX incident_foto_company_idx ON public.incident_foto USING btree (company_id);
+CREATE INDEX incident_foto_incident_idx ON public.incident_foto USING btree (incident_id);
 CREATE INDEX inspectie_company_idx ON public.inspectie USING btree (company_id, status);
 CREATE INDEX inspectie_historie_idx ON public.inspectie_historie USING btree (inspectie_id, wanneer DESC);
 CREATE INDEX isp_punt_sjabloon_idx ON public.inspectie_sjabloon_punt USING btree (sjabloon_id, volgorde);
@@ -607,6 +690,12 @@ ALTER TABLE public.fotos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.functiegroep ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.herinner_instelling ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.herinnering_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.incident ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.incident_basis_oorzaak ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.incident_directe_oorzaak ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.incident_foto ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.incident_gevolg_soort ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.incident_meldlink ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie_bevinding ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie_historie ENABLE ROW LEVEL SECURITY;
@@ -688,6 +777,27 @@ CREATE POLICY herinner_instelling_write ON public.herinner_instelling AS PERMISS
   USING (mag_bedrijf_beheren(company_id))
   WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY herinnering_log_select ON public.herinnering_log AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
+CREATE POLICY incident_sel ON public.incident AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
+CREATE POLICY incident_basis_oorzaak_adm ON public.incident_basis_oorzaak AS PERMISSIVE FOR ALL TO public
+  USING (is_admin())
+  WITH CHECK (is_admin());
+CREATE POLICY incident_basis_oorzaak_sel ON public.incident_basis_oorzaak AS PERMISSIVE FOR SELECT TO public
+  USING ((auth.uid() IS NOT NULL));
+CREATE POLICY incident_directe_oorzaak_adm ON public.incident_directe_oorzaak AS PERMISSIVE FOR ALL TO public
+  USING (is_admin())
+  WITH CHECK (is_admin());
+CREATE POLICY incident_directe_oorzaak_sel ON public.incident_directe_oorzaak AS PERMISSIVE FOR SELECT TO public
+  USING ((auth.uid() IS NOT NULL));
+CREATE POLICY incident_foto_sel ON public.incident_foto AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
+CREATE POLICY incident_gevolg_soort_adm ON public.incident_gevolg_soort AS PERMISSIVE FOR ALL TO public
+  USING (is_admin())
+  WITH CHECK (is_admin());
+CREATE POLICY incident_gevolg_soort_sel ON public.incident_gevolg_soort AS PERMISSIVE FOR SELECT TO public
+  USING ((auth.uid() IS NOT NULL));
+CREATE POLICY incident_meldlink_sel ON public.incident_meldlink AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY inspectie_sel ON public.inspectie AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));

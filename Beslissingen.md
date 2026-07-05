@@ -142,3 +142,63 @@ gehardende RPC's zonder anon-EXECUTE, 9 token-RPC's mét), runtime (anon afgewez
 reads/writes/admin), regressie (KAM/admin werkt; token-flow mét token door, zónder
 token niet). Bestaande isolatietests blijven groen (toolbox 27, bibliotheek 34,
 inspectie 25). Eerder al gedicht voor de export-RPC's in 0021.
+
+## Beslissing 63 — Incidenten-/ongevallen-module, Fase 1: datamodel (5 juli 2026)
+
+**Aanleiding.** Een nieuwe afneembare catalogusmodule 'incidenten' om laagdrempelig
+incidenten en bijna-incidenten te melden, af te handelen en op een doorklikbaar
+dashboard te tonen. Gebouwd in fasen; dit is het datamodel (STOP-punt vóór de flows).
+
+**Kerngedachte — twee losse delen op één rij, net als het papieren formulier.**
+- **Deel 1 (melder):** laagdrempelig, GEEN login, via een vaste bedrijfseigen
+  meldlink/QR. Minimale velden zodat de drempel op de werkvloer echt laag is.
+- **Deel 2 (VGM-coördinator/KAM):** ingelogd in het portaal — oorzaakclassificatie,
+  maatregelen, koppelingen, en de gevoelige slachtoffer-/letselvelden. De melder
+  hoeft hier niets van te weten.
+
+Beide delen staan op **één `incident`-rij**. De SELECT-policy is `mag_bedrijf_beheren`:
+alleen de KAM/admin van het eigen bedrijf leest de rij (inclusief de gevoelige velden).
+De melder INSERT via een SECURITY DEFINER token-RPC (fase 2) en leest de rij nooit
+terug. Muteren uitsluitend via RPC's — géén insert/update-policy (patroon van
+`toolbox_deelname`, Beslissing rond migratie 0015).
+
+**Besluiten in het datamodel (migratie `0025_incident_datamodel.sql`, additief/idempotent).**
+1. **`incident`** draagt Deel 1 (datum, tijd, locatie, project, omschrijving,
+   naam_melder optioneel, `gevolgen text[]`) én Deel 2 (status
+   open/in_onderzoek/afgehandeld, `directe_oorzaken int[]`, `basis_oorzaken int[]`,
+   toelichting, onderzoeksrapportage/telefonische melding/maatregelen/tra-vlaggen,
+   andere_maatregelen, besproken_in_toolbox_datum). **Gevoelig (alleen KAM):**
+   `functie_slachtoffer`, `medische_dienst_bezocht`. **Gereserveerd** (kolom nu,
+   logica later): `actie_ids uuid[]` (haak QHSE-actielijst), `toolbox_push_id`
+   (verplichte-toolbox-na-ongeval).
+2. **Vaste oorzaaklijsten als geseede referentietabellen** — `incident_directe_oorzaak`
+   (01-28), `incident_basis_oorzaak` (01-16) en `incident_gevolg_soort` (6 gevolgen).
+   Gekozen boven een code-constante omdat het dashboard ze telbaar én labelbaar moet
+   maken (join op de ref-tabel is één bron van waarheid); past bij het
+   centrale-bibliotheek-patroon (admin-write, iedereen-ingelogd leest). Selecties
+   bewaren we als code-arrays op de incident-rij, telbaar via `unnest`.
+3. **Bedrijfseigen meldlink `incident_meldlink`** — een EIGEN, intrekbaar/roteerbaar
+   token per bedrijf. Bewust géén hergebruik van het werknemer- (`deellinks`) of
+   actiehouder-token, zodat de KAM een gedeelde meldlink kan vervangen zonder andere
+   tokens te raken. Anon resolvet het token via een SECURITY DEFINER-RPC (fase 2),
+   nooit via directe tabeltoegang.
+4. **Foto's `incident_foto`** in de bestaande **privé `bewijs`-bucket**, bedrijf-
+   geprefixt pad `<company_id>/incident/<incident_id>/<uuid>.<ext>` zodat de bestaande
+   per-bedrijf `storage.objects`-RLS ze ook bij directe Storage-API-toegang afschermt.
+   Geen publieke URL; toegang uitsluitend via kortlevende service-role signed URLs ná
+   `mag_bedrijf_beheren` (KAM) of ná token-validatie (melder bij uploaden) — het
+   bestaande `gast-upload`/`bewijs`-patroon. (Alternatief overwogen: aparte bucket
+   `incident-foto`; verworpen wegens extra, buiten-migratie beheerde storage-policies.)
+
+**AVG (zwaarste categorie tot nu toe).** `letsel` + `medische_dienst_bezocht` +
+`functie_slachtoffer` zijn gezondheidsgegevens (art. 9 AVG); foto's kunnen een
+herkenbaar persoon/letsel tonen. Vastgelegd: die velden alleen op de KAM-only-rij
+(nooit cross-company, nooit in de open flow), foto's in privé-bucket zonder publieke
+URL, bewaartermijn/verwijderroutine te bepalen. Uitgeschreven in Projectstand bij de
+module-AVG-punten voor het register/de verwerkingsverklaring.
+
+**Bewijs.** Migratie 0025 toegepast tegen de live DB (6 gevolg-soorten, 28 directe,
+16 basis-oorzaken geseed); RLS geverifieerd (alle 6 tabellen RLS aan; `incident`/
+`incident_foto`/`incident_meldlink` elk 1 SELECT-policy = `mag_bedrijf_beheren`,
+ref-tabellen read + admin-write); schema gedumpt (`db/schema.sql`, 38 tabellen);
+`tsc --noEmit` en `next build` groen. Flows + gerichte isolatietest volgen in fase 2/3.

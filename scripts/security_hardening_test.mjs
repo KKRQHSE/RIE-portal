@@ -75,6 +75,8 @@ const HARDENED = [
 const TOKEN_ANON = [
   'toolbox_voor_token','toolbox_afronden_token','deellink_data','deellink_actie_doorgeven',
   'deellink_actie_historie','deellink_bewijs_lijst','deellink_bewijs_pad','deellink_bewijs_registreren','deellink_concept_update',
+  // Incidenten — open meldflow (Deel 1) via bedrijfstoken (migratie 0026).
+  'incident_meldcontext_token','incident_melden_token','incident_foto_pad_token','incident_foto_registreren_token',
 ]
 
 async function maakBedrijf(label) {

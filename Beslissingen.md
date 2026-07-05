@@ -202,3 +202,44 @@ module-AVG-punten voor het register/de verwerkingsverklaring.
 `incident_foto`/`incident_meldlink` elk 1 SELECT-policy = `mag_bedrijf_beheren`,
 ref-tabellen read + admin-write); schema gedumpt (`db/schema.sql`, 38 tabellen);
 `tsc --noEmit` en `next build` groen. Flows + gerichte isolatietest volgen in fase 2/3.
+
+### Fase 2 — open meldflow (Deel 1), migratie 0026
+
+**Route + token.** Een publieke, login-loze meldpagina `/melden/[token]` landt via het
+bedrijfstoken (`incident_meldlink`) in de juiste tenant. Mobiel-vriendelijk formulier:
+datum/tijd (vooringevuld op nu), locatie, project (optioneel), omschrijving, gevolg
+aanvinken, naam melder (optioneel), foto's. Na versturen een nette bevestiging. De open
+flow legt bewust GEEN slachtoffer-/letseldetails vast.
+
+**Vier SECURITY DEFINER token-RPC's, bewust anon-toegankelijk** (token-flow, conform
+Beslissing 62 — net als de deellink-/toolbox-token-RPC's): `incident_meldcontext_token`
+(bedrijf + huisstijl + gevolg-labels, géén incident-data), `incident_melden_token`
+(maakt de incident-rij; bedrijf uit het token; onbekende gevolg-codes worden
+server-side weggefilterd; Deel 2 blijft leeg), `incident_foto_pad_token` +
+`incident_foto_registreren_token` (reserveren/registreren, valideren dat de incident bij
+het bedrijf van het token hoort). Toegevoegd aan de bewust-anon-roster van
+`security_hardening_test.mjs` (nu 13 token-RPC's).
+
+**Foto-afscherming — belangrijke correctie op het Fase 1-advies.** In Fase 1 stelde ik
+voor foto's in de bestaande `bewijs`-bucket te zetten met een bedrijf-geprefixt pad,
+aannemend dat de storage-RLS daar per bedrijf op het eerste padsegment afschermt.
+**Die aanname bleek onjuist:** de `bewijs`-bucket-policy dwingt storage-zijdig alleen
+`auth.uid() IS NOT NULL` af (elke ingelogde gebruiker van elk bedrijf kan elk
+bewijs-object lezen als hij het pad kent; isolatie leunt daar op onraadbare paden + de
+app-laag). Voor de AVG-zwaarste incident-foto's te zwak. **Besluit: een eigen PRIVÉ
+bucket `incident-foto`** met échte per-bedrijf padscheiding in de storage-RLS
+(`(storage.foldername(name))[1] = my_company_id()::text or is_admin()`), pad
+`<company_id>/<incident_id>/<uuid>.<ext>`. Geen anon/authenticated insert-policy:
+schrijven kan uitsluitend via een service-role signed upload-URL (bypasst RLS voor
+exact één pad, ná token-validatie). De melder uploadt via `/api/incident/foto-upload`
+(mint de signed URL) → `uploadToSignedUrl` → registratie-RPC — hetzelfde patroon als
+`gast-upload`. *(Losstaande observatie voor later, buiten scope: de `bewijs`-bucket
+zelf zou baat hebben bij dezelfde per-bedrijf storage-RLS; nu alleen onraadbaar pad.)*
+
+**Bewijs.** Migratie 0026 toegepast; `scripts/incident_isolatie_test.mjs` **12/12**
+(open melden landt in juiste tenant; onbekende gevolg-code gefilterd; anon zonder token
+kan niet melden; ingetrokken token weigert; B ziet A's melding niet, KAM van A wél incl.
+gevoelig veld; A-token kan geen foto aan B's incident hangen; foto van A niet leesbaar
+door B of anon, KAM van A wél); `security_hardening_test.mjs` **25/25** (13 token-RPC's);
+`tsc` + `next build` groen; schema gedumpt (86 functies). Browsertest van het formulier
+(mobiel, foto-upload, bevestiging) is een aanbevolen handmatige stap.

@@ -17,9 +17,11 @@ const PUBLIC_PATHS = [
   '/reset-wachtwoord',
   '/set-wachtwoord',
   '/a',
+  '/melden',
   '/api/herinneringen/heartbeat',
   '/api/bewijs/gast-upload',
   '/api/bewijs/gast-download',
+  '/api/incident/foto-upload',
 ]
 
 export async function middleware(request: NextRequest) {

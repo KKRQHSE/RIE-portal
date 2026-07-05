@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-05T20:08:30.582Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-05T20:23:03.814Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -2371,6 +2371,139 @@ begin
   from jsonb_array_elements(coalesce(v_dataset->'fotos','[]'::jsonb)) as f;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.incident_foto_pad_token(p_token text, p_incident_id uuid, p_bestandsnaam text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_link     public.incident_meldlink;
+  v_company  uuid;
+  v_incident public.incident;
+  v_ext      text;
+  v_pad      text;
+begin
+  select * into v_link from public.incident_meldlink where token = p_token;
+  if v_link.company_id is null or v_link.ingetrokken then return null; end if;
+  v_company := v_link.company_id;
+
+  select * into v_incident from public.incident
+   where id = p_incident_id and company_id = v_company;
+  if v_incident.id is null then return null; end if;
+
+  v_ext := lower(coalesce(nullif(regexp_replace(p_bestandsnaam, '^.*\.', ''), p_bestandsnaam), 'bin'));
+
+  -- Bedrijf-geprefixt pad: <company>/<incident>/<random>.<ext>. Eerste segment =
+  -- company → de storage-RLS schermt het per bedrijf af.
+  v_pad := v_company || '/' || p_incident_id || '/'
+           || replace(gen_random_uuid()::text, '-', '') || '.' || v_ext;
+
+  return jsonb_build_object('pad', v_pad, 'company_id', v_company);
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.incident_foto_registreren_token(p_token text, p_incident_id uuid, p_pad text, p_bestandsnaam text, p_type text, p_grootte bigint)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_link     public.incident_meldlink;
+  v_company  uuid;
+  v_incident public.incident;
+  v_id       uuid;
+begin
+  select * into v_link from public.incident_meldlink where token = p_token;
+  if v_link.company_id is null or v_link.ingetrokken then return null; end if;
+  v_company := v_link.company_id;
+
+  select * into v_incident from public.incident
+   where id = p_incident_id and company_id = v_company;
+  if v_incident.id is null then return null; end if;
+
+  -- Defense-in-depth: het pad moet binnen <company>/<incident>/ vallen.
+  if p_pad is null or p_pad not like (v_company::text || '/' || p_incident_id::text || '/%') then
+    return null;
+  end if;
+
+  insert into public.incident_foto
+    (incident_id, company_id, storage_pad, bestandsnaam, type, grootte)
+  values
+    (p_incident_id, v_company, p_pad, p_bestandsnaam, p_type, p_grootte)
+  returning id into v_id;
+
+  return v_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.incident_meldcontext_token(p_token text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_link    public.incident_meldlink;
+  v_company uuid;
+begin
+  select * into v_link from public.incident_meldlink where token = p_token;
+  if v_link.company_id is null or v_link.ingetrokken then return null; end if;
+  v_company := v_link.company_id;
+
+  return jsonb_build_object(
+    'bedrijf',      (select name from public.companies where id = v_company),
+    'huisstijl',    public.huisstijl_van_bedrijf(v_company),
+    'gevolg_opties', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'code', code, 'omschrijving', omschrijving
+      ) order by volgorde, code), '[]'::jsonb)
+      from public.incident_gevolg_soort
+    )
+  );
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.incident_melden_token(p_token text, p_datum date, p_tijd time without time zone, p_locatie text, p_project text, p_omschrijving text, p_naam_melder text, p_gevolgen text[])
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_link     public.incident_meldlink;
+  v_company  uuid;
+  v_gevolgen text[];
+  v_id       uuid;
+begin
+  select * into v_link from public.incident_meldlink where token = p_token;
+  if v_link.company_id is null or v_link.ingetrokken then
+    raise exception 'Ongeldige of ingetrokken meldlink';
+  end if;
+  v_company := v_link.company_id;
+
+  if p_datum is null then raise exception 'Datum is verplicht'; end if;
+  if p_locatie is null or btrim(p_locatie) = '' then raise exception 'Locatie is verplicht'; end if;
+  if p_omschrijving is null or btrim(p_omschrijving) = '' then raise exception 'Omschrijving is verplicht'; end if;
+
+  -- Alleen bekende gevolg-codes bewaren (onbekende invoer stil negeren).
+  select coalesce(array_agg(g.code order by s.volgorde, s.code), '{}')
+    into v_gevolgen
+  from unnest(coalesce(p_gevolgen, '{}')) as g(code)
+  join public.incident_gevolg_soort s on s.code = g.code;
+
+  insert into public.incident (
+    company_id, datum, tijd, locatie, project, omschrijving, naam_melder, gevolgen
+  ) values (
+    v_company, p_datum, p_tijd,
+    btrim(p_locatie),
+    nullif(btrim(coalesce(p_project, '')), ''),
+    btrim(p_omschrijving),
+    nullif(btrim(coalesce(p_naam_melder, '')), ''),
+    coalesce(v_gevolgen, '{}')
+  ) returning id into v_id;
+
+  return v_id;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text DEFAULT NULL::text)
  RETURNS void
  LANGUAGE plpgsql
@@ -3876,6 +4009,22 @@ REVOKE EXECUTE ON FUNCTION public.import_company(p_dataset jsonb) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.import_company(p_dataset jsonb) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.import_rie_content(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.import_rie_content(p_company_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.incident_foto_pad_token(p_token text, p_incident_id uuid, p_bestandsnaam text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.incident_foto_pad_token(p_token text, p_incident_id uuid, p_bestandsnaam text) TO anon;
+GRANT EXECUTE ON FUNCTION public.incident_foto_pad_token(p_token text, p_incident_id uuid, p_bestandsnaam text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.incident_foto_pad_token(p_token text, p_incident_id uuid, p_bestandsnaam text) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.incident_foto_registreren_token(p_token text, p_incident_id uuid, p_pad text, p_bestandsnaam text, p_type text, p_grootte bigint) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.incident_foto_registreren_token(p_token text, p_incident_id uuid, p_pad text, p_bestandsnaam text, p_type text, p_grootte bigint) TO anon;
+GRANT EXECUTE ON FUNCTION public.incident_foto_registreren_token(p_token text, p_incident_id uuid, p_pad text, p_bestandsnaam text, p_type text, p_grootte bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.incident_foto_registreren_token(p_token text, p_incident_id uuid, p_pad text, p_bestandsnaam text, p_type text, p_grootte bigint) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.incident_meldcontext_token(p_token text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.incident_meldcontext_token(p_token text) TO anon;
+GRANT EXECUTE ON FUNCTION public.incident_meldcontext_token(p_token text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.incident_meldcontext_token(p_token text) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.incident_melden_token(p_token text, p_datum date, p_tijd time without time zone, p_locatie text, p_project text, p_omschrijving text, p_naam_melder text, p_gevolgen text[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.incident_melden_token(p_token text, p_datum date, p_tijd time without time zone, p_locatie text, p_project text, p_omschrijving text, p_naam_melder text, p_gevolgen text[]) TO anon;
+GRANT EXECUTE ON FUNCTION public.incident_melden_token(p_token text, p_datum date, p_tijd time without time zone, p_locatie text, p_project text, p_omschrijving text, p_naam_melder text, p_gevolgen text[]) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.incident_melden_token(p_token text, p_datum date, p_tijd time without time zone, p_locatie text, p_project text, p_omschrijving text, p_naam_melder text, p_gevolgen text[]) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) TO service_role;

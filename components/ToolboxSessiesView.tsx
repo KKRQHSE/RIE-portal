@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ToolboxSessiesOverzicht, ToolboxSessieRegel, ToolboxOverzichtItem } from '@/lib/types'
 
@@ -30,6 +30,20 @@ export default function ToolboxSessiesView({
     if (error) { setFout(error.message); return }
     setData(d as ToolboxSessiesOverzicht)
   }
+
+  // Bij het openen van de tab (mount) verse stand ophalen: de tab-wissel un/remount
+  // deze view, die anders uit de mogelijk verouderde server-`initial`-prop opnieuw
+  // initialiseert. Zo klopt de weergave zonder harde refresh.
+  useEffect(() => {
+    let actief = true
+    ;(async () => {
+      const { data: d, error } = await supabase.rpc('toolbox_sessies_overzicht', { p_company_id: companyId })
+      if (!actief) return
+      if (error) { setFout(error.message); return }
+      setData(d as ToolboxSessiesOverzicht)
+    })()
+    return () => { actief = false }
+  }, [supabase, companyId])
 
   if (!data) {
     return <p className="text-sm text-ink/50">Het sessie-overzicht kon niet worden geladen.</p>

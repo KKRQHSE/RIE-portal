@@ -2,9 +2,9 @@
 // Werkplekinspectie — STAP 3: negatieve isolatie-tests (bewijs)
 // ----------------------------------------------------------------------------
 // Toont aan dat de bedrijfsisolatie van de inspectie-module houdt: een ingelogde
-// gebruiker van bedrijf A kan GEEN sjabloon/inspectie/bevinding van bedrijf B
-// zien (0 rijen via RLS) of muteren (de SECURITY DEFINER-RPC's weigeren via
-// mag_bedrijf_beheren).
+// gebruiker van bedrijf A kan GEEN sjabloon/inspectie/bevinding/inspectie-doel van
+// bedrijf B zien (0 rijen via RLS) of muteren (de SECURITY DEFINER-RPC's weigeren via
+// mag_bedrijf_beheren + cross-company-guard).
 //
 // Draaien:   node scripts/inspectie_isolatie_test.mjs
 //
@@ -331,6 +331,74 @@ async function run() {
     check('B-functiegroep bleef ongewijzigd na aanvallen van A',
       !!data && data.gearchiveerd_op === null && data.naam === 'INSPTEST_groep_B')
   }
+
+  // --- Inspectie-doel per persoon (bedrijf_inspectie_doel + inspectie_doel_zetten, 0031) ---
+  // Eigen doel-tabel voor de werkplekinspectie, los van de toolbox. Alleen-lezen voor
+  // het eigen bedrijf via RLS; muteren uitsluitend via de SECURITY DEFINER-RPC met
+  // cross-company-guard (geen write-policy op de tabel).
+
+  // Seed: bedrijf B krijgt een inspectie-doel op zijn eigen persoon (service role omzeilt RLS).
+  {
+    const { error } = await admin.from('bedrijf_inspectie_doel')
+      .insert({ company_id: B.companyId, persoon_id: B.persoonId, doel_per_jaar: 7 })
+    if (error) throw new Error(`seed inspectie-doel B: ${error.message}`)
+  }
+
+  // Positieve controle: A zet via de RPC een inspectie-doel op zijn EIGEN persoon.
+  {
+    const { error } = await clientA.rpc('inspectie_doel_zetten', {
+      p_company_id: A.companyId, p_persoon_id: A.persoonId, p_doel_per_jaar: 5,
+    })
+    check('A zet inspectie-doel op eigen persoon (positieve controle)', !error, error ? error.message : 'ok')
+  }
+
+  // Positieve controle: A ziet zijn EIGEN inspectie-doel (RLS select).
+  {
+    const { data, error } = await clientA.from('bedrijf_inspectie_doel')
+      .select('doel_per_jaar').eq('company_id', A.companyId).eq('persoon_id', A.persoonId)
+    check('A ziet eigen inspectie-doel (positieve controle)',
+      !error && (data?.length ?? 0) === 1 && data[0].doel_per_jaar === 5,
+      error ? error.message : `${data?.length ?? '?'} rijen`)
+  }
+
+  // Lezen: A mag het inspectie-doel van B NIET zien (0 rijen via RLS).
+  {
+    const { data, error } = await clientA.from('bedrijf_inspectie_doel')
+      .select('doel_per_jaar').eq('company_id', B.companyId).eq('persoon_id', B.persoonId)
+    check('A ziet inspectie-doel van B niet', !error && (data?.length ?? 0) === 0, `${data?.length ?? '?'} rijen`)
+  }
+
+  // Muteren: A mag geen inspectie-doel zetten BIJ bedrijf B (mag_bedrijf_beheren weigert).
+  {
+    const { error } = await clientA.rpc('inspectie_doel_zetten', {
+      p_company_id: B.companyId, p_persoon_id: B.persoonId, p_doel_per_jaar: 99,
+    })
+    check('A kan geen inspectie-doel zetten bij B', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+
+  // Muteren: A mag onder zijn EIGEN company-id geen doel op B's persoon zetten
+  // (cross-company-guard: persoon hoort niet bij dit bedrijf).
+  {
+    const { error } = await clientA.rpc('inspectie_doel_zetten', {
+      p_company_id: A.companyId, p_persoon_id: B.persoonId, p_doel_per_jaar: 99,
+    })
+    check('A kan geen doel op B-persoon zetten via eigen bedrijf', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+
+  // Waardegrens: een negatief doel wordt geweigerd (RPC-guard + CHECK-constraint).
+  {
+    const { error } = await clientA.rpc('inspectie_doel_zetten', {
+      p_company_id: A.companyId, p_persoon_id: A.persoonId, p_doel_per_jaar: -1,
+    })
+    check('A kan geen negatief inspectie-doel zetten', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+
+  // Defensieve dubbelcheck: B's inspectie-doel is niet gewijzigd door A's aanvallen.
+  {
+    const { data } = await admin.from('bedrijf_inspectie_doel')
+      .select('doel_per_jaar').eq('company_id', B.companyId).eq('persoon_id', B.persoonId).single()
+    check('B-inspectie-doel bleef ongewijzigd na aanvallen van A', !!data && data.doel_per_jaar === 7)
+  }
 }
 
 async function cleanup() {
@@ -344,6 +412,7 @@ async function cleanup() {
       'inspectie_sjabloon_punt',
       'inspectie_sjabloon',
       'bedrijf_modules',
+      'bedrijf_inspectie_doel',
       'personen',
       'functiegroep',
     ]) {

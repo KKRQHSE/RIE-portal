@@ -1,18 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
-import type { Company, Functiegroep, ToolboxOverzichtItem, ToolboxDashboard, ToolboxSessiesOverzicht } from '@/lib/types'
+import type { Company, ToolboxOverzichtItem, ToolboxSessiesOverzicht } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
-import ToolboxDashboardView from './ToolboxDashboardView'
-import ToolboxSessiesView from './ToolboxSessiesView'
+import ToolboxMaandoverzicht from './ToolboxMaandoverzicht'
 import ToolboxExport from './ToolboxExport'
 
 type Supa = ReturnType<typeof createClient>
-type View = 'dashboard' | 'sessies' | 'toolboxen' | 'doelstellingen' | 'export'
+type View = 'maandoverzicht' | 'toolboxen' | 'export'
 
 const WAARSCHUWING =
   'Je wijkt af van de centrale toolbox op eigen initiatief. Gevolg: je krijgt centrale ' +
@@ -20,18 +18,15 @@ const WAARSCHUWING =
   'terugzet naar centraal.'
 
 export default function ToolboxClient({
-  company, huisstijl = VEILIGE_HUISSTIJL, initialOverzicht, functiegroepen, initialDoelen, dashboard, sessies,
+  company, huisstijl = VEILIGE_HUISSTIJL, initialOverzicht, sessies,
 }: {
   company: Company
   huisstijl?: HuisstijlView
   initialOverzicht: ToolboxOverzichtItem[]
-  functiegroepen: Functiegroep[]
-  initialDoelen: Record<string, number>
-  dashboard: ToolboxDashboard | null
   sessies: ToolboxSessiesOverzicht | null
 }) {
   const [supabase] = useState<Supa>(() => createClient())
-  const [view, setView] = useState<View>('dashboard')
+  const [view, setView] = useState<View>('maandoverzicht')
   const [overzicht, setOverzicht] = useState<ToolboxOverzichtItem[]>(initialOverzicht)
   const [fout, setFout] = useState<string | null>(null)
 
@@ -57,30 +52,19 @@ export default function ToolboxClient({
           <p className="text-sm text-ink/50 mt-0.5">Toolboxen</p>
         </div>
 
-        <div className="flex flex-wrap gap-3 mb-6">
-          <Link href={`/${company.id}/dashboard`} className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors">Dashboard</Link>
-          <span className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white">Toolboxen</span>
-        </div>
-
         <div className="flex flex-wrap gap-2 mb-4">
-          {tab('dashboard', 'Dashboard')}
-          {tab('sessies', 'Sessies')}
+          {tab('maandoverzicht', 'Maandoverzicht')}
           {tab('toolboxen', 'Toolboxen')}
-          {tab('doelstellingen', 'Doelstellingen')}
           {tab('export', 'Bewijs & export')}
         </div>
 
         {fout && <p className="text-sm text-red-600 mb-3">{fout}</p>}
 
-        {view === 'dashboard' ? (
-          <ToolboxDashboardView dashboard={dashboard} />
-        ) : view === 'sessies' ? (
-          <ToolboxSessiesView companyId={company.id} initial={sessies}
+        {view === 'maandoverzicht' ? (
+          <ToolboxMaandoverzicht companyId={company.id} initial={sessies}
             gekoppeldeToolboxen={overzicht.filter(t => t.gekoppeld)} />
         ) : view === 'toolboxen' ? (
           <KoppelBeheer companyId={company.id} supabase={supabase} overzicht={overzicht} onPatch={patch} setFout={setFout} />
-        ) : view === 'doelstellingen' ? (
-          <DoelstellingBeheer companyId={company.id} supabase={supabase} functiegroepen={functiegroepen} initialDoelen={initialDoelen} setFout={setFout} />
         ) : (
           <ToolboxExport companyId={company.id} />
         )}
@@ -270,52 +254,6 @@ function ToolboxRij({
           )}
         </>
       )}
-    </div>
-  )
-}
-
-function DoelstellingBeheer({
-  companyId, supabase, functiegroepen, initialDoelen, setFout,
-}: {
-  companyId: string
-  supabase: Supa
-  functiegroepen: Functiegroep[]
-  initialDoelen: Record<string, number>
-  setFout: (v: string | null) => void
-}) {
-  const [doelen, setDoelen] = useState<Record<string, number>>(initialDoelen)
-  const [melding, setMelding] = useState<string | null>(null)
-
-  async function zet(functiegroepId: string, waarde: number) {
-    setFout(null); setMelding(null)
-    const { error } = await supabase.rpc('doelstelling_zetten', { p_company_id: companyId, p_functiegroep_id: functiegroepId, p_doel_per_jaar: waarde })
-    if (error) { setFout(error.message); return }
-    setDoelen(prev => ({ ...prev, [functiegroepId]: waarde }))
-    setMelding('✓ Opgeslagen')
-    setTimeout(() => setMelding(null), 1500)
-  }
-
-  if (functiegroepen.length === 0) {
-    return <p className="text-sm text-ink/50">Nog geen functiegroepen. Maak ze eerst aan bij Personen, dan kun je per groep een doel instellen.</p>
-  }
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm p-4 space-y-3">
-      <p className="text-sm font-medium text-ink">Aantal toolboxen per jaar, per functiegroep</p>
-      <p className="text-xs text-ink/50">Het naar-rato-doel wordt op het dashboard automatisch gecorrigeerd voor wie halverwege het jaar in- of uitstroomt.</p>
-      <ul className="space-y-2">
-        {functiegroepen.map(g => (
-          <li key={g.id} className="flex items-center gap-3">
-            <span className="flex-1 text-sm text-ink">{g.naam}</span>
-            <input type="number" min={0} defaultValue={doelen[g.id] ?? 0}
-              onBlur={e => zet(g.id, Math.max(0, parseInt(e.target.value) || 0))}
-              aria-label={`Doel per jaar voor ${g.naam}`}
-              className="w-20 text-sm border border-ink/20 rounded px-2 py-1.5 min-h-[40px] bg-white" />
-            <span className="text-xs text-ink/40">per jaar</span>
-          </li>
-        ))}
-      </ul>
-      {melding && <p className="text-xs text-green-600">{melding}</p>}
     </div>
   )
 }

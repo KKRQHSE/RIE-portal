@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-06T15:58:39.537Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-06T21:12:53.182Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -98,6 +98,12 @@ CREATE TABLE public.bedrijf_toolbox_afwijking (
   lokale_video_url text,
   basis_versie integer NOT NULL,
   afgeweken_op timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.bedrijf_toolbox_instelling (
+  company_id uuid NOT NULL,
+  sessie_doel_per_jaar integer DEFAULT 12 NOT NULL,
+  updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 CREATE TABLE public.bedrijf_vraag_afwijking (
@@ -528,6 +534,7 @@ ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_pkey PRIMARY K
 ALTER TABLE public.bedrijf_rubriek ADD CONSTRAINT bedrijf_rubriek_pkey PRIMARY KEY (company_id, rubriek_id);
 ALTER TABLE public.bedrijf_toolbox ADD CONSTRAINT bedrijf_toolbox_pkey PRIMARY KEY (company_id, toolbox_id);
 ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT bedrijf_toolbox_afwijking_pkey PRIMARY KEY (company_id, toolbox_id);
+ALTER TABLE public.bedrijf_toolbox_instelling ADD CONSTRAINT bedrijf_toolbox_instelling_pkey PRIMARY KEY (company_id);
 ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT bedrijf_vraag_afwijking_pkey PRIMARY KEY (company_id, vraag_id);
 ALTER TABLE public.bewijs ADD CONSTRAINT bewijs_pkey PRIMARY KEY (id);
 ALTER TABLE public.centrale_rubriek ADD CONSTRAINT centrale_rubriek_pkey PRIMARY KEY (id);
@@ -578,6 +585,7 @@ ALTER TABLE public.bedrijf_inspectie_doel ADD CONSTRAINT inspectie_doel_niet_neg
 ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_module_status_check CHECK ((module_status = ANY (ARRAY['geen'::text, 'actief'::text, 'gestopt'::text])));
 ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT toolbox_afw_lokaal_check CHECK ((((modus = 'lokaal'::text) AND (lokale_tekst IS NOT NULL) AND (btrim(lokale_tekst) <> ''::text)) OR ((modus = 'uit'::text) AND (lokale_titel IS NULL) AND (lokale_tekst IS NULL) AND (lokale_video_url IS NULL))));
 ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT toolbox_afw_modus_check CHECK ((modus = ANY (ARRAY['lokaal'::text, 'uit'::text])));
+ALTER TABLE public.bedrijf_toolbox_instelling ADD CONSTRAINT bedrijf_toolbox_instelling_sessie_doel_per_jaar_check CHECK ((sessie_doel_per_jaar >= 0));
 ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT afwijking_lokale_tekst CHECK ((((modus = 'lokaal'::text) AND (lokale_tekst IS NOT NULL) AND (btrim(lokale_tekst) <> ''::text)) OR ((modus = 'uit'::text) AND (lokale_tekst IS NULL))));
 ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT afwijking_modus_check CHECK ((modus = ANY (ARRAY['lokaal'::text, 'uit'::text])));
 ALTER TABLE public.centrale_toolbox ADD CONSTRAINT toolbox_slaaggrens_check CHECK (((quiz_slaaggrens >= 0) AND (quiz_slaaggrens <= 100)));
@@ -615,6 +623,7 @@ ALTER TABLE public.bedrijf_toolbox ADD CONSTRAINT bedrijf_toolbox_company_id_fke
 ALTER TABLE public.bedrijf_toolbox ADD CONSTRAINT bedrijf_toolbox_toolbox_id_fkey FOREIGN KEY (toolbox_id) REFERENCES centrale_toolbox(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT bedrijf_toolbox_afwijking_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT bedrijf_toolbox_afwijking_toolbox_id_fkey FOREIGN KEY (toolbox_id) REFERENCES centrale_toolbox(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_toolbox_instelling ADD CONSTRAINT bedrijf_toolbox_instelling_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT bedrijf_vraag_afwijking_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT bedrijf_vraag_afwijking_vraag_id_fkey FOREIGN KEY (vraag_id) REFERENCES centrale_vraag(id) ON DELETE CASCADE;
 ALTER TABLE public.bewijs ADD CONSTRAINT bewijs_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
@@ -732,6 +741,7 @@ ALTER TABLE public.bedrijf_modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_rubriek ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_toolbox ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_toolbox_afwijking ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bedrijf_toolbox_instelling ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_vraag_afwijking ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bewijs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.centrale_rubriek ENABLE ROW LEVEL SECURITY;
@@ -788,6 +798,8 @@ CREATE POLICY bedrijf_rubriek_sel ON public.bedrijf_rubriek AS PERMISSIVE FOR SE
 CREATE POLICY bedrijf_toolbox_sel ON public.bedrijf_toolbox AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_toolbox_afwijking_sel ON public.bedrijf_toolbox_afwijking AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
+CREATE POLICY bedrijf_toolbox_instelling_sel ON public.bedrijf_toolbox_instelling AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_vraag_afwijking_sel ON public.bedrijf_vraag_afwijking AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
@@ -3986,6 +3998,21 @@ begin
   end if;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.toolbox_sessie_doel_zetten(p_company_id uuid, p_doel integer)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if coalesce(p_doel, 0) < 0 then raise exception 'Doel mag niet negatief zijn'; end if;
+  insert into bedrijf_toolbox_instelling (company_id, sessie_doel_per_jaar, updated_at)
+  values (p_company_id, coalesce(p_doel, 0), now())
+  on conflict (company_id) do update
+    set sessie_doel_per_jaar = excluded.sessie_doel_per_jaar, updated_at = now();
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_sessie_id uuid, p_datum date, p_onderwerp text, p_notitie text, p_toolbox_id uuid DEFAULT NULL::uuid)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -4045,6 +4072,8 @@ begin
 
   select jsonb_build_object(
     'totaal_sessies', (select count(*) from toolbox_sessie s where s.company_id = p_company_id),
+    'sessie_doel_per_jaar', coalesce(
+      (select sessie_doel_per_jaar from bedrijf_toolbox_instelling where company_id = p_company_id), 12),
     'sessies', (
       select coalesce(jsonb_agg(jsonb_build_object(
         'sessie_id', s.id,
@@ -4594,6 +4623,10 @@ GRANT EXECUTE ON FUNCTION public.toolbox_ontkoppelen(p_company_id uuid, p_toolbo
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_aanwezigheid_zetten(p_sessie_id uuid, p_persoon_id uuid, p_aanwezig boolean) TO anon;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_aanwezigheid_zetten(p_sessie_id uuid, p_persoon_id uuid, p_aanwezig boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_aanwezigheid_zetten(p_sessie_id uuid, p_persoon_id uuid, p_aanwezig boolean) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.toolbox_sessie_doel_zetten(p_company_id uuid, p_doel integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.toolbox_sessie_doel_zetten(p_company_id uuid, p_doel integer) TO anon;
+GRANT EXECUTE ON FUNCTION public.toolbox_sessie_doel_zetten(p_company_id uuid, p_doel integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.toolbox_sessie_doel_zetten(p_company_id uuid, p_doel integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_sessie_id uuid, p_datum date, p_onderwerp text, p_notitie text, p_toolbox_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_sessie_id uuid, p_datum date, p_onderwerp text, p_notitie text, p_toolbox_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_sessie_id uuid, p_datum date, p_onderwerp text, p_notitie text, p_toolbox_id uuid) TO service_role;

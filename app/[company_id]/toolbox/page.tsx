@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import ToolboxClient from '@/components/ToolboxClient'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
-import type { Functiegroep, ToolboxOverzichtItem, ToolboxDashboard, ToolboxSessiesOverzicht } from '@/lib/types'
+import type { ToolboxOverzichtItem, ToolboxSessiesOverzicht } from '@/lib/types'
 
 export default async function ToolboxPage({
   params,
@@ -20,9 +20,6 @@ export default async function ToolboxPage({
     { data: moduleRij },
     { data: company },
     { data: overzicht },
-    { data: functiegroepen },
-    { data: doelstellingen },
-    { data: dashboard },
     { data: sessies },
     huisstijl,
   ] = await Promise.all([
@@ -32,14 +29,6 @@ export default async function ToolboxPage({
       .eq('module_status', 'actief').eq('actief', true).maybeSingle(),
     supabase.from('companies').select('id, name, approved_at, approved_by').eq('id', company_id).single(),
     supabase.rpc('bedrijf_toolbox_overzicht', { p_company_id: company_id }),
-    supabase.from('functiegroep')
-      .select('id, company_id, naam, volgorde, gearchiveerd_op')
-      .eq('company_id', company_id).is('gearchiveerd_op', null)
-      .order('volgorde', { ascending: true }),
-    supabase.from('bedrijf_doelstelling')
-      .select('functiegroep_id, doel_per_jaar')
-      .eq('company_id', company_id),
-    supabase.rpc('toolbox_dashboard', { p_company_id: company_id }),
     supabase.rpc('toolbox_sessies_overzicht', { p_company_id: company_id }),
     haalHuisstijl(company_id),
   ])
@@ -50,19 +39,11 @@ export default async function ToolboxPage({
   if (!moduleRij) notFound()
   if (!company) notFound()
 
-  const doelMap: Record<string, number> = {}
-  for (const d of (doelstellingen ?? []) as { functiegroep_id: string; doel_per_jaar: number }[]) {
-    doelMap[d.functiegroep_id] = d.doel_per_jaar
-  }
-
   return (
     <ToolboxClient
       company={company}
       huisstijl={huisstijl}
       initialOverzicht={(overzicht ?? []) as ToolboxOverzichtItem[]}
-      functiegroepen={(functiegroepen ?? []) as Functiegroep[]}
-      initialDoelen={doelMap}
-      dashboard={dashboard as ToolboxDashboard | null}
       sessies={sessies as ToolboxSessiesOverzicht | null}
     />
   )

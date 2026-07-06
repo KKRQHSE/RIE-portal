@@ -457,6 +457,7 @@ export type ToolboxSessiePersoon = {
 
 export type ToolboxSessiesOverzicht = {
   totaal_sessies: number
+  sessie_doel_per_jaar: number
   sessies: ToolboxSessieRegel[]
   personen: ToolboxSessiePersoon[]
 }

@@ -53,7 +53,7 @@ export default function ToolboxSessiesView({
   const aantalPersonen = personen.length
 
   async function verwijderSessie(sessieId: string) {
-    if (!confirm('Deze sessie en de bijbehorende aanwezigheidsregistratie verwijderen?')) return
+    // Bevestiging gebeurt in-app in SessieRij (geen native confirm()).
     setBezig(true); setFout(null)
     const { error } = await supabase.rpc('toolbox_sessie_verwijderen', { p_sessie_id: sessieId })
     setBezig(false)
@@ -167,6 +167,7 @@ function SessieRij({
   bezig: boolean
 }) {
   const [bewerk, setBewerk] = useState(false)
+  const [bevestigVerwijder, setBevestigVerwijder] = useState(false)
   const aanwezig = new Set(sessie.aanwezigen)
 
   return (
@@ -197,11 +198,21 @@ function SessieRij({
               onAnnuleer={() => setBewerk(false)}
             />
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button type="button" onClick={() => setBewerk(true)}
                 className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40">Bewerken</button>
-              <button type="button" onClick={onVerwijder} disabled={bezig}
-                className="text-xs px-3 py-1.5 rounded-full border border-red-200 bg-white text-red-600 hover:border-red-400 disabled:opacity-40">Verwijderen</button>
+              {bevestigVerwijder ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="text-xs text-ink/60">Sessie én aanwezigheid verwijderen?</span>
+                  <button type="button" onClick={() => { setBevestigVerwijder(false); onVerwijder() }} disabled={bezig}
+                    className="text-xs px-3 py-1.5 rounded-full bg-red-600 text-white hover:opacity-90 disabled:opacity-40">Ja, verwijderen</button>
+                  <button type="button" onClick={() => setBevestigVerwijder(false)}
+                    className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40">Annuleer</button>
+                </span>
+              ) : (
+                <button type="button" onClick={() => setBevestigVerwijder(true)}
+                  className="text-xs px-3 py-1.5 rounded-full border border-red-200 bg-white text-red-600 hover:border-red-400">Verwijderen</button>
+              )}
             </div>
           )}
 

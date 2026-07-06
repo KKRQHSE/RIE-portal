@@ -218,6 +218,94 @@ async function run() {
     check('Uitgestroomde P2 valt uit de bedrijfs-noemer', data?.bedrijf?.doel === dp1?.doel, `bedrijf ${data?.bedrijf?.doel} vs P1 ${dp1?.doel}`)
   }
 
+  // --- TOOLBOX-SESSIES (aanwezigheid — tweede telwijze naast naar-rato) ---
+  // P3: actief het hele jaar, zelfde functiegroep (dus doel 12), NIET in de sessie.
+  const { data: p3 } = await admin.from('personen').insert({ company_id: aCompany, naam: 'TBTEST_P3', status: 'actief', functiegroep_id: fgId, datum_in_dienst: `${y - 1}-01-01` }).select('id').single()
+
+  // KAM A maakt een sessie; B mag dat niet.
+  let sessieId
+  {
+    const { data, error } = await clientA.rpc('toolbox_sessie_opslaan', { p_company_id: aCompany, p_sessie_id: null, p_datum: `${y}-03-15`, p_onderwerp: 'TBTEST_sessie werken op hoogte', p_notitie: 'papieren lijst', p_toolbox_id: null })
+    check('KAM A maakt een toolbox-sessie (positieve controle)', !error && !!data, error?.message)
+    sessieId = data
+  }
+  {
+    const { error } = await clientB.rpc('toolbox_sessie_opslaan', { p_company_id: aCompany, p_sessie_id: null, p_datum: `${y}-03-15`, p_onderwerp: 'kaap', p_notitie: null, p_toolbox_id: null })
+    check('B kan geen sessie voor A maken', !!error)
+  }
+  {
+    const { error } = await clientB.rpc('toolbox_sessies_overzicht', { p_company_id: aCompany })
+    check('B kan sessie-overzicht van A niet opvragen', !!error)
+  }
+  {
+    const { error } = await anon.rpc('toolbox_sessie_aanwezigheid_zetten', { p_sessie_id: sessieId, p_persoon_id: p1.id, p_aanwezig: true })
+    check('Werknemer (anon) kan geen aanwezigheid registreren', !!error)
+  }
+
+  // P1 aanwezig zetten → fysiek_aanwezig-deelname, toolbox_id NULL, sessie_id gezet.
+  {
+    const { error } = await clientA.rpc('toolbox_sessie_aanwezigheid_zetten', { p_sessie_id: sessieId, p_persoon_id: p1.id, p_aanwezig: true })
+    check('KAM A zet P1 aanwezig (positieve controle)', !error, error?.message)
+  }
+  {
+    const { data } = await admin.from('toolbox_deelname').select('bewijssoort, toolbox_id, sessie_id, naam_bevestigd, handtekening, bevestigde_naam').eq('sessie_id', sessieId).eq('persoon_id', p1.id).single()
+    check('aanwezigheid = fysiek_aanwezig, toolbox_id NULL, geen handtekening', !!data && data.bewijssoort === 'fysiek_aanwezig' && data.toolbox_id === null && data.sessie_id === sessieId && data.naam_bevestigd === false && data.handtekening === null && data.bevestigde_naam === 'TBTEST_P1')
+  }
+  // Idempotent: nog eens aanwezig zetten maakt geen tweede rij.
+  {
+    await clientA.rpc('toolbox_sessie_aanwezigheid_zetten', { p_sessie_id: sessieId, p_persoon_id: p1.id, p_aanwezig: true })
+    const { data } = await admin.from('toolbox_deelname').select('id').eq('sessie_id', sessieId).eq('persoon_id', p1.id)
+    check('dubbel aanwezig zetten is idempotent (één rij)', (data?.length ?? 0) === 1, `${data?.length}`)
+  }
+  // Cross-company: P van B kan niet in de sessie van A.
+  {
+    const { data: pb } = await admin.from('personen').insert({ company_id: bCompany, naam: 'TBTEST_PB', status: 'actief' }).select('id').single()
+    const { error } = await clientA.rpc('toolbox_sessie_aanwezigheid_zetten', { p_sessie_id: sessieId, p_persoon_id: pb.id, p_aanwezig: true })
+    check('persoon van B kan niet in de sessie van A', !!error)
+  }
+
+  // KERN: de sessie-aanwezigheid vervuilt de naar-rato "gedaan" NIET (toolbox_id NULL
+  // valt buiten count(distinct toolbox_id)); afwezige P3 loopt NIET achter door de sessie.
+  {
+    const { data } = await clientA.rpc('toolbox_dashboard', { p_company_id: aCompany })
+    const pers = data?.personen ?? []
+    const dp1 = pers.find(p => p.persoon_id === p1.id)
+    const dp3 = pers.find(p => p.persoon_id === p3.id)
+    check('sessie-aanwezigheid telt NIET mee in naar-rato gedaan (P1 blijft 1)', dp1?.gedaan === 1, `${dp1?.gedaan}`)
+    check('afwezige P3 loopt niet extra achter door de sessie (gedaan 0)', dp3?.gedaan === 0, `${dp3?.gedaan}`)
+  }
+
+  // OVERZICHT: opkomst per sessie + neutraal aantal bijgewoonde sessies per persoon.
+  {
+    const { data } = await clientA.rpc('toolbox_sessies_overzicht', { p_company_id: aCompany })
+    const s = (data?.sessies ?? []).find(x => x.sessie_id === sessieId)
+    const per = data?.personen ?? []
+    const bp1 = per.find(p => p.persoon_id === p1.id)
+    const bp3 = per.find(p => p.persoon_id === p3.id)
+    check('overzicht toont opkomst 1 en P1 als aanwezige', s?.opkomst === 1 && Array.isArray(s?.aanwezigen) && s.aanwezigen.includes(p1.id))
+    check('P1 bijgewoond = 1, afwezige P3 bijgewoond = 0 (geen achterstand)', bp1?.bijgewoond === 1 && bp3?.bijgewoond === 0, `P1 ${bp1?.bijgewoond}, P3 ${bp3?.bijgewoond}`)
+  }
+
+  // Onveranderlijkheid geldt óók voor een aanwezigheidsrij (update geweigerd)…
+  {
+    const { error } = await admin.from('toolbox_deelname').update({ titel_snap: 'GEHACKT' }).eq('sessie_id', sessieId).eq('persoon_id', p1.id)
+    check('aanwezigheidsrij is onveranderlijk (update geweigerd)', !!error)
+  }
+  // …maar uitvinken (delete) mag en verlaagt de opkomst weer.
+  {
+    await clientA.rpc('toolbox_sessie_aanwezigheid_zetten', { p_sessie_id: sessieId, p_persoon_id: p1.id, p_aanwezig: false })
+    const { data } = await admin.from('toolbox_deelname').select('id').eq('sessie_id', sessieId).eq('persoon_id', p1.id)
+    check('P1 uitvinken verwijdert de aanwezigheidsrij', (data?.length ?? 0) === 0, `${data?.length}`)
+  }
+  // Sessie verwijderen cascadeert (aanwezigheid weg). Eerst P3 aanwezig, dan sessie weg.
+  {
+    await clientA.rpc('toolbox_sessie_aanwezigheid_zetten', { p_sessie_id: sessieId, p_persoon_id: p3.id, p_aanwezig: true })
+    await clientA.rpc('toolbox_sessie_verwijderen', { p_sessie_id: sessieId })
+    const { data: s } = await admin.from('toolbox_sessie').select('id').eq('id', sessieId)
+    const { data: d } = await admin.from('toolbox_deelname').select('id').eq('sessie_id', sessieId)
+    check('sessie verwijderen cascadeert (sessie + aanwezigheid weg)', (s?.length ?? 0) === 0 && (d?.length ?? 0) === 0)
+  }
+
   // --- JURIDISCHE EXPORT ---
   const jaar = new Date().getFullYear()
 
@@ -271,7 +359,7 @@ async function run() {
 
 async function cleanup() {
   if (companyIds.length) {
-    for (const tbl of ['toolbox_deelname', 'bedrijf_toolbox_afwijking', 'bedrijf_toolbox', 'bedrijf_doelstelling', 'deellinks', 'personen', 'functiegroep']) {
+    for (const tbl of ['toolbox_deelname', 'toolbox_sessie', 'bedrijf_toolbox_afwijking', 'bedrijf_toolbox', 'bedrijf_doelstelling', 'deellinks', 'personen', 'functiegroep']) {
       await admin.from(tbl).delete().in('company_id', companyIds)
     }
   }

@@ -87,10 +87,6 @@ export default function DashboardClient({
   const cid = company.id
   const inst = instellingen
 
-  const navItem = 'text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full transition-colors'
-  const navActive = `${navItem} bg-ink text-white`
-  const navRest = `${navItem} bg-white text-ink/60 border border-ink/20 hover:border-ink/40`
-
   return (
     <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -114,24 +110,6 @@ export default function DashboardClient({
                 <p className="text-xs text-ink/40 mt-1">{company.approved_by}</p>
               )}
             </div>
-          )}
-        </div>
-
-        {/* Navigatie */}
-        <div className="flex flex-wrap gap-3 mb-6">
-          <span className={navActive}>Dashboard</span>
-          <Link href={`/${cid}/pva`} className={navRest}>Plan van Aanpak</Link>
-          <Link href={`/${cid}/rie`} className={navRest}>Volledige RI&amp;E</Link>
-          <Link href={`/${cid}/personen`} className={navRest}>Personen</Link>
-          <Link href={`/${cid}/modules`} className={navRest}>Modules</Link>
-          {toonInspecties && (
-            <Link href={`/${cid}/inspecties`} className={navRest}>Werkplekinspectie</Link>
-          )}
-          {toonToolbox && (
-            <Link href={`/${cid}/toolbox`} className={navRest}>Toolboxen</Link>
-          )}
-          {toonIncidenten && (
-            <Link href={`/${cid}/incidenten`} className={navRest}>Incidenten</Link>
           )}
         </div>
 

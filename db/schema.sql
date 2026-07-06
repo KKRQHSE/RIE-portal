@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-06T12:49:27.881Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-06T14:32:32.375Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -2739,18 +2739,19 @@ begin
         'conclusie',          i.conclusie,
         'sjabloon_naam_snap', i.sjabloon_naam_snap,
         'controlesoort_snap', i.controlesoort_snap,
-        -- Uitvoerder = wie de inspectie startte (eerste historieregel met een 'wie').
-        'uitvoerder_naam', (
-          select u.naam
-            from inspectie_historie h
-            left join users u on u.id = h.wie
-           where h.inspectie_id = i.id and h.wie is not null
-           order by h.wanneer asc
-           limit 1
+        -- Uitvoerder = wie de inspectie startte (eerste historieregel met een 'wie');
+        -- valt terug op de gekoppelde persoon (voor historisch geïmporteerde inspecties).
+        'uitvoerder_naam', coalesce(
+          (select u.naam
+             from inspectie_historie h
+             left join users u on u.id = h.wie
+            where h.inspectie_id = i.id and h.wie is not null
+            order by h.wanneer asc
+            limit 1),
+          (select pp.naam from personen pp where pp.id = i.persoon_id)
         ),
         'aantal_punten',       (select count(*) from inspectie_bevinding b where b.inspectie_id = i.id),
         'aantal_niet_in_orde', (select count(*) from inspectie_bevinding b where b.inspectie_id = i.id and b.resultaat = 'niet_in_orde'),
-        -- Punten die een actie werden (afhandeling 'actie' met een gekoppeld actie_id).
         'aantal_acties',       (select count(*) from inspectie_bevinding b where b.inspectie_id = i.id and b.actie_id is not null)
       ) as row
     from inspectie i

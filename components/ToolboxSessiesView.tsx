@@ -261,15 +261,6 @@ function NieuweSessie({
   const [toolboxId, setToolboxId] = useState<string>(bestaand?.toolbox_id ?? '')
   const [bezig, setBezig] = useState(false)
 
-  function kiesToolbox(id: string) {
-    setToolboxId(id)
-    // Prefill het onderwerp met de gekozen toolbox-titel als het nog leeg is.
-    if (id && !onderwerp.trim()) {
-      const t = gekoppeldeToolboxen.find(x => x.toolbox_id === id)
-      if (t) setOnderwerp(t.geldende_titel)
-    }
-  }
-
   async function opslaan() {
     if (!datum || !onderwerp.trim()) return
     setBezig(true); setFout(null)
@@ -298,7 +289,7 @@ function NieuweSessie({
         {gekoppeldeToolboxen.length > 0 && (
           <label className="text-xs text-ink/50 flex flex-col gap-1 flex-1 min-w-[12rem]">
             Toolbox (optioneel)
-            <select value={toolboxId} onChange={e => kiesToolbox(e.target.value)}
+            <select value={toolboxId} onChange={e => setToolboxId(e.target.value)}
               className="text-sm border border-ink/20 rounded px-3 py-2 min-h-[40px] bg-white">
               <option value="">— geen —</option>
               {gekoppeldeToolboxen.map(t => (

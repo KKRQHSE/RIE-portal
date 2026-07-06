@@ -513,10 +513,39 @@ export type DashboardOverzicht = {
   te_beoordelen: number
   prio_open: { Hoog: number; Middel: number; Laag: number }
   termijn: { over: number; binnenkort: number; zonder_datum: number }
-  rie: { versie: number; status: string; geldig_tot: string | null; verloopt_binnenkort: boolean } | null
+  rie: { versie: number; status: string; toets_datum: string | null; geldig_tot: string | null; verloopt_binnenkort: boolean } | null
   inspecties: { open: number; afgerond: number; open_bevindingen: number }
+  // Inspectie-doel per persoon (bedrijf_inspectie_doel) vs afgeronde inspecties dit jaar.
+  inspectie_doel: {
+    totaal_doel: number
+    totaal_gedaan: number
+    personen: { naam: string; doel: number; gedaan: number }[]
+  }
+  // Toolbox-aanwezigheid per sessie (tweede telwijze, los van naar-rato).
+  toolbox_sessies: { sessies: number; aanwezig: number }
+  incidenten: {
+    totaal: number
+    per_status: { open: number; in_onderzoek: number; afgehandeld: number }
+    per_gevolg: Record<string, number>
+  }
   norm_bijgewerkt: number   // afwijkende punten waar de centrale norm is bijgewerkt
   bewijs: { afgerond_met_bewijs: number; afgerond_zonder_bewijs: number }
+  // Handmatige bedrijfsvoering-velden (null tot er iets is ingevuld).
+  instellingen: DashboardInstelling | null
+}
+
+// De handmatige bedrijfsvoering-velden (bedrijf_dashboard_instelling).
+export type DashboardInstelling = {
+  klachten_aantal: number
+  tevredenheid_score: number | null
+  tevredenheid_toelichting: string | null
+  audit_intern_gedaan: number
+  audit_intern_totaal: number
+  audit_extern_omschrijving: string | null
+  audit_status: string | null
+  doelstelling_tekst: string | null
+  iso_taken_tekst: string | null
+  updated_at: string
 }
 
 // Eén regel van de RPC dashboard_admin_overzicht(): per bedrijf voor de admin-roll-up.

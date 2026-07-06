@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-06T15:40:52.392Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-06T15:56:26.148Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -38,6 +38,20 @@ CREATE TABLE public.actie_historie (
   actor_naam text,
   actor_type text,
   created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.bedrijf_dashboard_instelling (
+  company_id uuid NOT NULL,
+  klachten_aantal integer DEFAULT 0 NOT NULL,
+  tevredenheid_score numeric(4,1),
+  tevredenheid_toelichting text,
+  audit_intern_gedaan integer DEFAULT 0 NOT NULL,
+  audit_intern_totaal integer DEFAULT 0 NOT NULL,
+  audit_extern_omschrijving text,
+  audit_status text,
+  doelstelling_tekst text,
+  iso_taken_tekst text,
+  updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 CREATE TABLE public.bedrijf_doelstelling (
@@ -507,6 +521,7 @@ CREATE TABLE public.vragen (
 -- ============================================================
 
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_pkey PRIMARY KEY (id);
+ALTER TABLE public.bedrijf_dashboard_instelling ADD CONSTRAINT bedrijf_dashboard_instelling_pkey PRIMARY KEY (company_id);
 ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT bedrijf_doelstelling_pkey PRIMARY KEY (company_id, functiegroep_id);
 ALTER TABLE public.bedrijf_inspectie_doel ADD CONSTRAINT bedrijf_inspectie_doel_pkey PRIMARY KEY (company_id, persoon_id);
 ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_pkey PRIMARY KEY (company_id, module);
@@ -555,6 +570,9 @@ ALTER TABLE public.personen ADD CONSTRAINT personen_company_id_email_key UNIQUE 
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_company_id_nr_key UNIQUE (company_id, nr);
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_company_id_versie_key UNIQUE (company_id, versie);
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_company_id_nr_key UNIQUE (company_id, nr);
+ALTER TABLE public.bedrijf_dashboard_instelling ADD CONSTRAINT bedrijf_dashboard_instelling_audit_intern_gedaan_check CHECK ((audit_intern_gedaan >= 0));
+ALTER TABLE public.bedrijf_dashboard_instelling ADD CONSTRAINT bedrijf_dashboard_instelling_audit_intern_totaal_check CHECK ((audit_intern_totaal >= 0));
+ALTER TABLE public.bedrijf_dashboard_instelling ADD CONSTRAINT bedrijf_dashboard_instelling_klachten_aantal_check CHECK ((klachten_aantal >= 0));
 ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT doelstelling_niet_negatief CHECK ((doel_per_jaar >= 0));
 ALTER TABLE public.bedrijf_inspectie_doel ADD CONSTRAINT inspectie_doel_niet_negatief CHECK ((doel_per_jaar >= 0));
 ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_module_status_check CHECK ((module_status = ANY (ARRAY['geen'::text, 'actief'::text, 'gestopt'::text])));
@@ -585,6 +603,7 @@ ALTER TABLE public.toolbox_sessie ADD CONSTRAINT toolbox_sessie_onderwerp_check 
 ALTER TABLE public.users ADD CONSTRAINT users_role_check CHECK ((role = ANY (ARRAY['client'::text, 'admin'::text])));
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_pva_item_id_fkey FOREIGN KEY (pva_item_id) REFERENCES pva_items(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_dashboard_instelling ADD CONSTRAINT bedrijf_dashboard_instelling_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT bedrijf_doelstelling_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT bedrijf_doelstelling_functiegroep_id_fkey FOREIGN KEY (functiegroep_id) REFERENCES functiegroep(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_inspectie_doel ADD CONSTRAINT bedrijf_inspectie_doel_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
@@ -706,6 +725,7 @@ CREATE INDEX vragen_module_idx ON public.vragen USING btree (module_id);
 -- ============================================================
 
 ALTER TABLE public.actie_historie ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bedrijf_dashboard_instelling ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_doelstelling ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_inspectie_doel ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_modules ENABLE ROW LEVEL SECURITY;
@@ -752,6 +772,8 @@ ALTER TABLE public.vragen ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY historie_select ON public.actie_historie AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
+CREATE POLICY bedrijf_dashboard_instelling_sel ON public.bedrijf_dashboard_instelling AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_doelstelling_sel ON public.bedrijf_doelstelling AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_inspectie_doel_sel ON public.bedrijf_inspectie_doel AS PERMISSIVE FOR SELECT TO public
@@ -1645,6 +1667,42 @@ begin
   return v;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if coalesce(p_klachten_aantal, 0) < 0 then raise exception 'Aantal klachten mag niet negatief zijn'; end if;
+  if coalesce(p_audit_intern_gedaan, 0) < 0 or coalesce(p_audit_intern_totaal, 0) < 0 then
+    raise exception 'Audit-aantallen mogen niet negatief zijn';
+  end if;
+
+  insert into bedrijf_dashboard_instelling (
+    company_id, klachten_aantal, tevredenheid_score, tevredenheid_toelichting,
+    audit_intern_gedaan, audit_intern_totaal, audit_extern_omschrijving, audit_status,
+    doelstelling_tekst, iso_taken_tekst, updated_at
+  ) values (
+    p_company_id, coalesce(p_klachten_aantal, 0), p_tevredenheid_score, nullif(btrim(coalesce(p_tevredenheid_toelichting, '')), ''),
+    coalesce(p_audit_intern_gedaan, 0), coalesce(p_audit_intern_totaal, 0),
+    nullif(btrim(coalesce(p_audit_extern_omschrijving, '')), ''), nullif(btrim(coalesce(p_audit_status, '')), ''),
+    nullif(btrim(coalesce(p_doelstelling_tekst, '')), ''), nullif(btrim(coalesce(p_iso_taken_tekst, '')), ''), now()
+  )
+  on conflict (company_id) do update set
+    klachten_aantal           = excluded.klachten_aantal,
+    tevredenheid_score        = excluded.tevredenheid_score,
+    tevredenheid_toelichting  = excluded.tevredenheid_toelichting,
+    audit_intern_gedaan       = excluded.audit_intern_gedaan,
+    audit_intern_totaal       = excluded.audit_intern_totaal,
+    audit_extern_omschrijving = excluded.audit_extern_omschrijving,
+    audit_status              = excluded.audit_status,
+    doelstelling_tekst        = excluded.doelstelling_tekst,
+    iso_taken_tekst           = excluded.iso_taken_tekst,
+    updated_at                = now();
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.dashboard_overzicht(p_company_id uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -1652,6 +1710,7 @@ CREATE OR REPLACE FUNCTION public.dashboard_overzicht(p_company_id uuid)
  SET search_path TO 'public'
 AS $function$
 declare
+  v_jaar int := extract(year from current_date)::int;
   v jsonb;
 begin
   if not mag_bedrijf_beheren(p_company_id) then
@@ -1704,11 +1763,12 @@ begin
       select case when r.id is null then null else jsonb_build_object(
         'versie',               r.versie,
         'status',               r.status,
+        'toets_datum',          r.toets_datum,
         'geldig_tot',           r.geldig_tot,
         'verloopt_binnenkort',  r.geldig_tot is not null and r.geldig_tot < now() + interval '60 days'
       ) end
       from (
-        select id, versie, status, geldig_tot
+        select id, versie, status, toets_datum, geldig_tot
         from rie_versies where company_id = p_company_id
         order by versie desc limit 1
       ) r
@@ -1728,6 +1788,61 @@ begin
         where company_id = p_company_id
           and resultaat = 'niet_in_orde' and afhandeling = 'geen'
       )
+    ),
+
+    -- Inspectie-doel per persoon (bedrijf_inspectie_doel) vs afgeronde inspecties dit jaar.
+    'inspectie_doel', (
+      select jsonb_build_object(
+        'totaal_doel',   coalesce(sum(idl.doel_per_jaar), 0),
+        'totaal_gedaan', coalesce(sum(g.gedaan), 0),
+        'personen', coalesce(jsonb_agg(jsonb_build_object(
+          'naam', p.naam, 'doel', idl.doel_per_jaar, 'gedaan', g.gedaan
+        ) order by p.naam), '[]'::jsonb)
+      )
+      from bedrijf_inspectie_doel idl
+      join personen p on p.id = idl.persoon_id and p.archived_at is null
+      left join lateral (
+        select count(*)::int as gedaan
+        from inspectie i
+        where i.company_id = idl.company_id and i.persoon_id = idl.persoon_id
+          and i.status = 'afgerond' and extract(year from i.uitgevoerd_op)::int = v_jaar
+      ) g on true
+      where idl.company_id = p_company_id
+    ),
+
+    -- Toolbox-aanwezigheid per sessie (tweede telwijze, los van naar-rato/toolbox_dashboard).
+    'toolbox_sessies', jsonb_build_object(
+      'sessies', (
+        select count(*) from toolbox_sessie s
+        where s.company_id = p_company_id and extract(year from s.datum)::int = v_jaar
+      ),
+      'aanwezig', (
+        select count(*) from toolbox_deelname d
+        join toolbox_sessie s on s.id = d.sessie_id
+        where d.company_id = p_company_id and s.company_id = p_company_id
+          and extract(year from s.datum)::int = v_jaar
+      )
+    ),
+
+    -- Incidenten: aantallen naar status en naar gevolg.
+    'incidenten', (
+      select jsonb_build_object(
+        'totaal', count(*),
+        'per_status', jsonb_build_object(
+          'open',         count(*) filter (where status = 'open'),
+          'in_onderzoek', count(*) filter (where status = 'in_onderzoek'),
+          'afgehandeld',  count(*) filter (where status = 'afgehandeld')
+        ),
+        'per_gevolg', (
+          select coalesce(jsonb_object_agg(gevolg, aantal), '{}'::jsonb)
+          from (
+            select unnest(gevolgen) as gevolg, count(*) as aantal
+            from incident where company_id = p_company_id
+            group by 1
+          ) gg
+        )
+      )
+      from incident where company_id = p_company_id
     ),
 
     -- Aantal afwijkende punten waar de centrale norm is bijgewerkt (onbeantwoord).
@@ -1752,6 +1867,23 @@ begin
         from pva_items i
         where i.company_id = p_company_id and i.status = 'Afgerond'
       ) s
+    ),
+
+    -- Handmatige bedrijfsvoering-velden (null als er nog niets is ingevuld).
+    'instellingen', (
+      select case when di.company_id is null then null else jsonb_build_object(
+        'klachten_aantal',           di.klachten_aantal,
+        'tevredenheid_score',        di.tevredenheid_score,
+        'tevredenheid_toelichting',  di.tevredenheid_toelichting,
+        'audit_intern_gedaan',       di.audit_intern_gedaan,
+        'audit_intern_totaal',       di.audit_intern_totaal,
+        'audit_extern_omschrijving', di.audit_extern_omschrijving,
+        'audit_status',              di.audit_status,
+        'doelstelling_tekst',        di.doelstelling_tekst,
+        'iso_taken_tekst',           di.iso_taken_tekst,
+        'updated_at',                di.updated_at
+      ) end
+      from bedrijf_dashboard_instelling di where di.company_id = p_company_id
     )
   ) into v;
 
@@ -4269,6 +4401,10 @@ GRANT EXECUTE ON FUNCTION public.create_deellink(p_persoon_id uuid, p_vervalt_op
 REVOKE EXECUTE ON FUNCTION public.dashboard_admin_overzicht() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dashboard_admin_overzicht() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.dashboard_admin_overzicht() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text) TO anon;
+GRANT EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.dashboard_overzicht(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dashboard_overzicht(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.dashboard_overzicht(p_company_id uuid) TO service_role;

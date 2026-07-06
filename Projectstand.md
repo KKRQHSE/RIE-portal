@@ -22,7 +22,8 @@ De naad tussen beide is het belangrijkste open punt: delen ze één datamodel? Z
 - Vragenbibliotheek: 140 vragen, 12 modules, generiek en bedrijfsneutraal (Beslissing 40).
 - Intake-wizard: gebouwd en getest op een nep-bedrijf (correcte module-activering, aanpakniveau, kwetsbare groepen). Na test verbeterd: nooit vragen bundelen ook bij ongeduld, actieve inferentie uit eerdere antwoorden, adres in één vraag, geen AI-frases.
 - Generator (`build_qvox.py`): functioneel, levert het juiste format, maar leest de nieuwe velden (kinney, brf_categorie, toetsbrief) nog niet. Uitbreiden.
-- Geissler-rapport: inhoudelijk af.
+- Geissler-rapport: 57 pagina's, FROZEN v6, definitief en opgeleverd.
+- Docx-import-pipeline: eerste echte klant-RI&E ingeladen via de keten docx → `dataset.json` (schema v1.1) → `check_dataset.py` (0 fouten) → `import_company(jsonb)`, met aparte `rie_versies`-rij (versie 1, vrijgegeven). Bevindingen/knelpunten/PvA letterlijk uit de docx; geen Kinney-scores verzonnen waar de docx die niet gaf. Herbruikbare scripts in `import/` (extract_docx, build_dataset, import_run); klant-specifieke input (bron-docx, dataset.json, bedrijf.json) blijft lokaal via `.gitignore`.
 
 ## Spoor 2 — Klantportaal: waar staan we
 
@@ -50,10 +51,10 @@ Werkende Next.js/Supabase-app, in twee browsertest-ronden groen op de kritieke p
 
 ### Spoor 1 (RI&E)
 - Generator uitbreiden voor de nieuwe velden (kinney, brf_categorie, toetsbrief, scope-matrix met HVK-groen, gekleurde klasse-cellen, PvA-kolom, bijlagen in de inhoudsopgave).
-- O2-3 en P2-4 in Geissler: brf + klasse goedkeuren (Beslissing 38, openstaand).
-- Geissler actie 9 hangt aan een Ja-vraag (F3-17): borgingsactie, of moet F3-17 naar Nee?
-- Geissler foto-captions: eerdere feedback mogelijk onvolledig verwerkt, nalopen vóór oplevering.
-- Geissler oplevering: certificaatnummer, datum, PvA-verantwoordelijken + deadlines, ondertekening toetsbrief.
+- ~~O2-3 en P2-4 in Geissler: brf + klasse goedkeuren (Beslissing 38, openstaand).~~ — vastgezet bij de oplevering (FROZEN v6); de definitieve brf/klasse staan in de Geissler-dataset.
+- ~~Geissler actie 9 hangt aan een Ja-vraag (F3-17): borgingsactie, of moet F3-17 naar Nee?~~ — beslecht bij de oplevering (FROZEN v6).
+- ~~Geissler foto-captions: eerdere feedback mogelijk onvolledig verwerkt, nalopen vóór oplevering.~~ — verwerkt bij de oplevering (FROZEN v6).
+- ~~Geissler oplevering: certificaatnummer, datum, PvA-verantwoordelijken + deadlines, ondertekening toetsbrief.~~ — opgeleverd (FROZEN v6).
 - O3-10 nog doorvoeren in de vragenbibliotheek (voorgestelde E-waarde 3).
 - Laag 2 (AI-assistentie per module): uitgesteld tot na alignment.
 - Wettelijke meetlat compleet maken (artikel-voor-artikel) + review-routine vastleggen (Beslissing 14).
@@ -101,14 +102,6 @@ Werkende Next.js/Supabase-app, in twee browsertest-ronden groen op de kritieke p
 - Bewuste portaal-risico's bewaken: doorgeven naar extern adres zonder seintje aan KAM; automatische mail; opslaggroei; geheime sleutels nooit in zichtbare code.
 - Eigen QHSE Totaal-huisstijl uitwerken (Beslissing 54).
 - ~~Alignment twee sporen~~ — opgelost 17 juni (Beslissingen 57-59).
-
-## Status-conflicten om te bevestigen
-
-Hierover spraken de bronnen elkaar tegen; jij weet wat klopt:
-1. **Portaal:** een oudere export beschrijft het nog als HTML-proof-of-concept ("echte app = nog te bouwen"). Aangenomen: dat is verouderd, het portaal is gebouwd en getest (Beslissing 41-50 + de testronden). Klopt dat?
-2. **Geissler-rapport:** ergens 49 pagina's en "nog niet opgeleverd", ergens 57 pagina's en "FROZEN v6 definitief". Welke is actueel?
-3. **check_dataset.py:** klaar en getest (zie Spoor 1).
-4. **Gast terugstuurreden:** één bron zegt al getoond, Beslissing 45 zegt uitgesteld. Welke klopt?
 
 ## Werkwijze
 

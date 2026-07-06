@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-05T20:44:10.807Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-06T12:47:59.423Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -451,7 +451,20 @@ CREATE TABLE public.toolbox_deelname (
   handtekening_gezet_op timestamp with time zone,
   presentielijst_pad text,
   planning_toewijzing_id uuid,
-  created_at timestamp with time zone DEFAULT now() NOT NULL
+  created_at timestamp with time zone DEFAULT now() NOT NULL,
+  sessie_id uuid
+);
+
+CREATE TABLE public.toolbox_sessie (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  datum date NOT NULL,
+  onderwerp text NOT NULL,
+  notitie text,
+  toolbox_id uuid,
+  aangemaakt_door uuid,
+  created_at timestamp with time zone DEFAULT now() NOT NULL,
+  updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 CREATE TABLE public.users (
@@ -522,6 +535,7 @@ ALTER TABLE public.personen ADD CONSTRAINT personen_pkey PRIMARY KEY (id);
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_pkey PRIMARY KEY (id);
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_pkey PRIMARY KEY (id);
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_pkey PRIMARY KEY (id);
+ALTER TABLE public.toolbox_sessie ADD CONSTRAINT toolbox_sessie_pkey PRIMARY KEY (id);
 ALTER TABLE public.users ADD CONSTRAINT users_pkey PRIMARY KEY (id);
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_pkey PRIMARY KEY (id);
 ALTER TABLE public.deellinks ADD CONSTRAINT deellinks_persoon_id_key UNIQUE (persoon_id);
@@ -558,6 +572,7 @@ ALTER TABLE public.personen ADD CONSTRAINT personen_status_check CHECK ((status 
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_status_check CHECK ((status = ANY (ARRAY['Open'::text, 'In behandeling'::text, 'Afgerond'::text])));
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT deelname_bewijssoort_check CHECK ((bewijssoort = ANY (ARRAY['digitaal'::text, 'fysiek_aanwezig'::text])));
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT deelname_digitaal_bewijs CHECK (((bewijssoort <> 'digitaal'::text) OR ((naam_bevestigd = true) AND (handtekening IS NOT NULL) AND (btrim(handtekening) <> ''::text) AND (handtekening_gezet_op IS NOT NULL))));
+ALTER TABLE public.toolbox_sessie ADD CONSTRAINT toolbox_sessie_onderwerp_check CHECK ((btrim(onderwerp) <> ''::text));
 ALTER TABLE public.users ADD CONSTRAINT users_role_check CHECK ((role = ANY (ARRAY['client'::text, 'admin'::text])));
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_pva_item_id_fkey FOREIGN KEY (pva_item_id) REFERENCES pva_items(id) ON DELETE CASCADE;
@@ -617,7 +632,10 @@ ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_rie_versie_id_fkey FOREIGN
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id);
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE CASCADE;
+ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_sessie_id_fkey FOREIGN KEY (sessie_id) REFERENCES toolbox_sessie(id) ON DELETE CASCADE;
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_toolbox_id_fkey FOREIGN KEY (toolbox_id) REFERENCES centrale_toolbox(id) ON DELETE SET NULL;
+ALTER TABLE public.toolbox_sessie ADD CONSTRAINT toolbox_sessie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.toolbox_sessie ADD CONSTRAINT toolbox_sessie_toolbox_id_fkey FOREIGN KEY (toolbox_id) REFERENCES centrale_toolbox(id) ON DELETE SET NULL;
 ALTER TABLE public.users ADD CONSTRAINT users_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL;
 ALTER TABLE public.users ADD CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
@@ -664,7 +682,10 @@ CREATE INDEX pva_items_company_idx ON public.pva_items USING btree (company_id);
 CREATE INDEX pva_items_persoon_idx ON public.pva_items USING btree (persoon_id);
 CREATE INDEX toolbox_deelname_afgerond_idx ON public.toolbox_deelname USING btree (company_id, afgerond_op);
 CREATE INDEX toolbox_deelname_company_idx ON public.toolbox_deelname USING btree (company_id, persoon_id);
+CREATE INDEX toolbox_deelname_sessie_idx ON public.toolbox_deelname USING btree (sessie_id) WHERE (sessie_id IS NOT NULL);
+CREATE UNIQUE INDEX toolbox_deelname_sessie_persoon_uniek ON public.toolbox_deelname USING btree (sessie_id, persoon_id) WHERE (sessie_id IS NOT NULL);
 CREATE UNIQUE INDEX toolbox_deelname_uniek_per_jaar ON public.toolbox_deelname USING btree (company_id, persoon_id, toolbox_id, jaar_utc(afgerond_op)) WHERE (toolbox_id IS NOT NULL);
+CREATE INDEX toolbox_sessie_company_idx ON public.toolbox_sessie USING btree (company_id, datum DESC);
 CREATE INDEX vragen_company_idx ON public.vragen USING btree (company_id);
 CREATE INDEX vragen_module_idx ON public.vragen USING btree (module_id);
 
@@ -708,6 +729,7 @@ ALTER TABLE public.personen ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pva_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rie_versies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.toolbox_deelname ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.toolbox_sessie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vragen ENABLE ROW LEVEL SECURITY;
 
@@ -849,6 +871,8 @@ CREATE POLICY rie_versies_beheer ON public.rie_versies AS PERMISSIVE FOR ALL TO 
   USING (mag_bedrijf_beheren(company_id))
   WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY toolbox_deelname_sel ON public.toolbox_deelname AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
+CREATE POLICY toolbox_sessie_sel ON public.toolbox_sessie AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY users_select ON public.users AS PERMISSIVE FOR SELECT TO public
   USING (((id = auth.uid()) OR is_admin()));

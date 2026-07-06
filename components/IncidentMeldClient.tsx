@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import { MAX_BYTES, isAfbeelding, isToegestaanType } from '@/lib/bewijs'
 import { INCIDENT_FOTO_BUCKET, type GevolgOptie } from '@/lib/incident'
+import { MELD_TEKST, vertaal } from '@/lib/i18n-werknemer'
+import TaalWissel, { useTaal } from './TaalWissel'
 import HuisstijlLogo from './HuisstijlLogo'
 
 // Datum/tijd voor de <input>-velden, vooringevuld op nu (aanpasbaar).
@@ -62,6 +64,8 @@ export default function IncidentMeldClient({
   gevolgOpties: GevolgOptie[]
 }) {
   const [supabase] = useState(() => createClient())
+  const [taal, setTaal] = useTaal()
+  const t = (k: string) => vertaal(MELD_TEKST, k, taal)
   const [datum, setDatum] = useState(nuDatum)
   const [tijd, setTijd] = useState(nuTijd)
   const [locatie, setLocatie] = useState('')
@@ -105,27 +109,27 @@ export default function IncidentMeldClient({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, incidentId, bestandsnaam: naam }),
     })
-    if (!res.ok) throw new Error('Foto uploaden mislukt.')
+    if (!res.ok) throw new Error(t('foutFotoUpload'))
     const { pad, uploadToken } = (await res.json()) as { pad?: string; uploadToken?: string }
-    if (!pad || !uploadToken) throw new Error('Foto uploaden mislukt.')
+    if (!pad || !uploadToken) throw new Error(t('foutFotoUpload'))
 
     const { error: upErr } = await supabase.storage
       .from(INCIDENT_FOTO_BUCKET)
       .uploadToSignedUrl(pad, uploadToken, blob, { contentType: type })
-    if (upErr) throw new Error('Foto uploaden mislukt.')
+    if (upErr) throw new Error(t('foutFotoUpload'))
 
     const { error: regErr } = await supabase.rpc('incident_foto_registreren_token', {
       p_token: token, p_incident_id: incidentId, p_pad: pad,
       p_bestandsnaam: naam, p_type: type, p_grootte: blob.size,
     })
-    if (regErr) throw new Error('Foto vastleggen mislukt.')
+    if (regErr) throw new Error(t('foutFotoVastleggen'))
   }
 
   async function verstuur() {
     setFout(null)
-    if (!locatie.trim()) { setFout('Vul de locatie in.'); return }
-    if (!omschrijving.trim()) { setFout('Omschrijf kort wat er is gebeurd.'); return }
-    if (!datum) { setFout('Vul de datum in.'); return }
+    if (!locatie.trim()) { setFout(t('foutLocatie')); return }
+    if (!omschrijving.trim()) { setFout(t('foutOmschrijving')); return }
+    if (!datum) { setFout(t('foutDatum')); return }
 
     setBezig(true)
     try {
@@ -139,7 +143,7 @@ export default function IncidentMeldClient({
         p_naam_melder: naamMelder,
         p_gevolgen: gevolgen,
       })
-      if (error || !data) throw new Error(error?.message || 'Melding versturen mislukt.')
+      if (error || !data) throw new Error(error?.message || t('foutVersturen'))
 
       const incidentId = data as string
       for (const file of fotos) {
@@ -147,7 +151,7 @@ export default function IncidentMeldClient({
       }
       setKlaar(true)
     } catch (e) {
-      setFout(e instanceof Error ? e.message : 'Er ging iets mis. Probeer het opnieuw.')
+      setFout(e instanceof Error ? e.message : t('foutAlgemeen'))
     } finally {
       setBezig(false)
     }
@@ -158,9 +162,9 @@ export default function IncidentMeldClient({
       <main className="min-h-screen bg-surface flex items-center justify-center px-4" style={huisstijlStyle(huisstijl)}>
         <div className="bg-white rounded-lg shadow-sm p-8 max-w-md text-center">
           <div className="w-12 h-12 rounded-full bg-accent/10 text-accent flex items-center justify-center mx-auto mb-4 text-2xl">✓</div>
-          <h1 className="text-lg font-semibold text-ink mb-2">Bedankt, je melding is doorgegeven</h1>
+          <h1 className="text-lg font-semibold text-ink mb-2">{t('klaarTitel')}</h1>
           <p className="text-sm text-ink/60">
-            De VGM-coördinator{bedrijfNaam ? ` van ${bedrijfNaam}` : ''} neemt het van hier over. Je hoeft verder niets te doen.
+            {t('klaarTekst').replace('{bedrijf}', bedrijfNaam ? (taal === 'tr' ? ` (${bedrijfNaam})` : ` van ${bedrijfNaam}`) : '')}
           </p>
         </div>
       </main>
@@ -173,47 +177,50 @@ export default function IncidentMeldClient({
   return (
     <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-xl mx-auto px-4 py-8">
+        <div className="flex justify-end mb-2">
+          <TaalWissel taal={taal} onTaal={setTaal} />
+        </div>
         <div className="mb-6">
           <HuisstijlLogo huisstijl={huisstijl} className="mb-2" />
-          <h1 className="text-xl font-semibold text-ink">Incident of bijna-incident melden</h1>
+          <h1 className="text-xl font-semibold text-ink">{t('titel')}</h1>
           <p className="text-sm text-ink/50 mt-0.5">
-            {bedrijfNaam ?? 'Melding'} — kort en simpel. Je hoeft niet in te loggen.
+            {bedrijfNaam ?? t('meldingFallback')} {t('subStaart')}
           </p>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-4 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={label} htmlFor="datum">Datum</label>
+              <label className={label} htmlFor="datum">{t('datum')}</label>
               <input id="datum" type="date" className={veld} value={datum} onChange={e => setDatum(e.target.value)} />
             </div>
             <div>
-              <label className={label} htmlFor="tijd">Tijd</label>
+              <label className={label} htmlFor="tijd">{t('tijd')}</label>
               <input id="tijd" type="time" className={veld} value={tijd} onChange={e => setTijd(e.target.value)} />
             </div>
           </div>
 
           <div>
-            <label className={label} htmlFor="locatie">Locatie</label>
-            <input id="locatie" type="text" className={veld} placeholder="Waar gebeurde het?"
+            <label className={label} htmlFor="locatie">{t('locatie')}</label>
+            <input id="locatie" type="text" className={veld} placeholder={t('locatiePlaceholder')}
               value={locatie} onChange={e => setLocatie(e.target.value)} />
           </div>
 
           <div>
-            <label className={label} htmlFor="project">Project <span className="text-ink/40 font-normal">(optioneel)</span></label>
-            <input id="project" type="text" className={veld} placeholder="Project of opdracht"
+            <label className={label} htmlFor="project">{t('project')} <span className="text-ink/40 font-normal">{t('optioneel')}</span></label>
+            <input id="project" type="text" className={veld} placeholder={t('projectPlaceholder')}
               value={project} onChange={e => setProject(e.target.value)} />
           </div>
 
           <div>
-            <label className={label} htmlFor="omschrijving">Wat is er gebeurd?</label>
-            <textarea id="omschrijving" rows={4} className={`${veld} resize-y`} placeholder="Beschrijf kort wat er gebeurde"
+            <label className={label} htmlFor="omschrijving">{t('watGebeurd')}</label>
+            <textarea id="omschrijving" rows={4} className={`${veld} resize-y`} placeholder={t('omschrijvingPlaceholder')}
               value={omschrijving} onChange={e => setOmschrijving(e.target.value)} />
           </div>
 
           {gevolgOpties.length > 0 && (
             <div>
-              <span className={label}>Wat was het gevolg? <span className="text-ink/40 font-normal">(meerdere mogelijk)</span></span>
+              <span className={label}>{t('gevolgVraag')} <span className="text-ink/40 font-normal">{t('meerdereMogelijk')}</span></span>
               <div className="space-y-1.5">
                 {gevolgOpties.map(g => (
                   <label key={g.code} className="flex items-center gap-2.5 min-h-[40px] px-3 rounded-lg border border-ink/10 cursor-pointer hover:bg-gray-50">
@@ -227,26 +234,26 @@ export default function IncidentMeldClient({
           )}
 
           <div>
-            <label className={label} htmlFor="naam">Je naam <span className="text-ink/40 font-normal">(optioneel)</span></label>
-            <input id="naam" type="text" className={veld} placeholder="Mag je leeglaten"
+            <label className={label} htmlFor="naam">{t('jeNaam')} <span className="text-ink/40 font-normal">{t('optioneel')}</span></label>
+            <input id="naam" type="text" className={veld} placeholder={t('naamPlaceholder')}
               value={naamMelder} onChange={e => setNaamMelder(e.target.value)} />
           </div>
 
           <div>
-            <span className={label}>Foto’s <span className="text-ink/40 font-normal">(optioneel)</span></span>
+            <span className={label}>{t('fotos')} <span className="text-ink/40 font-normal">{t('optioneel')}</span></span>
             {fotos.length > 0 && (
               <ul className="space-y-1.5 mb-2">
                 {fotos.map((f, i) => (
                   <li key={i} className="flex items-center justify-between gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
                     <span className="truncate text-ink/70">{f.name}</span>
-                    <button type="button" onClick={() => verwijderFoto(i)} className="text-ink/40 hover:text-red-600 shrink-0" aria-label="Verwijder foto">✕</button>
+                    <button type="button" onClick={() => verwijderFoto(i)} className="text-ink/40 hover:text-red-600 shrink-0" aria-label={t('verwijderFoto')}>✕</button>
                   </li>
                 ))}
               </ul>
             )}
             <label className="flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-lg border-2 border-dashed border-ink/20 bg-white cursor-pointer text-sm text-ink/60 hover:border-ink/40">
               <input type="file" accept="image/*" capture="environment" multiple className="sr-only" onChange={kiesFotos} />
-              <span>Foto toevoegen</span>
+              <span>{t('fotoToevoegen')}</span>
             </label>
           </div>
 
@@ -255,7 +262,7 @@ export default function IncidentMeldClient({
           <button type="button" onClick={verstuur} disabled={bezig}
             className="w-full min-h-[48px] rounded-lg bg-accent text-white font-semibold text-base disabled:opacity-60"
             style={{ backgroundColor: 'var(--color-accent)' }}>
-            {bezig ? 'Bezig met versturen…' : 'Melding versturen'}
+            {bezig ? t('versturenBezig') : t('versturen')}
           </button>
         </div>
       </div>

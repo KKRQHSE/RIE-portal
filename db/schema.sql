@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-06T14:32:32.375Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-06T15:40:52.392Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -43,6 +43,13 @@ CREATE TABLE public.actie_historie (
 CREATE TABLE public.bedrijf_doelstelling (
   company_id uuid NOT NULL,
   functiegroep_id uuid NOT NULL,
+  doel_per_jaar integer DEFAULT 0 NOT NULL,
+  updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.bedrijf_inspectie_doel (
+  company_id uuid NOT NULL,
+  persoon_id uuid NOT NULL,
   doel_per_jaar integer DEFAULT 0 NOT NULL,
   updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -501,6 +508,7 @@ CREATE TABLE public.vragen (
 
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_pkey PRIMARY KEY (id);
 ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT bedrijf_doelstelling_pkey PRIMARY KEY (company_id, functiegroep_id);
+ALTER TABLE public.bedrijf_inspectie_doel ADD CONSTRAINT bedrijf_inspectie_doel_pkey PRIMARY KEY (company_id, persoon_id);
 ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_pkey PRIMARY KEY (company_id, module);
 ALTER TABLE public.bedrijf_rubriek ADD CONSTRAINT bedrijf_rubriek_pkey PRIMARY KEY (company_id, rubriek_id);
 ALTER TABLE public.bedrijf_toolbox ADD CONSTRAINT bedrijf_toolbox_pkey PRIMARY KEY (company_id, toolbox_id);
@@ -548,6 +556,7 @@ ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_company_id_nr_key UNIQUE (
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_company_id_versie_key UNIQUE (company_id, versie);
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_company_id_nr_key UNIQUE (company_id, nr);
 ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT doelstelling_niet_negatief CHECK ((doel_per_jaar >= 0));
+ALTER TABLE public.bedrijf_inspectie_doel ADD CONSTRAINT inspectie_doel_niet_negatief CHECK ((doel_per_jaar >= 0));
 ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_module_status_check CHECK ((module_status = ANY (ARRAY['geen'::text, 'actief'::text, 'gestopt'::text])));
 ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT toolbox_afw_lokaal_check CHECK ((((modus = 'lokaal'::text) AND (lokale_tekst IS NOT NULL) AND (btrim(lokale_tekst) <> ''::text)) OR ((modus = 'uit'::text) AND (lokale_titel IS NULL) AND (lokale_tekst IS NULL) AND (lokale_video_url IS NULL))));
 ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT toolbox_afw_modus_check CHECK ((modus = ANY (ARRAY['lokaal'::text, 'uit'::text])));
@@ -578,6 +587,8 @@ ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_company_id_fkey 
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_pva_item_id_fkey FOREIGN KEY (pva_item_id) REFERENCES pva_items(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT bedrijf_doelstelling_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT bedrijf_doelstelling_functiegroep_id_fkey FOREIGN KEY (functiegroep_id) REFERENCES functiegroep(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_inspectie_doel ADD CONSTRAINT bedrijf_inspectie_doel_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_inspectie_doel ADD CONSTRAINT bedrijf_inspectie_doel_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_rubriek ADD CONSTRAINT bedrijf_rubriek_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_rubriek ADD CONSTRAINT bedrijf_rubriek_rubriek_id_fkey FOREIGN KEY (rubriek_id) REFERENCES centrale_rubriek(id) ON DELETE CASCADE;
@@ -648,6 +659,7 @@ ALTER TABLE public.vragen ADD CONSTRAINT vragen_rie_versie_id_fkey FOREIGN KEY (
 
 CREATE INDEX actie_historie_company_idx ON public.actie_historie USING btree (company_id);
 CREATE INDEX actie_historie_item_idx ON public.actie_historie USING btree (pva_item_id);
+CREATE INDEX bedrijf_inspectie_doel_company_idx ON public.bedrijf_inspectie_doel USING btree (company_id);
 CREATE INDEX bedrijf_rubriek_company_idx ON public.bedrijf_rubriek USING btree (company_id);
 CREATE INDEX bedrijf_toolbox_afwijking_company_idx ON public.bedrijf_toolbox_afwijking USING btree (company_id);
 CREATE INDEX bedrijf_toolbox_company_idx ON public.bedrijf_toolbox USING btree (company_id);
@@ -695,6 +707,7 @@ CREATE INDEX vragen_module_idx ON public.vragen USING btree (module_id);
 
 ALTER TABLE public.actie_historie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_doelstelling ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bedrijf_inspectie_doel ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_rubriek ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_toolbox ENABLE ROW LEVEL SECURITY;
@@ -740,6 +753,8 @@ ALTER TABLE public.vragen ENABLE ROW LEVEL SECURITY;
 CREATE POLICY historie_select ON public.actie_historie AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
 CREATE POLICY bedrijf_doelstelling_sel ON public.bedrijf_doelstelling AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
+CREATE POLICY bedrijf_inspectie_doel_sel ON public.bedrijf_inspectie_doel AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_modules_sel ON public.bedrijf_modules AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
@@ -2787,6 +2802,24 @@ begin
    where id = p_inspectie_id;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if coalesce(p_doel_per_jaar,0) < 0 then raise exception 'Doel mag niet negatief zijn'; end if;
+  if not exists (select 1 from personen where id = p_persoon_id and company_id = p_company_id and archived_at is null) then
+    raise exception 'Persoon hoort niet bij dit bedrijf';
+  end if;
+  insert into bedrijf_inspectie_doel (company_id, persoon_id, doel_per_jaar, updated_at)
+  values (p_company_id, p_persoon_id, coalesce(p_doel_per_jaar,0), now())
+  on conflict (company_id, persoon_id) do update
+    set doel_per_jaar = excluded.doel_per_jaar, updated_at = now();
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.inspectie_rapport(p_inspectie_id uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -4328,6 +4361,9 @@ GRANT EXECUTE ON FUNCTION public.inspectie_bibliotheek(p_company_id uuid) TO ser
 REVOKE EXECUTE ON FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid, p_conclusie text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid, p_conclusie text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid, p_conclusie text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer) TO anon;
+GRANT EXECUTE ON FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.inspectie_rapport(p_inspectie_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_rapport(p_inspectie_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_rapport(p_inspectie_id uuid) TO service_role;

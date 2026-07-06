@@ -51,3 +51,20 @@ next-env.d.ts
 
 # nachttest (lokaal, niet committen)
 /test-nacht/
+
+# RI&E-import: klantinhoud NIET committen (public repo).
+# Alles in /import genegeerd, behalve de generieke pipeline-scripts.
+# import/bedrijf.json (bedrijfs-/narratiefdata) blijft dus genegeerd = klantcontent.
+/import/*
+!/import/extract_docx.py
+!/import/import_run.mjs
+!/import/build_dataset.py
+
+# Bron-RI&E's en gegenereerde klantdata, waar dan ook (defensief).
+*.docx
+*.doc
+/mnt/
+
+# Python cache
+__pycache__/
+*.pyc

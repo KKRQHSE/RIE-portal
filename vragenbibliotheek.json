@@ -1,0 +1,1463 @@
+{
+  "versie": "1.0",
+  "modules": [
+    {
+      "code": "F1",
+      "titel": "Gevaarlijke stoffen",
+      "aandachtsgebied": "Fysiek",
+      "doel": "Generieke moduletemplate voor de vragenbibliotheek. Bevat geen antwoorden of bevindingen; die worden per bedrijf in de dataset gevuld. Hieruit genereert de AI een kandidaat-invulling, die de deskundige toetst.",
+      "placeholders": {
+        "{bedrijfsnaam}": "Naam van het bedrijf. Gedeeld over alle modules.",
+        "{stoffen_beschrijving}": "Korte opsomming van de gevaarlijke stoffen die aanwezig of in gebruik zijn (uit intake/documenten). Module-specifiek.",
+        "{bijzondere_blootstelling}": "Optionele zin over een verzwarende blootstelling, bv. lasrook of kwartsstof (kankerverwekkend). Leeg laten als niet van toepassing."
+      },
+      "intro_template": "{bedrijfsnaam} werkt met {stoffen_beschrijving}. {bijzondere_blootstelling} Deze module beoordeelt de registratie, etikettering, opslag, blootstelling en instructie rond gevaarlijke stoffen.",
+      "nvt_criteria": "Hele module NVT als er aantoonbaar geen gevaarlijke stoffen in het bedrijf aanwezig zijn en er ook geen gevaarlijke stoffen worden gebruikt op externe of klantlocaties. Reden vastleggen. Let op de proportionaliteit: bijna elk bedrijf heeft minstens reinigings- of onderhoudsmiddelen, dus volledige NVT is zeldzaam en moet onderbouwd zijn.",
+      "B_standaard": 6,
+      "B_toelichting": "Dagelijks: gevaarlijke stoffen zijn in de meeste actieve bedrijven dagelijks aanwezig of in gebruik. Bijstellen naar B=3 (wekelijks) bij bedrijven waar stoffen alleen incidenteel worden gebruikt, of naar B=1 bij uitsluitend periodiek onderhoud.",
+      "vragen": [
+        {
+          "nr": "F1-1",
+          "vraag": "Is er een actueel register of overzicht van alle gevaarlijke stoffen die binnen het bedrijf aanwezig zijn?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: ontbrekend register vergroot de kans op verkeerde blootstelling en belemmert BHV-optreden.",
+          "nvt_conditie": "Volgt de module: alleen NVT als de hele module NVT is.",
+          "foto_advies": "Foto van het stoffenregister of de plek waar de veiligheidsinformatiebladen worden bewaard.",
+          "bron_soort": "document"
+        },
+        {
+          "nr": "F1-2",
+          "vraag": "Zijn alle gevaarlijke stoffen voorzien van een correct gevarenetiket en een actueel veiligheidsinformatieblad (VIB)?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: zonder correct etiket of VIB missen medewerkers essentiële veiligheidsinformatie bij blootstelling of incident.",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Foto van etiketten op de verpakkingen en van een VIB-map of digitale VIB-locatie.",
+          "bron_soort": "zichtbaar"
+        },
+        {
+          "nr": "F1-3",
+          "vraag": "Zijn medewerkers geïnstrueerd over de gevaren van de stoffen waarmee zij werken?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: ontbrekende instructie leidt tot onbewuste blootstelling of verkeerd handelen bij een incident.",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (werkinstructie, toolbox, opleidingsregistratie).",
+          "bron_soort": "document"
+        },
+        {
+          "nr": "F1-4",
+          "vraag": "Wordt de blootstelling aan gevaarlijke stoffen beoordeeld en zijn er maatregelen genomen om deze te beperken?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: onbeoordeelde blootstelling kan leiden tot chronische gezondheidsschade of beroepsziekte. Bij kankerverwekkende stoffen (lasrook, kwartsstof) altijd E=15.",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (blootstellingsbeoordeling); aanvullend foto van bronmaatregelen zoals afzuiging.",
+          "bron_soort": "document"
+        },
+        {
+          "nr": "F1-5",
+          "vraag": "Worden gevaarlijke stoffen veilig opgeslagen, conform PGS 15 waar van toepassing?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: brand of explosie door onjuiste opslag van brandbare of oxiderende stoffen.",
+          "nvt_conditie": "NVT als er geen opslag van gevaarlijke stoffen plaatsvindt.",
+          "foto_advies": "Foto van de opslagkast of opslagruimte voor gevaarlijke stoffen.",
+          "bron_soort": "zichtbaar"
+        },
+        {
+          "nr": "F1-6",
+          "vraag": "Is er een lekbak of vloeistofdichte voorziening aanwezig bij de opslag van vloeibare gevaarlijke stoffen?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: morsing of lekkage zonder opvang leidt tot blootstelling en milieuschade.",
+          "nvt_conditie": "NVT als er geen vloeibare gevaarlijke stoffen worden opgeslagen.",
+          "foto_advies": "Foto van de lekbak(ken) onder de opslag.",
+          "bron_soort": "zichtbaar"
+        },
+        {
+          "nr": "F1-7",
+          "vraag": "Is er een procedure voor het omgaan met morsingen en lekkages?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: zonder procedure handelen medewerkers ad hoc bij een incident, wat blootstelling en verspreiding vergroot.",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (procedure); aanvullend foto van een spill-kit indien aanwezig.",
+          "bron_soort": "document"
+        },
+        {
+          "nr": "F1-8",
+          "vraag": "Worden bij het werken met vluchtige of inhaleerbare stoffen ventilatie en/of adembescherming toegepast?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: structurele inhalatie van oplosmiddelen, isocyanaten of lasrook zonder beheersing leidt tot chronische longschade of kanker.",
+          "nvt_conditie": "NVT als er niet met vluchtige of inhaleerbare stoffen wordt gewerkt.",
+          "foto_advies": "Foto van ventilatie of afzuiging op de werkplek en van de gebruikte adembescherming.",
+          "bron_soort": "zichtbaar"
+        },
+        {
+          "nr": "F1-9",
+          "vraag": "Worden de juiste persoonlijke beschermingsmiddelen verstrekt bij het werken met gevaarlijke stoffen?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: onjuiste of ontbrekende PBM bij gevaarlijke stoffen leidt tot huid- of oogletsel of inhalatie.",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Foto van de verstrekte PBM.",
+          "bron_soort": "zichtbaar"
+        },
+        {
+          "nr": "F1-10",
+          "vraag": "Worden medewerkers die structureel met gevaarlijke stoffen werken periodiek medisch gekeurd (PAGO, eventueel biomonitoring)?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: zonder periodieke keuring blijft chronische blootstelling onopgemerkt tot ernstige gezondheidsschade is opgetreden.",
+          "nvt_conditie": "NVT als geen medewerker structureel aan gevaarlijke stoffen wordt blootgesteld.",
+          "foto_advies": "Documentair bewijs (PAGO-uitnodiging, afspraak met arbodienst).",
+          "bron_soort": "document"
+        },
+        {
+          "nr": "F1-11",
+          "vraag": "Geldt er een ARIE-verplichting vanwege de hoeveelheid opgeslagen gevaarlijke stoffen?",
+          "E_waarde": 40,
+          "E_toelichting": "Dodelijk/ramp: ARIE-drempel impliceert hoeveelheden waarbij een ernstig incident meerdere slachtoffers kan maken. Bijna altijd NVT; bij twijfel verifiëren.",
+          "nvt_conditie": "Bijna altijd NVT: de meeste bedrijven blijven ruim onder de ARIE-drempelwaarden. NVT met reden; bij twijfel laten bevestigen door de deskundige.",
+          "foto_advies": "Niet van toepassing; betreft een drempeltoets op hoeveelheden.",
+          "bron_soort": "document"
+        },
+        {
+          "nr": "F1-12",
+          "vraag": "Worden veiligheidsinformatiebladen bewaard op een voor medewerkers toegankelijke plek?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: ontoegankelijke VIB's betekenen dat medewerkers en BHV bij een incident zonder juiste informatie handelen.",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Foto van de VIB-locatie (map op de werkplek, in de bus, of digitaal bord).",
+          "bron_soort": "zichtbaar"
+        },
+        {
+          "nr": "F1-13",
+          "vraag": "Is het gebruik van gevaarlijke stoffen beperkt tot daartoe bevoegde medewerkers?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: onbevoegd gebruik vergroot de kans op verkeerde toepassing en blootstelling.",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (bevoegdhedenoverzicht, autorisatie).",
+          "bron_soort": "document"
+        }
+      ]
+    },
+    {
+      "code": "F2",
+      "titel": "Fysieke belasting",
+      "aandachtsgebied": "Fysiek",
+      "doel": "Beoordeelt of fysieke overbelasting door tillen, ongemakkelijke houdingen en repetitieve bewegingen voldoende wordt beheerst.",
+      "placeholders": {
+        "{bedrijfsnaam}": "Naam van het bedrijf.",
+        "{fysiek_werk_beschrijving}": "Korte beschrijving van de fysiek belastende werkzaamheden, bv. 'monteurswerk in moeilijk bereikbare ruimten' of 'tilwerk in het magazijn'.",
+        "{kantoor_aanwezig}": "Optionele zin over kantoorfuncties als die aanwezig zijn. Leeg laten als niet van toepassing."
+      },
+      "intro_template": "{bedrijfsnaam} kent fysiek belastend werk, onder andere door {fysiek_werk_beschrijving}. {kantoor_aanwezig} Deze module beoordeelt of belasting, instructie en hulpmiddelen adequaat zijn ingericht.",
+      "nvt_criteria": "Bijna nooit volledig NVT: elk bedrijf heeft enige mate van fysieke belasting. Alleen NVT als het uitsluitend om puur administratief werk zonder enige fysieke component gaat.",
+      "B_standaard": 6,
+      "B_toelichting": "Dagelijks: fysiek belastend werk is voor de meeste operationele functies dagelijkse kost. Bijstellen naar B=3 bij overwegend kantoorwerk.",
+      "vragen": [
+        {
+          "nr": "F2-1",
+          "vraag": "Wordt er rekening gehouden met fysieke belasting bij het ontwerp en de taakverdeling van het werk?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: structurele overbelasting leidt tot aandoeningen aan rug, schouders en gewrichten.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (taakverdeling, RI&E bijlage); aanvullend foto van een representatieve werkplek."
+        },
+        {
+          "nr": "F2-2",
+          "vraag": "Worden medewerkers geïnformeerd over de risico's van fysieke overbelasting en ergonomisch werken?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: zonder instructie hanteren medewerkers onjuiste technieken, wat leidt tot acute en chronische klachten.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (toolbox, werkinstructie, opleidingsregistratie)."
+        },
+        {
+          "nr": "F2-3",
+          "vraag": "Worden zware lasten (>25 kg) zo veel mogelijk vermeden of met tilhulpmiddelen verplaatst?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: regelmatig tillen boven de norm leidt tot rugletsel en chronische klachten.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als er structureel geen lasten boven 25 kg worden verplaatst.",
+          "foto_advies": "Foto van de tilsituatie en eventuele tilhulpmiddelen."
+        },
+        {
+          "nr": "F2-4",
+          "vraag": "Zijn tilhulpmiddelen beschikbaar en worden deze ook daadwerkelijk gebruikt?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: beschikbare hulpmiddelen die niet worden gebruikt bieden geen bescherming.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als er geen tilhulpmiddelen nodig zijn.",
+          "foto_advies": "Foto van de aanwezige tilhulpmiddelen (steekwagen, hijsband, hefhulp)."
+        },
+        {
+          "nr": "F2-5",
+          "vraag": "Wordt werken boven schouderhoogte zo veel mogelijk vermeden of met hulpmiddelen ondersteund?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: langdurig werken boven schouderhoogte leidt tot schouder- en nekklachten.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als werken boven schouderhoogte structureel niet voorkomt.",
+          "foto_advies": "Foto van de werksituatie boven schouderhoogte en gebruikte hulpmiddelen."
+        },
+        {
+          "nr": "F2-6",
+          "vraag": "Worden herhalende bewegingen beperkt of afgewisseld met andere taken?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: repetitief werk zonder afwisseling leidt op langere termijn tot RSI-klachten.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen sprake is van repetitief werk.",
+          "foto_advies": "Documentair bewijs (taakverdeling, werkrooster); foto van de werkplek ter ondersteuning."
+        },
+        {
+          "nr": "F2-7",
+          "vraag": "Is er aandacht voor de verhoogde fysieke belasting bij oudere medewerkers?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: oudere medewerkers zijn gevoeliger voor fysieke overbelasting; geen aanpassing vergroot uitvalrisico.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen medewerkers ouder dan 55 in fysiek belastende functies zijn.",
+          "foto_advies": "Documentair bewijs (personeelsbeleid, taakplanning)."
+        },
+        {
+          "nr": "F2-8",
+          "vraag": "Zijn beeldschermwerkplekken ergonomisch ingericht?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: slecht ingerichte werkplekken leiden tot nek-, rug- en RSI-klachten op langere termijn.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als er geen beeldschermwerkplekken zijn.",
+          "foto_advies": "Foto van de beeldschermwerkplek (stoel, schermhoogte, toetsenbordpositie)."
+        },
+        {
+          "nr": "F2-9",
+          "vraag": "Wordt langdurig stilzitten afgewisseld met beweging voor medewerkers met een zittende functie?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: langdurig zitten zonder beweging vergroot het risico op hart- en vaatziekten en klachten aan het bewegingsapparaat.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen medewerkers zijn met een overwegend zittende functie.",
+          "foto_advies": "Documentair bewijs (beleid, huisregels); geen foto nodig."
+        },
+        {
+          "nr": "F2-10",
+          "vraag": "Is er een verdiepende RI&E voor fysieke belasting nodig op basis van deze inventarisatie?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: als de basisinventarisatie onvoldoende uitsluitsel geeft, is een verdiepend onderzoek (bv. NIOSH-tiltaak analyse) aangewezen.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als de basisinventarisatie voldoende zekerheid geeft.",
+          "foto_advies": "Niet van toepassing; betreft een procesbeslissing."
+        }
+      ]
+    },
+    {
+      "code": "F3",
+      "titel": "Schadelijke factoren (geluid, trillingen, machines)",
+      "aandachtsgebied": "Fysiek",
+      "doel": "Beoordeelt beheersing van geluid, trillingen, verlichting, temperatuur, luchtkwaliteit en machine- en arbeidsmiddelveiligheid.",
+      "placeholders": {
+        "{bedrijfsnaam}": "Naam van het bedrijf.",
+        "{machines_beschrijving}": "Korte opsomming van de aanwezige machines en arbeidsmiddelen, bv. 'zaagmachines, kolomboren en handgereedschap'.",
+        "{schadelijke_factoren}": "Aanwezige schadelijke factoren, bv. 'geluid van machines, trillingen van handgereedschap en stofvorming'."
+      },
+      "intro_template": "{bedrijfsnaam} werkt met {machines_beschrijving}. Daarbij spelen {schadelijke_factoren} een rol. Deze module beoordeelt geluid, trillingen, verlichting, luchtkwaliteit, temperatuur en de veiligheid van machines en arbeidsmiddelen.",
+      "nvt_criteria": "Zelden volledig NVT: elk bedrijf heeft enige blootstelling aan geluid of machines. Individuele vragen kunnen NVT zijn als de betreffende factor aantoonbaar afwezig is.",
+      "B_standaard": 3,
+      "B_toelichting": "Wekelijks als standaard voor gemengde bedrijven. Bijstellen naar B=6 bij dagelijks gebruik van zware machines of continu lawaaiige omgeving; naar B=1 bij uitsluitend kantoorwerk.",
+      "vragen": [
+        {
+          "nr": "F3-1",
+          "vraag": "Worden medewerkers blootgesteld aan schadelijke trillingen door handgereedschap of voertuigen?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: structurele blootstelling aan hand-armtrillingen leidt tot vaatschade (witte vingers) en neurologische aandoeningen.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als er geen gebruik is van trillend gereedschap of voertuigen.",
+          "foto_advies": "Foto van het gebruikte handgereedschap of voertuig."
+        },
+        {
+          "nr": "F3-2",
+          "vraag": "Worden trillingsarme machines gebruikt en worden pauzes ingelast bij blootstelling aan trillingen?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: zonder beheersmaatregelen neemt de cumulatieve blootstelling snel toe.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen trillingsblootstelling is.",
+          "foto_advies": "Documentair bewijs (specificaties machines, pauzebeleid)."
+        },
+        {
+          "nr": "F3-3",
+          "vraag": "Is er een wettelijke verplichting voor een trillingsonderzoek en wordt hieraan voldaan?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: wettelijk vereiste metingen geven zekerheid over werkelijke blootstelling.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als de blootstelling aantoonbaar ruim onder de actiewaarde (EAV 2,5 m/s²) blijft.",
+          "foto_advies": "Documentair bewijs (meetrapport, Arbocatalogus)."
+        },
+        {
+          "nr": "F3-4",
+          "vraag": "Wordt de geluidsbelasting op de werkplek beoordeeld en binnen wettelijke grenzen gehouden?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: blijvend gehoorverlies treedt op bij herhaalde overschrijding van 80 dB(A).",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er aantoonbaar geen geluidsbelasting boven 80 dB(A) is.",
+          "foto_advies": "Documentair bewijs (geluidsmeting, Arbocatalogus); aanvullend foto van de luidruchtige werkplek."
+        },
+        {
+          "nr": "F3-5",
+          "vraag": "Wordt gehoorbescherming verstrekt én aantoonbaar gebruikt bij geluidsbelasting boven 80 dB(A)?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: gehoorbescherming die niet wordt gedragen beschermt niet.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als de geluidsbelasting structureel onder 80 dB(A) blijft.",
+          "foto_advies": "Foto van de verstrekte gehoorbescherming en gebruik ervan op de werkplek."
+        },
+        {
+          "nr": "F3-6",
+          "vraag": "Zijn geluidsreducerende maatregelen toegepast waar technisch mogelijk?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: bronmaatregelen zijn effectiever dan PBM; ontbreken ervan vergroot de cumulatieve blootstelling.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als er geen relevante geluidsbelasting is.",
+          "foto_advies": "Foto van toegepaste geluidsdemping of afscherming."
+        },
+        {
+          "nr": "F3-7",
+          "vraag": "Is er voldoende en gelijkmatige verlichting op alle werkplekken?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: onvoldoende verlichting leidt tot oogvermoeidheid, verhoogd letselrisico en verminderde kwaliteit.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Foto van de werkplek met verlichting zichtbaar."
+        },
+        {
+          "nr": "F3-8",
+          "vraag": "Is de luchtkwaliteit in werkruimten op orde (stof, damp, gassen, ventilatie)?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: slechte luchtkwaliteit leidt tot luchtwegaandoeningen en bij gevaarlijke stoffen tot chronische schade.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Foto van de ventilatie-installatie of werkplek met relevante luchtkwaliteitsfactoren."
+        },
+        {
+          "nr": "F3-9",
+          "vraag": "Worden medewerkers niet langdurig blootgesteld aan extreme temperaturen (hitte of kou)?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: hittestress en onderkoeling kunnen leiden tot ernstig letsel of uitval.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als werkzaamheden uitsluitend in geconditioneerde ruimten plaatsvinden.",
+          "foto_advies": "Foto van de werkplek in de relevante omstandigheid; documentair bewijs van beleid."
+        },
+        {
+          "nr": "F3-10",
+          "vraag": "Zijn alle machines en arbeidsmiddelen conform de Machinerichtlijn voorzien van CE-markering en gebruiksaanwijzing?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: niet-conforme machines missen essentiële beveiligingen en kunnen bij falen ernstig letsel veroorzaken.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als er geen machines onder de Machinerichtlijn aanwezig zijn.",
+          "foto_advies": "Foto van typeplaatjes/CE-markering op de machines."
+        },
+        {
+          "nr": "F3-11",
+          "vraag": "Worden alle machines en arbeidsmiddelen periodiek gekeurd en onderhouden?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: slecht onderhouden machines falen onverwachts met ernstig letsel als gevolg.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (keuringsregistratie, onderhoudslogboek)."
+        },
+        {
+          "nr": "F3-13",
+          "vraag": "Zijn medewerkers aantoonbaar geïnstrueerd over het gebruik en de beveiligingen van machines?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: onvoldoende instructie leidt tot verkeerd gebruik en omzeilen van beveiligingen.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (TBM-registratie, opleidingskaart, instructieblad)."
+        },
+        {
+          "nr": "F3-14",
+          "vraag": "Worden noodstopvoorzieningen op machines regelmatig gecontroleerd op functioneren?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: een niet-functionerende noodstop is bij een incident de laatste verdedigingslinie.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als machines geen noodstopverplichting hebben.",
+          "foto_advies": "Foto van noodstopknoppen op de machines."
+        },
+        {
+          "nr": "F3-15",
+          "vraag": "Worden gevaarlijke arbeidsmiddelen uitsluitend bediend door bevoegde medewerkers?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: onbevoegd gebruik van heftruck, kraan of andere gevaarlijke arbeidsmiddelen leidt frequent tot ernstige ongelukken.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen arbeidsmiddelen zijn waarvoor een specifieke bevoegdheid vereist is.",
+          "foto_advies": "Documentair bewijs (bevoegdheidsregister, certificaten)."
+        },
+        {
+          "nr": "F3-16",
+          "vraag": "Is het hijsmaterieel periodiek gekeurd en geregistreerd conform wettelijke vereisten?",
+          "E_waarde": 40,
+          "E_toelichting": "Dodelijk/ramp: falen van hijsmaterieel leidt tot val van lasten met dodelijk letsel als reëel gevolg.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen hijsmaterieel aanwezig of in gebruik is.",
+          "foto_advies": "Documentair bewijs (keuringsrapport hijsmaterieel, registratiesticker); foto van het hijsmaterieel."
+        },
+        {
+          "nr": "F3-17",
+          "vraag": "Zijn elektrotechnische installaties en arbeidsmiddelen periodiek gekeurd conform NEN 3140?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: niet-gekeurd elektrisch materieel verhoogt de kans op elektrisch letsel, brand of explosie.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (NEN 3140-keuringsrapport, aanwijzingsdocument)."
+        },
+        {
+          "nr": "F3-19",
+          "vraag": "Is een verdiepende RI&E voor geluid, trillingen of machines noodzakelijk op basis van deze inventarisatie?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: als de basisinventarisatie onzekerheid laat bestaan over de werkelijke blootstelling, is aanvullend onderzoek aangewezen.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als de basisinventarisatie voldoende zekerheid geeft.",
+          "foto_advies": "Niet van toepassing; betreft een procesbeslissing."
+        },
+        {
+          "nr": "F3-20",
+          "vraag": "Zijn vast opgestelde machines deugdelijk verankerd zodat kantelen of verschuiven wordt voorkomen?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: een kantelende machine veroorzaakt ernstig letsel.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als er geen vast opgestelde machines zijn.",
+          "foto_advies": "Foto van de verankering van de machine(s) aan de vloer."
+        },
+        {
+          "nr": "F3-21",
+          "vraag": "Worden magazijnstellingen periodiek gekeurd en is de maximale belasting per stelling aangegeven?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: instorten van een overbelaste of beschadigde stelling veroorzaakt ernstig letsel.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als er geen magazijnstellingen aanwezig zijn.",
+          "foto_advies": "Foto van de stellingen met zichtbaar keuringslabel en belastingsbord."
+        },
+        {
+          "nr": "F3-22",
+          "vraag": "Worden verhoogde werkplekken of werkpodiums veilig gebruikt, ook nabij vloeropeningen of op een verdiepingsvloer?",
+          "E_waarde": 40,
+          "E_toelichting": "Dodelijk/ramp: val van een verhoogde werkplek of door een vloeropening is een reëel dodelijk risico.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als er geen verhoogde werkplekken of vloeropeningen zijn.",
+          "foto_advies": "Foto van de verhoogde werkplek, het podium of de vloeropening."
+        }
+      ]
+    },
+    {
+      "code": "L1",
+      "titel": "Brandveiligheid en BHV",
+      "aandachtsgebied": "Locatiegebonden",
+      "doel": "Beoordeelt de brandveiligheidsmaatregelen, vluchtwegen, BHV-organisatie en EHBO-voorzieningen op de eigen locatie en waar relevant op klantlocaties.",
+      "placeholders": {
+        "{bedrijfsnaam}": "Naam van het bedrijf.",
+        "{locatie_beschrijving}": "Korte beschrijving van de eigen locatie, bv. 'werkplaats met kantoor en buitenopslag'.",
+        "{bijzonder_brandrisico}": "Optionele zin over verhoogd brandrisico, bv. 'laswerk op locatie' of 'opslag van brandbare vloeistoffen'. Leeg laten als niet van toepassing."
+      },
+      "intro_template": "{bedrijfsnaam} beschikt over een {locatie_beschrijving}. {bijzonder_brandrisico} Deze module beoordeelt brandblusmiddelen, vluchtwegen, BHV-organisatie, EHBO en installatiekeuring.",
+      "nvt_criteria": "Nooit volledig NVT: elke locatie heeft brandveiligheidsverplichtingen. Individuele vragen kunnen NVT zijn als de betreffende installatie of situatie aantoonbaar afwezig is.",
+      "B_standaard": 2,
+      "B_toelichting": "Maandelijks: brand is zeldzaam maar de kans op onveilige situaties (ontbrekende middelen, verlopen certificaten) is maandelijks relevant. Bijstellen naar B=3 bij verhoogd brandrisico door laswerk, brandbare stoffen of hoge bezetting.",
+      "vragen": [
+        {
+          "nr": "L1-1",
+          "vraag": "Zijn er voldoende brandblusmiddelen aanwezig en bereikbaar op alle werklocaties?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: ontbrekende of onbereikbare blusmiddelen laten een beginnende brand uitgroeien.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Foto van brandblusser op de werkplek."
+        },
+        {
+          "nr": "L1-2",
+          "vraag": "Worden brandblusmiddelen jaarlijks gecontroleerd door een gecertificeerde instantie?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: niet-gekeurd blusmiddel werkt mogelijk niet bij een incident.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Foto van keuringssticker op de brandblusser."
+        },
+        {
+          "nr": "L1-3",
+          "vraag": "Is de locatie van alle brandblusmiddelen duidelijk aangegeven met pictogrammen?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: zonder duidelijke markering verliest BHV kostbare tijd bij een incident.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Foto van het pictogram bij de brandblusser."
+        },
+        {
+          "nr": "L1-4",
+          "vraag": "Zijn nooduitgangen en vluchtwegen goed bereikbaar en vrij van obstakels?",
+          "E_waarde": 40,
+          "E_toelichting": "Dodelijk/ramp: geblokkeerde vluchtweg leidt bij brand of calamiteit tot dodelijke slachtoffers.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Foto van de nooduitgang en vluchtweg."
+        },
+        {
+          "nr": "L1-5",
+          "vraag": "Zijn vluchtwegen en nooduitgangen duidelijk aangegeven met vluchtrouteaanduidingen?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: onduidelijke vluchtrouteaanduiding verlengt ontruimingstijd.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Foto van vluchtroute-aanduiding."
+        },
+        {
+          "nr": "L1-6",
+          "vraag": "Zijn actuele ontruimingsplattegronden aanwezig en zichtbaar opgehangen?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: ontbrekende of verouderde plattegronden hinderen een efficiënte ontruiming.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Foto van de ontruimingsplattegrond op de muur."
+        },
+        {
+          "nr": "L1-7",
+          "vraag": "Worden periodieke ontruimingsoefeningen of tafeltop-oefeningen gehouden?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: ongetrainde medewerkers handelen bij calamiteiten onzeker en traag.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (oefenverslag, aanwezigheidsregistratie)."
+        },
+        {
+          "nr": "L1-8",
+          "vraag": "Zijn er voldoende BHV'ers aanwezig om elke dienst of werktijd te dekken?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: geen BHV aanwezig bij een incident betekent geen gecoördineerde eerste hulp of ontruiming.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (BHV-rooster, aanwijzingsbrieven)."
+        },
+        {
+          "nr": "L1-9",
+          "vraag": "Zijn BHV'ers jaarlijks bijgeschoold en in het bezit van een geldig BHV-certificaat?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: verlopen certificaten betekenen dat BHV-vaardigheden niet op peil zijn gehouden.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (certificaten BHV'ers)."
+        },
+        {
+          "nr": "L1-10",
+          "vraag": "Is er een AED aanwezig en is het personeel bekend met de locatie en het gebruik ervan?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: een AED die niet gevonden of niet gebruikt kan worden kost bij een hartstilstand levens.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als de locatie te klein is voor een eigen AED en er een publieke AED in de directe omgeving beschikbaar is.",
+          "foto_advies": "Foto van de AED op zijn vaste plek."
+        },
+        {
+          "nr": "L1-11",
+          "vraag": "Zijn EHBO-middelen voldoende aanwezig en worden deze periodiek gecontroleerd op volledigheid?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: ontbrekende EHBO-middelen vertragen adequate eerste hulp.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Foto van de EHBO-kist."
+        },
+        {
+          "nr": "L1-12",
+          "vraag": "Is er een calamiteitenplan of BHV-plan beschikbaar en bekend bij alle medewerkers?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: zonder bekend plan handelen medewerkers ad hoc bij calamiteiten.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (BHV-plan)."
+        },
+        {
+          "nr": "L1-13",
+          "vraag": "Zijn alle elektrotechnische installaties veilig onderhouden en gekeurd conform NEN 3140?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: defecte installaties zijn een frequente oorzaak van brand en elektrisch letsel.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (NEN 3140-keuringsrapport)."
+        },
+        {
+          "nr": "L1-14",
+          "vraag": "Zijn er maatregelen om brandgevaar door brandstoflekkages of elektrische defecten te voorkomen?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: lekkages bij motoren of brandbare vloeistoffen zijn reëele brandbronnen.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als er geen brandstofgedreven apparatuur aanwezig is.",
+          "foto_advies": "Foto van opslagplek brandstof en eventuele lekbak."
+        },
+        {
+          "nr": "L1-15",
+          "vraag": "Is er een brandmeldinstallatie aanwezig en wordt die jaarlijks gekeurd?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: een niet-werkende brandmelding vertraagt ontdekking en ontruiming.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er wettelijk geen brandmeldplicht is en het oppervlak/gebruik dit niet vereist.",
+          "foto_advies": "Foto van rookmelder of centrale meldinstallatie."
+        },
+        {
+          "nr": "L1-16",
+          "vraag": "Worden gevaarlijke stoffen die extra brandveiligheidsmaatregelen vereisen conform de regels opgeslagen?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: onjuiste opslag van brandbare of oxiderende stoffen verhoogt het brandrisico aanzienlijk.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als er geen gevaarlijke stoffen worden opgeslagen die extra brandveiligheidseisen stellen.",
+          "foto_advies": "Foto van de opslagruimte voor gevaarlijke stoffen."
+        },
+        {
+          "nr": "L1-17",
+          "vraag": "Is de oplaadplek voor lithium-ion accu's of elektrische voertuigen brandveilig ingericht?",
+          "E_waarde": 40,
+          "E_toelichting": "Dodelijk/ramp: lithium-ion branden zijn uiterst moeilijk te blussen en kunnen gebouwen volledig verwoesten.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als er geen lithium-ion accu's of elektrische voertuigen worden opgeladen.",
+          "foto_advies": "Foto van de oplaadplek."
+        }
+      ]
+    },
+    {
+      "code": "L2",
+      "titel": "Mobiliteit en transport",
+      "aandachtsgebied": "Locatiegebonden",
+      "doel": "Beoordeelt de veiligheid van wegvervoer, intern transport en de borging van rijbevoegdheden en voertuigonderhoud.",
+      "placeholders": {
+        "{bedrijfsnaam}": "Naam van het bedrijf.",
+        "{voertuigen_beschrijving}": "Korte beschrijving van het wagenpark en intern transport, bv. 'bedrijfsauto's voor buitendienst en een heftruck in het magazijn'.",
+        "{bijzonder_transport}": "Optioneel: bijzondere transportsituatie, bv. 'dagelijks rijden naar klantlocaties in het buitenland' of 'ADR-transport'. Leeg laten als niet van toepassing."
+      },
+      "intro_template": "{bedrijfsnaam} maakt gebruik van {voertuigen_beschrijving}. {bijzonder_transport} Deze module beoordeelt rijbevoegdheden, voertuigonderhoud, veilig rijgedrag en intern transport.",
+      "nvt_criteria": "NVT als het bedrijf geen voertuigen gebruikt en geen intern transport heeft. In de praktijk zeldzaam.",
+      "B_standaard": 6,
+      "B_toelichting": "Dagelijks: mobiliteit is voor de meeste bedrijven met buitendienst of magazijn een dagelijkse activiteit. Bijstellen naar B=3 bij uitsluitend intern transport of beperkt rijgebruik.",
+      "vragen": [
+        {
+          "nr": "L2-1",
+          "vraag": "Beschikken alle chauffeurs over het juiste rijbewijs en zijn relevante certificaten actueel?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: rijden zonder geldig rijbewijs of verlopen certificaat vergroot aansprakelijkheid en risico op ongelukken.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (kopieën rijbewijzen, certificatenregister)."
+        },
+        {
+          "nr": "L2-2",
+          "vraag": "Worden medewerkers geïnstrueerd over veilig rijgedrag, rijmoeheid en het gebruik van voertuigsystemen?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: verkeersongevallen zijn een van de grootste oorzaken van dodelijke arbeidsongevallen.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (instructie, toolbox veilig rijden)."
+        },
+        {
+          "nr": "L2-3",
+          "vraag": "Is duidelijk wie verantwoordelijk is voor het periodiek onderhoud van alle voertuigen?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: ongehouden voertuigen zijn een risico voor de bestuurder en andere weggebruikers.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (onderhoudsschema, verantwoordelijkheidsverdeling)."
+        },
+        {
+          "nr": "L2-4",
+          "vraag": "Zijn alle voertuigen periodiek gekeurd en APK-waardig?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: technisch defect voertuig verhoogt het risico op een ernstig verkeersongeval.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (APK-overzicht, keuringsrapport)."
+        },
+        {
+          "nr": "L2-5",
+          "vraag": "Is het gebruik van mobiele apparatuur tijdens het rijden beperkt en gereguleerd?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: telefoongebruik achter het stuur is een van de hoofdoorzaken van verkeersongelukken.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (beleid, ondertekende verklaring medewerkers)."
+        },
+        {
+          "nr": "L2-6",
+          "vraag": "Is er een rij- en rusttijdenregistratie aanwezig conform de Rijtijdenwet waar van toepassing?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: overtreding van rijtijden vergroot het risico op rijmoeheid-gerelateerde ongelukken.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als het voertuiggebruik buiten de Rijtijdenwet valt (particuliere voertuigen <3,5 ton).",
+          "foto_advies": "Documentair bewijs (tachograaf, ritregistratie)."
+        },
+        {
+          "nr": "L2-7",
+          "vraag": "Worden maatregelen genomen ter voorkoming van rijmoeheid bij lange ritten of vroege diensten?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: rijmoeheid is een bewezen oorzaak van dodelijke ongelukken.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als medewerkers geen lange ritten of vroege/late diensten combineren met rijwerk.",
+          "foto_advies": "Documentair bewijs (beleid rijmoeheid, roosterontwerp)."
+        },
+        {
+          "nr": "L2-8",
+          "vraag": "Worden intern transportmiddelen uitsluitend bediend door bevoegde medewerkers?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: onbevoegde bediening van heftruck of verreiker leidt frequent tot ernstige ongelukken.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen intern transportmiddelen met bevoegdheidsvereiste aanwezig zijn.",
+          "foto_advies": "Documentair bewijs (bevoegdheidsregister, certificaten)."
+        },
+        {
+          "nr": "L2-9",
+          "vraag": "Zijn rijroutes op het bedrijfsterrein duidelijk aangegeven en zijn voetgangers- en rijroutes gescheiden?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: menging van voetgangers en voertuigen op het terrein leidt regelmatig tot ernstige aanrijdingen.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als er geen gemotoriseerd verkeer op het terrein plaatsvindt.",
+          "foto_advies": "Foto van rijroutes en scheiding voetgangers/voertuigen op het terrein."
+        },
+        {
+          "nr": "L2-10",
+          "vraag": "Is er een laad- en losprotocol met aandacht voor veiligheid van de zone en belading?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: ongecontroleerd laden en lossen leidt tot vallen van lading en aanrijdingen.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen laad- en losactiviteiten plaatsvinden.",
+          "foto_advies": "Foto van de laad- en loszone; documentair bewijs (protocol)."
+        },
+        {
+          "nr": "L2-11",
+          "vraag": "Valt het transport van gevaarlijke stoffen onder ADR-regelgeving en wordt hieraan voldaan?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: overtreding van ADR bij vervoer van gevaarlijke stoffen kan leiden tot explosie of ernstig milieuincident.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen gevaarlijke stoffen worden vervoerd die onder ADR vallen.",
+          "foto_advies": "Documentair bewijs (ADR-certificaten, voertuigdocumentatie)."
+        },
+        {
+          "nr": "L2-12",
+          "vraag": "Is er beleid voor het rijden in het buitenland, inclusief lokale verkeersregels en verplichte uitrusting?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: onbekendheid met lokale regels vergroot de kans op boetes, aansprakelijkheid en ongelukken.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen werkzaamheden in het buitenland plaatsvinden.",
+          "foto_advies": "Documentair bewijs (landenbeleid, instructie buitenlandse ritten)."
+        },
+        {
+          "nr": "L2-13",
+          "vraag": "Worden snelheidslimieten op het bedrijfsterrein gehandhaafd?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: te hoge snelheid op een druk terrein vergroot de kans op aanrijdingen met voetgangers.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als er geen voertuigen op het eigen terrein rijden.",
+          "foto_advies": "Foto van snelheidsborden of terreinmarkeringen."
+        },
+        {
+          "nr": "L2-14",
+          "vraag": "Is er een protocol voor pech onderweg, inclusief gebruik van veiligheidsdriehoek en reflecterende kleding?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: medewerkers die zonder bescherming langs de weg staan lopen een hoog aanrijdingsrisico.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Foto van aanwezige nooduitrusting in het voertuig."
+        },
+        {
+          "nr": "L2-15",
+          "vraag": "Wordt het rijgedrag gemonitord om risicovol rijgedrag te signaleren en te bespreken?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: monitoring ondersteunt bewustwording en kan aantonen dat het bedrijf zijn zorgplicht serieus neemt.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als het rijgebruik beperkt is en monitoring niet proportioneel is.",
+          "foto_advies": "Documentair bewijs (beleid rijgedrag, ritregistratie)."
+        }
+      ]
+    },
+    {
+      "code": "L3",
+      "titel": "Werken op externe locaties",
+      "aandachtsgebied": "Locatiegebonden",
+      "doel": "Beoordeelt de veiligheidsmaatregelen bij werkzaamheden op locaties die niet door het bedrijf zelf worden beheerd.",
+      "placeholders": {
+        "{bedrijfsnaam}": "Naam van het bedrijf.",
+        "{locatie_type}": "Type externe locaties, bv. 'klantpanden', 'bouwlocaties', 'agrarische bedrijven' of 'openbare wegen'.",
+        "{bijzonder_locatierisico}": "Optioneel: specifiek risico op die locaties, bv. 'werken op hoogte', 'besloten ruimten' of 'werkzaamheden nabij kabels en leidingen'. Leeg laten als niet van toepassing."
+      },
+      "intro_template": "{bedrijfsnaam} voert werkzaamheden uit op {locatie_type}. {bijzonder_locatierisico} Deze module beoordeelt de voorbereiding, instructie, toezicht en veiligheid bij extern werk.",
+      "nvt_criteria": "NVT als alle werkzaamheden uitsluitend op de eigen locatie plaatsvinden. In de praktijk zeldzaam voor operationele bedrijven.",
+      "B_standaard": 3,
+      "B_toelichting": "Wekelijks als standaard voor bedrijven met een buitendienst. Bijstellen naar B=6 bij dagelijks werk op externe locaties of naar B=1 bij incidentele externe klussen.",
+      "vragen": [
+        {
+          "nr": "L3-1",
+          "vraag": "Worden medewerkers vóór aanvang van werk op een nieuwe locatie geïnformeerd over locatiespecifieke risico's?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: onbekende locatierisico's leiden tot onverwachte en onbeheerste gevaarlijke situaties.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (locatiebriefing, TBM-formulier)."
+        },
+        {
+          "nr": "L3-2",
+          "vraag": "Wordt er een taak- of werkbespreking (TBM) gehouden vóór de start van risicovolle werkzaamheden?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: zonder TBM zijn medewerkers onvoldoende op de hoogte van de specifieke risico's van die dag.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (TBM-registratieformulier met handtekeningen)."
+        },
+        {
+          "nr": "L3-3",
+          "vraag": "Is er een procedure voor werken bij extreme weersomstandigheden?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: storm, extreme hitte of kou op een externe locatie vergroot het risico op letsel aanzienlijk.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als werk uitsluitend binnenshuis plaatsvindt en buitenomstandigheden geen rol spelen.",
+          "foto_advies": "Documentair bewijs (weerbeleid, procedure)."
+        },
+        {
+          "nr": "L3-4",
+          "vraag": "Wordt rekening gehouden met de risico's van werken bij wateroverlast of instabiele ondergrond?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: instabiele ondergrond of wateroverlast op een werklocatie kan leiden tot ernstige valincidenten of verzakking.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als dit type ondergrond of weersituatie structureel niet voorkomt.",
+          "foto_advies": "Foto van de ondergrond of werklocatie bij relevant weersomstandigheid."
+        },
+        {
+          "nr": "L3-5",
+          "vraag": "Worden veiligheidsregels van opdrachtgevers (VCA, V&G-plan, huisregels) nageleefd op locatie?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: het niet naleven van opdrachtgeversregels leidt tot onbeheerste risico's en contractuele aansprakelijkheid.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen opdrachtgevers zijn die veiligheidseisen stellen.",
+          "foto_advies": "Documentair bewijs (V&G-plan, ondertekende huisregels)."
+        },
+        {
+          "nr": "L3-6",
+          "vraag": "Is er toezicht geregeld bij risicovolle werkzaamheden op locatie?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: risicovolle werkzaamheden zonder toezicht kunnen bij afwijkingen ongecontroleerd escaleren.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen risicovolle werkzaamheden zijn die toezicht vereisen.",
+          "foto_advies": "Documentair bewijs (toezichtarrangement, werkvergunning)."
+        },
+        {
+          "nr": "L3-7",
+          "vraag": "Is er een check-in/check-out procedure voor medewerkers die alleen op afgelegen locaties werken?",
+          "E_waarde": 40,
+          "E_toelichting": "Dodelijk/ramp: een alleenwerkende medewerker die in nood is en niet wordt gevonden loopt risico te overlijden zonder hulp.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als medewerkers nooit alleen op afgelegen locaties werken.",
+          "foto_advies": "Documentair bewijs (check-in/out-procedure, noodmelding-app)."
+        },
+        {
+          "nr": "L3-8",
+          "vraag": "Zijn er maatregelen bij werkzaamheden langs de openbare weg of in de buurt van verkeer?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: aanrijding door passerende voertuigen is een reëel dodelijk risico bij wegwerkzaamheden.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "NVT als er nooit langs of op de openbare weg wordt gewerkt.",
+          "foto_advies": "Foto van de werksituatie langs de weg met zichtbare afzetting."
+        },
+        {
+          "nr": "L3-9",
+          "vraag": "Worden voor werkzaamheden nabij kabels en leidingen altijd graafmeldingen (KLIC) gedaan?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: beschadiging van elektrische of gasleiding is levensbedreigend.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er nooit gegraven of in de grond gewerkt wordt.",
+          "foto_advies": "Documentair bewijs (KLIC-melding, tekening netbeheerder)."
+        },
+        {
+          "nr": "L3-10",
+          "vraag": "Is er een protocol voor het handelen bij onverwachte vondsten van kabels of leidingen tijdens werkzaamheden?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: doorgaan na een onverwachte kabelraak zonder protocol leidt tot ernstig letsel.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er nooit gegraven of in de grond gewerkt wordt.",
+          "foto_advies": "Documentair bewijs (protocol, werkvergunning)."
+        },
+        {
+          "nr": "L3-11",
+          "vraag": "Worden werkzaamheden in het buitenland uitgevoerd conform de aldaar geldende wet- en regelgeving?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: onbekendheid met buitenlandse arboregelgeving leidt tot overtreding en verhoogd risico.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen werkzaamheden in het buitenland worden uitgevoerd.",
+          "foto_advies": "Documentair bewijs (landenbeleid, arbomanagement buitenland)."
+        },
+        {
+          "nr": "L3-12",
+          "vraag": "Zijn medewerkers die in het buitenland werken op de hoogte van lokale noodprocedures en alarmnummers?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: bij een incident in het buitenland kan het onbekend zijn van lokale hulpdiensten levensreddende seconden kosten.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen werkzaamheden in het buitenland worden uitgevoerd.",
+          "foto_advies": "Documentair bewijs (noodkaartje, instructie buitenland)."
+        },
+        {
+          "nr": "L3-13",
+          "vraag": "Zijn medewerkers aantoonbaar geïnstrueerd in veilig werken op hoogte en de reddingsprocedure?",
+          "E_waarde": 40,
+          "E_toelichting": "Dodelijk/ramp: val van hoogte is de meest voorkomende oorzaak van dodelijke arbeidsongevallen in Nederland.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er structureel niet op hoogte wordt gewerkt.",
+          "foto_advies": "Documentair bewijs (instructie, certificaat werken op hoogte); foto van de hoogwerkuitrusting."
+        },
+        {
+          "nr": "L3-14",
+          "vraag": "Worden de risico's van werken in besloten ruimten herkend en beheerst met een werkvergunning en redder?",
+          "E_waarde": 40,
+          "E_toelichting": "Dodelijk/ramp: verstikking in een besloten ruimte leidt zonder goede beheersmaatregelen frequent tot dodelijke slachtoffers.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er structureel niet in besloten ruimten wordt gewerkt.",
+          "foto_advies": "Documentair bewijs (werkvergunning besloten ruimte, gasdetectiecertificaat)."
+        }
+      ]
+    },
+    {
+      "code": "O1",
+      "titel": "Preventiebeleid en arbo-organisatie",
+      "aandachtsgebied": "Organisatorisch",
+      "doel": "Beoordeelt of de arbo-organisatie, het beleid en de wettelijke verplichtingen structureel zijn geborgd.",
+      "placeholders": {
+        "{bedrijfsnaam}": "Naam van het bedrijf.",
+        "{grootte_context}": "Korte context over omvang en wettelijke verplichtingen, bv. 'Met meer dan 25 medewerkers gelden de wettelijke eisen voor een preventiemedewerker en een arbodienst'."
+      },
+      "intro_template": "{bedrijfsnaam} heeft de arbo-organisatie ondergebracht in beleidsdocumenten en dagelijkse werkpraktijk. {grootte_context} Deze module beoordeelt preventiebeleid, preventiemedewerker, verzuim, meldpunten en wettelijke verplichtingen.",
+      "nvt_criteria": "Nooit volledig NVT: elke werkgever heeft wettelijke arbo-verplichtingen.",
+      "B_standaard": 10,
+      "B_toelichting": "Continu: het al dan niet hebben van beleid en een werkende organisatie is een permanente toestand. Bijstellen naar B=3 bij kleine bedrijven waar de meeste O1-vragen al zijn ingebed in dagelijks handelen.",
+      "vragen": [
+        {
+          "nr": "O1-1",
+          "vraag": "Is er een schriftelijk vastgelegd arbobeleidsdocument, ondertekend door de directie?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: ontbreekt een beleidsdocument, dan ontbreekt de formele basis voor de arbo-organisatie.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT alleen bij ZZP of eenmansbedrijf zonder personeel.",
+          "foto_advies": "Documentair bewijs (arbobeleid, handtekening directie)."
+        },
+        {
+          "nr": "O1-2",
+          "vraag": "Is de preventiemedewerker aangewezen, beschikt hij over een passende opleiding en is zijn rol bekend?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: een niet-functionerende preventiemedewerker is een wettelijke tekortkoming en vergroot het risico op onopgemerkte gevaren.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT bij bedrijven met minder dan 25 medewerkers waar de werkgever zelf preventiemedewerker is, mits aantoonbaar.",
+          "foto_advies": "Documentair bewijs (aanwijzingsbrief, opleidingscertificaat)."
+        },
+        {
+          "nr": "O1-3",
+          "vraag": "Is de preventiemedewerker betrokken bij de RI&E en het Plan van Aanpak?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: betrokkenheid is wettelijk vereist en borgt dat vakinhoudelijke kennis in het proces zit.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (gespreksverslag, ondertekening RI&E door preventiemedewerker)."
+        },
+        {
+          "nr": "O1-4",
+          "vraag": "Wordt het arbobeleid actief gecommuniceerd met medewerkers?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: beleid dat medewerkers niet kennen heeft geen effect op veilig gedrag.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (toolbox-registratie, intranet, nieuwsbrief)."
+        },
+        {
+          "nr": "O1-5",
+          "vraag": "Zijn er schriftelijke procedures en werkinstructies vastgelegd voor risicovolle werkzaamheden?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: ontbrekende procedures leiden tot inconsistent uitvoeren van risicovolle taken.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er aantoonbaar geen risicovolle werkzaamheden zijn.",
+          "foto_advies": "Documentair bewijs (procedures, werkinstructies)."
+        },
+        {
+          "nr": "O1-6",
+          "vraag": "Is er een meldpunt voor onveilige situaties of bijna-incidenten, en worden meldingen aantoonbaar opgevolgd?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: een functionerend meldpunt is de basis voor leren van incidenten en het voorkomen van herhaling.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (meldregistratie, opvolgingsoverzicht)."
+        },
+        {
+          "nr": "O1-7",
+          "vraag": "Worden veiligheidsmaatregelen en PBM-gebruik daadwerkelijk nageleefd en gecontroleerd?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: regels die niet worden nageleefd bieden geen bescherming; werkgever die niet controleert is aansprakelijk.",
+          "bron_soort": "zichtbaar",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Foto van PBM-gebruik op de werkplek."
+        },
+        {
+          "nr": "O1-8",
+          "vraag": "Is er een structureel verzuimbeleid inclusief verzuimgesprekken en re-integratieplan?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: ontbreekt beleid, dan wordt verzuim reactief beheerd en is het risico op langdurig verzuim groter.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (verzuimprotocol, re-integratieplan)."
+        },
+        {
+          "nr": "O1-9",
+          "vraag": "Worden verzuimcijfers geanalyseerd en gebruikt voor verbetermaatregelen?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: analyse van verzuim signaleert vroeg of er structurele arbo-problemen spelen.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (verzuimanalyse, verbeterplan)."
+        },
+        {
+          "nr": "O1-10",
+          "vraag": "Is er een vertrouwenspersoon aangesteld en is deze bekend bij de medewerkers?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: ontbreken van een vertrouwenspersoon verlaagt de drempel voor melden van ongewenst gedrag en psychosociale problemen.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (aanwijzing vertrouwenspersoon, communicatie aan medewerkers)."
+        },
+        {
+          "nr": "O1-11",
+          "vraag": "Is er een sanctiebeleid voor het niet naleven van veiligheidsvoorschriften?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: zonder sanctionering zijn veiligheidsregels vrijblijvend.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (sanctiebeleid, bedrijfsreglement)."
+        },
+        {
+          "nr": "O1-12",
+          "vraag": "Wordt bij investeringen in machines, voertuigen of locaties rekening gehouden met arbo-aspecten?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: niet tijdig meenemen van arbo bij inkoop leidt tot dure aanpassingen achteraf of permanente restrisico's.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (inkoop- of aanbestedingsprotocol met arbotoets)."
+        },
+        {
+          "nr": "O1-13",
+          "vraag": "Is er beleid voor het omgaan met alcohol, drugs en medicijnen in relatie tot rijden en machinegebruik?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: rijden of machinebedienen onder invloed is een direct dodelijk risico voor de medewerker en derden.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen rijwerk of gebruik van gevaarlijke machines is.",
+          "foto_advies": "Documentair bewijs (alcohol- en drugsbeleid, bedrijfsreglement)."
+        },
+        {
+          "nr": "O1-14",
+          "vraag": "Is de RI&E niet ouder dan 4 jaar of recent geactualiseerd na een significante wijziging?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: een verouderde RI&E mist nieuwe risico's en voldoet niet aan de wettelijke verplichting.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (RI&E met datum, toetsrapport)."
+        },
+        {
+          "nr": "O1-15",
+          "vraag": "Zijn relevante certificeringen of veiligheidsmanagement-eisen geïntegreerd in het dagelijkse veiligheidsbeleid?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: certificeringen (VCA, ISO 45001) die niet zijn geïnternaliseerd zijn papieren tijgers zonder effect op de werkvloer.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als het bedrijf geen relevante certificering heeft.",
+          "foto_advies": "Documentair bewijs (auditrapport, borgingsprocedure)."
+        }
+      ]
+    },
+    {
+      "code": "O2",
+      "titel": "PAGO en gezondheidsbeleid",
+      "aandachtsgebied": "Organisatorisch",
+      "doel": "Beoordeelt of preventief medisch onderzoek, gezondheidsmonitoring en bedrijfsgezondheidszorg adequaat zijn georganiseerd.",
+      "placeholders": {
+        "{bedrijfsnaam}": "Naam van het bedrijf.",
+        "{gezondheidsrisicos}": "Relevante gezondheidsrisico's bij dit bedrijf, bv. 'geluid, fysieke belasting en blootstelling aan gevaarlijke stoffen'."
+      },
+      "intro_template": "{bedrijfsnaam} heeft medewerkers die worden blootgesteld aan {gezondheidsrisicos}. Deze module beoordeelt of preventief medisch onderzoek, bedrijfsartscontact en gezondheidsmonitoring adequaat zijn geregeld.",
+      "nvt_criteria": "Individuele vragen kunnen NVT zijn als een specifiek risico aantoonbaar afwezig is. De module als geheel is zelden NVT.",
+      "B_standaard": 3,
+      "B_toelichting": "Wekelijks: gezondheidsbeleid is niet dagelijks actueel maar is continu relevant als organisatorische basis. Bijstellen naar B=1 bij kleine bedrijven met minimale gezondheidsrisico's.",
+      "vragen": [
+        {
+          "nr": "O2-1",
+          "vraag": "Wordt medewerkers periodiek een arbeidsgezondheidskundig onderzoek (PAGO of PMO) aangeboden?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: zonder periodiek onderzoek blijven gezondheidseffecten van werkgebonden blootstelling onopgemerkt.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er aantoonbaar geen gezondheidsrisico's zijn die periodiek onderzoek vereisen.",
+          "foto_advies": "Documentair bewijs (PAGO-uitnodiging, afspraak arbodienst)."
+        },
+        {
+          "nr": "O2-2",
+          "vraag": "Is de inhoud van het PAGO afgestemd op de specifieke risico's binnen de verschillende functies?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: een generiek PAGO zonder functieafstemming mist relevante risico's.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt O2-1.",
+          "foto_advies": "Documentair bewijs (PAGO-protocol, functieprofiel-koppeling)."
+        },
+        {
+          "nr": "O2-3",
+          "vraag": "Wordt de PAGO-frequentie bepaald op basis van de risico's binnen de verschillende functies?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: risicogestuurde frequentie vergroot de vroegdetectie van beroepsziekten.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt O2-1.",
+          "foto_advies": "Documentair bewijs (PAGO-planning per functiegroep)."
+        },
+        {
+          "nr": "O2-4",
+          "vraag": "Worden resultaten van het PAGO geanalyseerd en gebruikt voor preventieve maatregelen?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: PAGO-resultaten die niet worden teruggekoppeld naar het arbobeleid missen hun preventieve waarde.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt O2-1.",
+          "foto_advies": "Documentair bewijs (terugkoppelingsrapport arbodienst, verbeterplan)."
+        },
+        {
+          "nr": "O2-5",
+          "vraag": "Is er een bedrijfsarts beschikbaar voor arbeidsgezondheidskundige vragen en verzuimbegeleiding?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: toegang tot een bedrijfsarts is wettelijk verplicht en essentieel voor goede verzuimbegeleiding.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (basiscontract arbodienst, maatwerkregeling)."
+        },
+        {
+          "nr": "O2-6",
+          "vraag": "Zijn audiometrische metingen beschikbaar voor medewerkers die aan schadelijk geluid worden blootgesteld?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: gehoorverlies door werk is onomkeerbaar; vroegtijdige detectie voorkomt verdere schade.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen medewerkers zijn die aan geluidsbelasting boven 80 dB(A) worden blootgesteld.",
+          "foto_advies": "Documentair bewijs (audiometrieregistratie)."
+        },
+        {
+          "nr": "O2-7",
+          "vraag": "Worden werkplekken periodiek beoordeeld op gezondheidsrisico's zoals ergonomie, geluid en trillingen?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: zonder periodieke werkplekbeoordeling wordt sluipende verslechtering niet tijdig gesignaleerd.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (werkplekbeoordelingsrapport)."
+        },
+        {
+          "nr": "O2-8",
+          "vraag": "Worden verzuimcijfers geanalyseerd om vroege signalen van beroepsziekten te detecteren?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: patroonherkenning in verzuim kan tijdige interventie mogelijk maken bij opkomende beroepsziekten.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (verzuimanalyse, rapportage arbodienst)."
+        },
+        {
+          "nr": "O2-9",
+          "vraag": "Is er aandacht voor de vitaliteit en duurzame inzetbaarheid van het personeel?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: verwaarlozing van vitaliteit leidt op langere termijn tot verhoogd uitval en vervroegde arbeidsongeschiktheid.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (vitaliteitsbeleid, PMO-aanbod)."
+        }
+      ]
+    },
+    {
+      "code": "O3",
+      "titel": "Kwetsbare groepen",
+      "aandachtsgebied": "Organisatorisch",
+      "doel": "Beoordeelt of het bedrijf extra aandacht besteedt aan medewerkers die door persoonlijke omstandigheden een verhoogd arborisico lopen.",
+      "placeholders": {
+        "{bedrijfsnaam}": "Naam van het bedrijf.",
+        "{kwetsbare_groepen_aanwezig}": "Opsomming van kwetsbare groepen die daadwerkelijk aanwezig zijn, bv. 'leerlingen, uitzendkrachten en medewerkers ouder dan 55'."
+      },
+      "intro_template": "{bedrijfsnaam} werkt met {kwetsbare_groepen_aanwezig}. Voor deze groepen gelden extra aandachtspunten in instructie, begeleiding en taakverdeling. Deze module beoordeelt of die extra zorg aantoonbaar is geregeld.",
+      "nvt_criteria": "Individuele vragen zijn NVT als de betreffende groep aantoonbaar niet aanwezig is. De module als geheel is zelden volledig NVT.",
+      "B_standaard": 1,
+      "B_toelichting": "Jaarlijks: kwetsbare groepen zijn in veel bedrijven periodiek aanwezig. Bijstellen naar B=3 als kwetsbare groepen een structureel en groot deel van het personeelsbestand vormen.",
+      "vragen": [
+        {
+          "nr": "O3-1",
+          "vraag": "Wordt er specifiek rekening gehouden met zwangere medewerkers, inclusief aanpassing van taken en vermijden van schadelijke blootstelling?",
+          "E_waarde": 15,
+          "E_toelichting": "Zeer ernstig: blootstelling van zwangere medewerkers aan gevaarlijke stoffen, fysieke overbelasting of stralingsrisico kan onomkeerbare schade aan het ongeboren kind veroorzaken.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er aantoonbaar nooit zwangere medewerkers zijn in functies met relevante blootstelling.",
+          "foto_advies": "Documentair bewijs (zwangerschapsprotocol, risicolijst gevaarlijke werkzaamheden)."
+        },
+        {
+          "nr": "O3-2",
+          "vraag": "Wordt er rekening gehouden met oudere medewerkers bij taakverdeling en fysieke belasting?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: geen aanpassing voor oudere medewerkers vergroot het uitvalrisico op langere termijn.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen medewerkers ouder dan 55 zijn in fysiek of mentaal belastende functies.",
+          "foto_advies": "Documentair bewijs (leeftijdsbewust personeelsbeleid, taakverdeling)."
+        },
+        {
+          "nr": "O3-3",
+          "vraag": "Worden medewerkers met een beperking of chronische aandoening adequaat begeleid en zijn werkplekken zo nodig aangepast?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: ontbrekende begeleiding of aanpassing vergroot het risico op uitval en re-integratieproblematiek.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen medewerkers met een beperking of chronische aandoening zijn.",
+          "foto_advies": "Documentair bewijs (re-integratiedossier, werkplekaanpassingsplan)."
+        },
+        {
+          "nr": "O3-4",
+          "vraag": "Worden ZZP'ers en tijdelijke krachten aantoonbaar geïnformeerd over de veiligheidsrisico's die op hen van toepassing zijn?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: tijdelijke krachten kennen de risico's op de werkplek niet vanzelf; de werkgever heeft een wettelijke informatieplicht.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen ZZP'ers of tijdelijke krachten worden ingeschakeld.",
+          "foto_advies": "Documentair bewijs (instroomformulier, ontvangstbevestiging veiligheidsregels)."
+        },
+        {
+          "nr": "O3-5",
+          "vraag": "Worden medewerkers die de Nederlandse taal niet voldoende beheersen voorzien van instructies in hun eigen taal of via tolkundige ondersteuning?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: een medewerker die een veiligheidsinstructie niet begrijpt, kan deze ook niet naleven.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als alle medewerkers de voertaal voldoende beheersen.",
+          "foto_advies": "Documentair bewijs (meertalige instructies, tolkregeling)."
+        },
+        {
+          "nr": "O3-6",
+          "vraag": "Is er beleid voor de inzet van medewerkers uit het buitenland dat aansluit op Nederlandse arbo- en arbeidsregelgeving?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: ontbreekt beleid, dan is de kans op onbedoelde overtredingen van arbeidsrecht en arbo groter.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen medewerkers uit het buitenland worden ingezet.",
+          "foto_advies": "Documentair bewijs (beleid buitenlandse medewerkers, A1-verklaringen)."
+        },
+        {
+          "nr": "O3-7",
+          "vraag": "Worden stagiaires en jeugdige medewerkers begeleid door een ervaren medewerker bij risicovolle werkzaamheden?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: jeugdige en onervaren medewerkers hebben een significant hoger risico op arbeidsongevallen.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen stagiaires of jeugdige medewerkers zijn.",
+          "foto_advies": "Documentair bewijs (begeleidingsplan, praktijkopleider-aanwijzing)."
+        },
+        {
+          "nr": "O3-8",
+          "vraag": "Is er een procedure voor re-integratie van medewerkers na langdurig verzuim of arbeidsongeval?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: ontbreekt een re-integratieprotocol, dan verlopen re-integratietrajecten ad hoc en is de kans op herhaling van uitval groter.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (re-integratieprotocol, plan van aanpak spoor 1/2)."
+        },
+        {
+          "nr": "O3-9",
+          "vraag": "Wordt bij de taakverdeling rekening gehouden met de fysieke en mentale belastbaarheid van medewerkers?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: structureel niet aansluiten bij belastbaarheid leidt tot uitval en juridische aansprakelijkheid.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (functieprofiel met belastbaarheidseis, werkoverlegnotities)."
+        }
+      ]
+    },
+    {
+      "code": "P1",
+      "titel": "Stress en werkdruk",
+      "aandachtsgebied": "Psychosociaal",
+      "doel": "Beoordeelt of werkdruk, autonomie, werk-privébalans en ondersteuning voldoende worden beheerst.",
+      "placeholders": {
+        "{bedrijfsnaam}": "Naam van het bedrijf.",
+        "{psb_context}": "Relevante psychosociale context, bv. 'een storingsdienst met 24-uursbereikbaarheid' of 'piekdruk in seizoensgebonden productie'. Leeg laten als er geen bijzondere context is."
+      },
+      "intro_template": "{bedrijfsnaam} heeft medewerkers in diverse functies met wisselende werkdruk. {psb_context} Psychosociale arbeidsbelasting is een van de grootste oorzaken van langdurig verzuim. Deze module beoordeelt of werkdruk, autonomie en ondersteuning adequaat zijn ingericht.",
+      "nvt_criteria": "Nooit volledig NVT: elke werkgever met personeel heeft een wettelijke verplichting om PSA te inventariseren en te beheersen.",
+      "B_standaard": 3,
+      "B_toelichting": "Wekelijks: werkdruk en psychosociale belasting spelen bij de meeste medewerkers wekelijks een rol.",
+      "vragen": [
+        {
+          "nr": "P1-1",
+          "vraag": "Wordt werkdruk structureel gemonitord via werkoverleg, medewerkersonderzoek of verzuimanalyse?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: zonder monitoring blijven hoge werkdruk en oplopend psychosociaal verzuim onopgemerkt tot het te laat is.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (MTO-resultaten, werkoverlegnotities)."
+        },
+        {
+          "nr": "P1-2",
+          "vraag": "Zijn werktempo en taakhoeveelheid realistisch en haalbaar, ook in piekperioden?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: structureel onhaalbare werkdruk leidt tot chronische stress, uitval en beroepsziekte.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (werkoverlegverslagen, functiebeschrijving)."
+        },
+        {
+          "nr": "P1-3",
+          "vraag": "Wordt rekening gehouden met piekbelastingen en worden medewerkers tijdig voorbereid?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: onverwachte piekbelasting zonder voorbereiding vergroot stressklachten en foutenkans.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen seizoenspieken of piekperioden zijn.",
+          "foto_advies": "Documentair bewijs (capaciteitsplanning, communicatie piekperiode)."
+        },
+        {
+          "nr": "P1-4",
+          "vraag": "Hebben medewerkers voldoende autonomie en invloed op de uitvoering van hun werk?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: gebrek aan autonomie is een bewezen risicofactor voor werkstress.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (MTO-uitkomsten autonomie-items, functieomschrijving)."
+        },
+        {
+          "nr": "P1-5",
+          "vraag": "Is er een goede balans tussen werk en privé, ook voor medewerkers met bereikbaarheidsverplichtingen?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: structurele overbelasting buiten werktijd leidt tot burn-out en langdurig verzuim.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen bereikbaarheidsverplichtingen of overwerk-situaties zijn.",
+          "foto_advies": "Documentair bewijs (beleid bereikbaarheid, functiebeschrijving)."
+        },
+        {
+          "nr": "P1-6",
+          "vraag": "Worden medewerkers ondersteund bij het omgaan met stress of werkdrukproblemen?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: ontbreken van laagdrempelige ondersteuning vergroot de kans op doorontwikkeling naar burn-out.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (beleid EAP of bedrijfsmaatschappelijk werk, vertrouwenspersoon)."
+        },
+        {
+          "nr": "P1-7",
+          "vraag": "Zijn er duidelijke afspraken over werk- en rusttijden, bereikbaarheid buiten werktijd en overwerk?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: onduidelijke afspraken leiden tot onbegrensde beschikbaarheidsverwachting en structureel overwerk.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (arbeidsovereenkomst, bereikbaarheidsbeleid)."
+        },
+        {
+          "nr": "P1-8",
+          "vraag": "Is er aandacht voor de werkdruk bij medewerkers die coördinerende taken combineren met uitvoerend werk?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: rolcombinaties zonder voldoende ondersteuning leiden tot overbelasting en onhelderheid in verantwoordelijkheden.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als er geen medewerkers zijn met een gecombineerde uitvoerings- en coördinerende rol.",
+          "foto_advies": "Documentair bewijs (functiebeschrijving, werkoverlegnotities)."
+        }
+      ]
+    },
+    {
+      "code": "P2",
+      "titel": "Intimidatie en ongewenst gedrag",
+      "aandachtsgebied": "Psychosociaal",
+      "doel": "Beoordeelt of beleid, meldstructuur en bewustwording rondom ongewenst gedrag afdoende zijn ingericht.",
+      "placeholders": {
+        "{bedrijfsnaam}": "Naam van het bedrijf.",
+        "{derde_partijen_context}": "Optioneel: context over contact met derden, bv. 'medewerkers werken op locaties van opdrachtgevers of klanten'. Leeg laten als niet van toepassing."
+      },
+      "intro_template": "{bedrijfsnaam} heeft medewerkers in diverse functies waarbij ongewenst gedrag zowel intern als van derden kan optreden. {derde_partijen_context} Deze module beoordeelt beleid, meldprocedure, vertrouwenspersoon en aandacht voor agressie van buitenaf.",
+      "nvt_criteria": "Nooit volledig NVT: elke werkgever heeft een wettelijke plicht om ongewenst gedrag te voorkomen en te beheersen.",
+      "B_standaard": 3,
+      "B_toelichting": "Wekelijks: ongewenst gedrag kan op elk moment optreden; de preventieve organisatie is permanent relevant.",
+      "vragen": [
+        {
+          "nr": "P2-1",
+          "vraag": "Is er een beleid rondom intimidatie, pesten en agressie, zowel intern als van opdrachtgevers of derden?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: ontbreekt beleid, dan weten medewerkers niet wat acceptabel is en wat ze bij incidenten kunnen doen.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (gedragsbeleid, bedrijfsreglement)."
+        },
+        {
+          "nr": "P2-2",
+          "vraag": "Worden medewerkers voorgelicht over ongewenst gedrag, de meldprocedure en de vertrouwenspersoon?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: zonder voorlichting is de drempel voor melden te hoog en blijft ongewenst gedrag voortduren.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (toolbox, informatiebrief, poster vertrouwenspersoon)."
+        },
+        {
+          "nr": "P2-3",
+          "vraag": "Worden meldingen van agressie, intimidatie of pesten vastgelegd en aantoonbaar opgevolgd?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: niet-opgevolgd melden ontmoedigt toekomstige meldingen en laat problemen voortbestaan.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (meldregistratie, opvolgingsoverzicht)."
+        },
+        {
+          "nr": "P2-4",
+          "vraag": "Is er een beleid tegen discriminatie op de werkvloer?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: ontbreekt een expliciet anti-discriminatiebeleid, dan bestaat een verhoogd risico op ongelijke behandeling en juridische aansprakelijkheid.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (anti-discriminatiebeleid, bedrijfsreglement)."
+        },
+        {
+          "nr": "P2-5",
+          "vraag": "Worden leidinggevenden getraind in het herkennen en aanpakken van ongewenst gedrag?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: leidinggevenden zijn de eerste lijn; onvoldoende training leidt tot bagatelliseren of verkeerd handelen.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (trainingsregistratie leidinggevenden)."
+        },
+        {
+          "nr": "P2-6",
+          "vraag": "Is er aandacht voor agressie en intimidatie door derden bij werkzaamheden op externe locaties?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: medewerkers op externe locaties zijn extra kwetsbaar voor agressie van klanten of andere aanwezigen.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als medewerkers nooit op externe locaties werken of contact hebben met derden.",
+          "foto_advies": "Documentair bewijs (protocol agressie van derden, instructie medewerkers)."
+        }
+      ]
+    },
+    {
+      "code": "P3",
+      "titel": "Traumatische ervaringen",
+      "aandachtsgebied": "Psychosociaal",
+      "doel": "Beoordeelt of het bedrijf is voorbereid op opvang en nazorg na ingrijpende gebeurtenissen op het werk.",
+      "placeholders": {
+        "{bedrijfsnaam}": "Naam van het bedrijf.",
+        "{ingrijpende_risicos}": "Type werkzaamheden waarbij een traumatische ervaring realistisch is, bv. 'werken op hoogte, in besloten ruimten of met gevaarlijke machines'."
+      },
+      "intro_template": "{bedrijfsnaam} heeft medewerkers die werken met {ingrijpende_risicos}. Bij ernstige incidenten is goede opvang en nazorg essentieel voor herstel en voorkoming van PTSS. Deze module beoordeelt of het bedrijf hierop is voorbereid.",
+      "nvt_criteria": "Zelden NVT: elk bedrijf kan te maken krijgen met een ernstig incident. Proportionaliteit is leidend: kleinere bedrijven met weinig risicovolle werkzaamheden kunnen sommige vragen laag scoren, maar de module als geheel vervalt zelden.",
+      "B_standaard": 1,
+      "B_toelichting": "Jaarlijks: ernstige incidenten zijn zeldzaam, maar de voorbereidheid erop is een permanente organisatorische kwestie. Bijstellen naar B=2 bij bedrijven met structureel risicovolle werkzaamheden.",
+      "vragen": [
+        {
+          "nr": "P3-1",
+          "vraag": "Zijn er protocollen voor opvang en ondersteuning na ingrijpende gebeurtenissen op het werk?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: zonder protocol wordt nazorg ad hoc geregeld, wat de kans op PTSS en langdurig verzuim vergroot.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (nazorgprotocol, contactgegevens bedrijfsmaatschappelijk werk)."
+        },
+        {
+          "nr": "P3-2",
+          "vraag": "Worden medewerkers voldoende voorbereid op emotioneel belastende situaties die kunnen optreden in hun werk?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: voorbereiding verlaagt de psychologische impact van een incident als het toch gebeurt.",
+          "bron_soort": "document",
+          "nvt_conditie": "NVT als het werk geen emotioneel belastende situaties kent.",
+          "foto_advies": "Documentair bewijs (instructie, toolbox traumatische ervaringen)."
+        },
+        {
+          "nr": "P3-3",
+          "vraag": "Is er een nazorgprocedure beschikbaar voor medewerkers die na een incident ondersteuning nodig hebben?",
+          "E_waarde": 7,
+          "E_toelichting": "Ernstig: ontbreken van nazorg vergroot de kans op PTSS en langdurig psychisch verzuim.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (nazorgprocedure, verwijzing bedrijfsarts of psycholoog)."
+        },
+        {
+          "nr": "P3-4",
+          "vraag": "Worden ernstige incidenten structureel geëvalueerd en gebruikt voor verbeteringen in de organisatie?",
+          "E_waarde": 3,
+          "E_toelichting": "Belangrijk: evaluatie voorkomt herhaling en geeft medewerkers het gevoel dat een incident serieus wordt genomen.",
+          "bron_soort": "document",
+          "nvt_conditie": "Volgt de module.",
+          "foto_advies": "Documentair bewijs (incidentevaluatierapport, verbeterplan)."
+        }
+      ]
+    }
+  ]
+}

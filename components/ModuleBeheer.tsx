@@ -133,25 +133,6 @@ export default function ModuleBeheer({
           <p className="text-sm text-ink/50 mt-0.5">Modules</p>
         </div>
 
-        {/* Navigatie terug naar de rest */}
-        <div className="flex flex-wrap gap-3 mb-6">
-          <Link
-            href={`/${company.id}/pva`}
-            className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
-          >
-            Plan van Aanpak
-          </Link>
-          <Link
-            href={`/${company.id}/dashboard`}
-            className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
-          >
-            Dashboard
-          </Link>
-          <span className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white">
-            Modules
-          </span>
-        </div>
-
         {fout && <p className="text-sm text-red-600 mb-3">{fout}</p>}
 
         <div className="space-y-3">

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useSyncExternalStore } from 'react'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { voorspelEmail } from '@/lib/email'
 import type { Company, Persoon, Deellink, Functiegroep } from '@/lib/types'
@@ -211,18 +210,6 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
           <HuisstijlLogo huisstijl={huisstijl} className="mb-2" />
           <h1 className="text-xl font-semibold text-ink">{company.name}</h1>
           <p className="text-sm text-ink/50 mt-0.5">Personen &amp; deellinks</p>
-        </div>
-
-        <div className="flex gap-3 mb-6">
-          <Link
-            href={`/${company.id}/pva`}
-            className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
-          >
-            Plan van Aanpak
-          </Link>
-          <span className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white">
-            Personen
-          </span>
         </div>
 
         {/* Persoon toevoegen */}

@@ -364,65 +364,90 @@ function Bibliotheek({
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-lg shadow-sm p-4 space-y-4">
-        {/* Hoofdpad: volgens de centrale norm */}
-        <div>
-          <p className="text-sm font-medium text-ink">Werkplekinspectie volgens de norm</p>
-          <p className="text-xs text-ink/50 mt-0.5">
-            Gebruikt je gekoppelde centrale rubrieken, inclusief je eigen lokale aanpassingen.
-          </p>
-          {normPunten > 0 ? (
-            <button
-              onClick={onStartCentraal}
-              className="mt-2 text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity"
-            >
-              Inspectie starten ({normPunten} {normPunten === 1 ? 'punt' : 'punten'})
-            </button>
-          ) : (
-            <p className="text-sm text-ink/50 mt-2">
-              Nog geen gekoppelde rubrieken met vragen.{' '}
-              <button onClick={onNaarNorm} className="text-accent hover:underline">Ga naar Norm</button> om te koppelen.
-            </p>
-          )}
-        </div>
+      {(() => {
+        const heeftNorm = normPunten > 0
+        const paden = (heeftNorm ? 1 : 0) + bruikbaar.length
 
-        {/* Alternatief pad: een vrij eigen sjabloon */}
-        <div className="border-t border-surface pt-3">
-          <p className="text-sm font-medium text-ink">Of: vanuit een eigen sjabloon</p>
-          <p className="text-xs text-ink/50 mt-0.5">
-            Een vrije, zelfgemaakte checklist los van de norm.
-          </p>
-          {bruikbaar.length === 0 ? (
-            <p className="text-sm text-ink/50 mt-2">
-              Nog geen eigen sjablonen met punten.{' '}
-              <button onClick={onNaarSjablonen} className="text-accent hover:underline">Maak een sjabloon</button>.
-            </p>
-          ) : (
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-              <select
-                value={keuze}
-                onChange={e => setKeuze(e.target.value)}
-                aria-label="Kies een eigen sjabloon"
-                className="text-sm border border-ink/20 rounded px-3 py-2.5 min-h-[44px] bg-white flex-1 min-w-[180px]"
-              >
-                <option value="">Kies een sjabloon…</option>
-                {bruikbaar.map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.naam}{s.controlesoort ? ` — ${s.controlesoort}` : ''} ({s.punten.length})
-                  </option>
-                ))}
-              </select>
+        // Eén relevant pad → geen norm-vs-sjabloon-keuzescherm, gewoon één startknop.
+        if (paden === 1) {
+          const enkel = heeftNorm ? null : bruikbaar[0]
+          const naam = enkel ? enkel.naam : 'Werkplekinspectie'
+          const aantal = enkel ? enkel.punten.length : normPunten
+          return (
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <p className="text-sm font-medium text-ink">{naam}</p>
+              <p className="text-xs text-ink/50 mt-0.5">
+                Start een nieuwe werkplekinspectie ({aantal} {aantal === 1 ? 'punt' : 'punten'}).
+              </p>
               <button
-                onClick={() => gekozen && onStart(gekozen)}
-                disabled={!gekozen}
-                className="text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+                onClick={() => (enkel ? onStart(enkel) : onStartCentraal())}
+                className="mt-2 text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity"
               >
-                Starten
+                Inspectie starten
               </button>
             </div>
-          )}
-        </div>
-      </div>
+          )
+        }
+
+        // Geen enkel pad → korte helper i.p.v. een leeg keuzescherm.
+        if (paden === 0) {
+          return (
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <p className="text-sm text-ink/60">
+                Nog geen inspectie mogelijk.{' '}
+                <button onClick={onNaarSjablonen} className="text-accent hover:underline">Maak een sjabloon</button>
+                {' '}of <button onClick={onNaarNorm} className="text-accent hover:underline">koppel de norm</button>.
+              </p>
+            </div>
+          )
+        }
+
+        // Meerdere relevante paden → de expliciete keuze (norm én/of eigen sjablonen).
+        return (
+          <div className="bg-white rounded-lg shadow-sm p-4 space-y-4">
+            {heeftNorm && (
+              <div>
+                <p className="text-sm font-medium text-ink">Werkplekinspectie volgens de norm</p>
+                <p className="text-xs text-ink/50 mt-0.5">
+                  Gebruikt je gekoppelde centrale rubrieken, inclusief je eigen lokale aanpassingen.
+                </p>
+                <button
+                  onClick={onStartCentraal}
+                  className="mt-2 text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity"
+                >
+                  Inspectie starten ({normPunten} {normPunten === 1 ? 'punt' : 'punten'})
+                </button>
+              </div>
+            )}
+
+            <div className={heeftNorm ? 'border-t border-surface pt-3' : ''}>
+              <p className="text-sm font-medium text-ink">{heeftNorm ? 'Of: vanuit een eigen sjabloon' : 'Kies een sjabloon'}</p>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <select
+                  value={keuze}
+                  onChange={e => setKeuze(e.target.value)}
+                  aria-label="Kies een eigen sjabloon"
+                  className="text-sm border border-ink/20 rounded px-3 py-2.5 min-h-[44px] bg-white flex-1 min-w-[180px]"
+                >
+                  <option value="">Kies een sjabloon…</option>
+                  {bruikbaar.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.naam}{s.controlesoort ? ` — ${s.controlesoort}` : ''} ({s.punten.length})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => gekozen && onStart(gekozen)}
+                  disabled={!gekozen}
+                  className="text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+                >
+                  Starten
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {regels.length === 0 ? (
         <p className="text-center text-ink/40 py-10 text-sm">Nog geen inspecties uitgevoerd.</p>

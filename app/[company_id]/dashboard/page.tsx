@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
-import DashboardClient from '@/components/DashboardClient'
+import DashboardClient, { type ToolboxNaarRato } from '@/components/DashboardClient'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
 import type { DashboardOverzicht } from '@/lib/types'
 
@@ -17,12 +17,25 @@ export default async function CompanyDashboardPage({
 
   // Onafhankelijke leesacties tegelijk i.p.v. na elkaar: scheelt round-trips naar
   // Supabase. De RPC's dwingen hun eigen autorisatie af; we controleren daarna.
+  // Module-gating: alleen tonen bij actieve module én 'aan' (zelfde gating als de PvA-pagina).
+  const moduleActief = (module: string) =>
+    supabase
+      .from('bedrijf_modules')
+      .select('actief')
+      .eq('company_id', company_id)
+      .eq('module', module)
+      .eq('module_status', 'actief')
+      .eq('actief', true)
+      .maybeSingle()
+
   const [
     { data: profile },
     { data: company },
     { data: overzicht, error },
     { data: inspectieModule },
     { data: toolboxModule },
+    { data: incidentenModule },
+    { data: toolboxDash },
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
@@ -33,23 +46,11 @@ export default async function CompanyDashboardPage({
       .single(),
     // Alle tegelcijfers in één RPC; autorisatie zit in de RPC zelf.
     supabase.rpc('dashboard_overzicht', { p_company_id: company_id }),
-    // Inspectiemodule alleen tonen bij actieve module én 'aan' (zelfde gating als de PvA-pagina).
-    supabase
-      .from('bedrijf_modules')
-      .select('actief')
-      .eq('company_id', company_id)
-      .eq('module', 'inspectie')
-      .eq('module_status', 'actief')
-      .eq('actief', true)
-      .maybeSingle(),
-    supabase
-      .from('bedrijf_modules')
-      .select('actief')
-      .eq('company_id', company_id)
-      .eq('module', 'toolbox')
-      .eq('module_status', 'actief')
-      .eq('actief', true)
-      .maybeSingle(),
+    moduleActief('inspectie'),
+    moduleActief('toolbox'),
+    moduleActief('incidenten'),
+    // Toolbox naar-rato (doel-per-persoon) hergebruikt de al-geteste toolbox_dashboard-RPC.
+    supabase.rpc('toolbox_dashboard', { p_company_id: company_id }),
     haalHuisstijl(company_id),
   ])
 
@@ -62,6 +63,10 @@ export default async function CompanyDashboardPage({
   if (!company) notFound()
   if (error || !overzicht) notFound()
 
+  // Toolbox naar-rato: alleen het bedrijfstotaal uit toolbox_dashboard().bedrijf.
+  const toolboxBedrijf =
+    (toolboxDash as { bedrijf?: ToolboxNaarRato } | null)?.bedrijf ?? null
+
   return (
     <DashboardClient
       company={company}
@@ -69,6 +74,9 @@ export default async function CompanyDashboardPage({
       huisstijl={huisstijl}
       toonInspecties={!!inspectieModule}
       toonToolbox={!!toolboxModule}
+      toonIncidenten={!!incidentenModule}
+      toolbox={toolboxBedrijf}
+      magBewerken={magBeheren}
     />
   )
 }

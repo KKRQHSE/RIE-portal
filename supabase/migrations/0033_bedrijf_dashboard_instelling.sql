@@ -223,12 +223,13 @@ begin
           'afgehandeld',  count(*) filter (where status = 'afgehandeld')
         ),
         'per_gevolg', (
-          select coalesce(jsonb_object_agg(gevolg, aantal), '{}'::jsonb)
+          select coalesce(jsonb_object_agg(coalesce(gs.omschrijving, gg.gevolg), gg.aantal), '{}'::jsonb)
           from (
             select unnest(gevolgen) as gevolg, count(*) as aantal
             from incident where company_id = p_company_id
             group by 1
           ) gg
+          left join incident_gevolg_soort gs on gs.code = gg.gevolg
         )
       )
       from incident where company_id = p_company_id

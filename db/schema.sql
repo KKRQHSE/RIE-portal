@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-06T15:56:26.148Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-06T15:58:39.537Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -1834,12 +1834,13 @@ begin
           'afgehandeld',  count(*) filter (where status = 'afgehandeld')
         ),
         'per_gevolg', (
-          select coalesce(jsonb_object_agg(gevolg, aantal), '{}'::jsonb)
+          select coalesce(jsonb_object_agg(coalesce(gs.omschrijving, gg.gevolg), gg.aantal), '{}'::jsonb)
           from (
             select unnest(gevolgen) as gevolg, count(*) as aantal
             from incident where company_id = p_company_id
             group by 1
           ) gg
+          left join incident_gevolg_soort gs on gs.code = gg.gevolg
         )
       )
       from incident where company_id = p_company_id

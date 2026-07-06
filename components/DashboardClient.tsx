@@ -7,12 +7,18 @@ import ProgressRing from './ProgressRing'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
 
+// Toolbox naar-rato (doel-per-persoon), hergebruikt uit toolbox_dashboard().bedrijf.
+export type ToolboxNaarRato = { doel: number; gedaan: number; pct: number | null }
+
 type Props = {
   company: Company
   overzicht: DashboardOverzicht
   huisstijl?: HuisstijlView
   toonInspecties?: boolean
   toonToolbox?: boolean
+  toonIncidenten?: boolean
+  toolbox?: ToolboxNaarRato | null
+  magBewerken?: boolean
 }
 
 function datumNL(iso: string | null): string {
@@ -60,11 +66,26 @@ function Cijfer({ n, label, kleur }: { n: number; label: string; kleur?: string 
   )
 }
 
+// "gedaan/doel"-cijfer met visueel gedempte noemer.
+function Ratio({ gedaan, doel, kleur }: { gedaan: number; doel: number; kleur?: string }) {
+  return (
+    <p className={`text-2xl font-semibold tabular-nums ${kleur ?? 'text-ink'}`}>
+      {gedaan}<span className="text-ink/30 text-lg">/{doel}</span>
+    </p>
+  )
+}
+
 export default function DashboardClient({
-  company, overzicht, huisstijl = VEILIGE_HUISSTIJL, toonInspecties = false, toonToolbox = false,
+  company, overzicht, huisstijl = VEILIGE_HUISSTIJL,
+  toonInspecties = false, toonToolbox = false, toonIncidenten = false,
+  toolbox = null, magBewerken = false,
 }: Props) {
-  const { pva, te_beoordelen, prio_open, termijn, rie, inspecties, norm_bijgewerkt, bewijs } = overzicht
+  const {
+    pva, te_beoordelen, prio_open, termijn, rie, inspecties,
+    inspectie_doel, toolbox_sessies, incidenten, norm_bijgewerkt, bewijs, instellingen,
+  } = overzicht
   const cid = company.id
+  const inst = instellingen
 
   const navItem = 'text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full transition-colors'
   const navActive = `${navItem} bg-ink text-white`
@@ -109,6 +130,9 @@ export default function DashboardClient({
           {toonToolbox && (
             <Link href={`/${cid}/toolbox`} className={navRest}>Toolboxen</Link>
           )}
+          {toonIncidenten && (
+            <Link href={`/${cid}/incidenten`} className={navRest}>Incidenten</Link>
+          )}
         </div>
 
         {/* Te beoordelen — de inbox. Alleen prominent als er iets wacht. */}
@@ -151,7 +175,8 @@ export default function DashboardClient({
           </Link>
         )}
 
-        {/* Tegelraster */}
+        {/* ── Sectie: Modules (live cijfers, doorklikbaar) ── */}
+        <h2 className="text-xs font-medium uppercase tracking-wide text-ink/40 mb-3">Modules</h2>
         <div className="grid sm:grid-cols-2 gap-4">
 
           {/* Voortgang PvA */}
@@ -168,40 +193,14 @@ export default function DashboardClient({
             </div>
           </Tegel>
 
-          {/* Termijn-urgentie */}
-          <Tegel titel="Termijn" href={`/${cid}/pva`} urgent={termijn.over > 0}>
-            <Rij>
-              <Cijfer n={termijn.over} label="over de termijn"
-                kleur={termijn.over > 0 ? 'text-red-600' : 'text-ink/30'} />
-              <Cijfer n={termijn.binnenkort} label="binnen 30 dagen"
-                kleur={termijn.binnenkort > 0 ? 'text-amber-600' : 'text-ink/30'} />
-              <Cijfer n={termijn.zonder_datum} label="zonder datum" kleur="text-ink/40" />
-            </Rij>
-            {termijn.zonder_datum > 0 && (
-              <p className="text-xs text-ink/40 mt-3">
-                {termijn.zonder_datum} open {termijn.zonder_datum === 1 ? 'actie heeft' : 'acties hebben'} nog
-                geen harde deadline.
-              </p>
-            )}
-          </Tegel>
-
-          {/* Openstaand per prioriteit */}
-          <Tegel titel="Openstaand per prioriteit" href={`/${cid}/pva`}>
-            <Rij>
-              <Cijfer n={prio_open.Hoog} label="Hoog"
-                kleur={prio_open.Hoog > 0 ? 'text-red-600' : 'text-ink/30'} />
-              <Cijfer n={prio_open.Middel} label="Middel" kleur="text-ink" />
-              <Cijfer n={prio_open.Laag} label="Laag" kleur="text-ink/60" />
-            </Rij>
-          </Tegel>
-
           {/* RI&E-geldigheid */}
-          <Tegel titel="RI&E-geldigheid" href={`/${cid}/rie`}>
+          <Tegel titel="RI&E" href={`/${cid}/rie`}>
             {rie ? (
               <div>
                 <p className="text-sm text-ink">
                   Versie {rie.versie} · <span className="capitalize">{rie.status}</span>
                 </p>
+                <p className="text-sm text-ink/60 mt-1">Laatste toetsing: {datumNL(rie.toets_datum)}</p>
                 <p className={`text-sm mt-1 ${rie.verloopt_binnenkort ? 'text-amber-600 font-medium' : 'text-ink/50'}`}>
                   {rie.geldig_tot ? `Geldig tot ${datumNL(rie.geldig_tot)}` : 'Geen einddatum vastgelegd'}
                 </p>
@@ -214,7 +213,53 @@ export default function DashboardClient({
             )}
           </Tegel>
 
-          {/* Inspecties (alleen als de module aanstaat) */}
+          {/* Termijn-urgentie */}
+          <Tegel titel="Termijn PvA" href={`/${cid}/pva`} urgent={termijn.over > 0}>
+            <Rij>
+              <Cijfer n={termijn.over} label="over de termijn"
+                kleur={termijn.over > 0 ? 'text-red-600' : 'text-ink/30'} />
+              <Cijfer n={termijn.binnenkort} label="binnen 30 dagen"
+                kleur={termijn.binnenkort > 0 ? 'text-amber-600' : 'text-ink/30'} />
+              <Cijfer n={termijn.zonder_datum} label="zonder datum" kleur="text-ink/40" />
+            </Rij>
+          </Tegel>
+
+          {/* Openstaand per prioriteit */}
+          <Tegel titel="Openstaand per prioriteit" href={`/${cid}/pva`}>
+            <Rij>
+              <Cijfer n={prio_open.Hoog} label="Hoog"
+                kleur={prio_open.Hoog > 0 ? 'text-red-600' : 'text-ink/30'} />
+              <Cijfer n={prio_open.Middel} label="Middel" kleur="text-ink" />
+              <Cijfer n={prio_open.Laag} label="Laag" kleur="text-ink/60" />
+            </Rij>
+          </Tegel>
+
+          {/* Toolboxen — twee telwijzen naast elkaar, visueel gescheiden. */}
+          {toonToolbox && (
+            <Tegel titel="Toolboxen" href={`/${cid}/toolbox`}>
+              <div className="flex divide-x divide-ink/10">
+                <div className="flex-1 min-w-0 pr-4">
+                  <p className="text-[11px] text-ink/40 mb-1">Doel per persoon</p>
+                  {toolbox ? (
+                    <>
+                      <Ratio gedaan={toolbox.gedaan} doel={toolbox.doel} />
+                      <p className="text-xs text-ink/50 mt-0.5">{toolbox.pct ?? 0}% van de norm</p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-ink/40">—</p>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0 pl-4">
+                  <p className="text-[11px] text-ink/40 mb-1">Aanwezigheid sessies</p>
+                  <p className="text-2xl font-semibold text-ink tabular-nums">{toolbox_sessies.sessies}</p>
+                  <p className="text-xs text-ink/50 mt-0.5">{toolbox_sessies.aanwezig}× aanwezig geregistreerd</p>
+                </div>
+              </div>
+              <p className="text-[11px] text-ink/40 mt-3">Afwezigheid bij een sessie telt niet als achterstand.</p>
+            </Tegel>
+          )}
+
+          {/* Werkplekinspecties — open/afgerond/bevindingen */}
           {toonInspecties && (
             <Tegel titel="Werkplekinspecties" href={`/${cid}/inspecties`} urgent={inspecties.open_bevindingen > 0}>
               <Rij>
@@ -223,6 +268,48 @@ export default function DashboardClient({
                 <Cijfer n={inspecties.open_bevindingen} label="open bevindingen"
                   kleur={inspecties.open_bevindingen > 0 ? 'text-red-600' : 'text-ink/30'} />
               </Rij>
+            </Tegel>
+          )}
+
+          {/* Inspectie-doelen per persoon */}
+          {toonInspecties && inspectie_doel.personen.length > 0 && (
+            <Tegel titel="Inspectie-doelen per persoon" href={`/${cid}/inspecties`}>
+              <div className="flex items-baseline gap-2 mb-2">
+                <Ratio gedaan={inspectie_doel.totaal_gedaan} doel={inspectie_doel.totaal_doel} />
+                <p className="text-xs text-ink/50">uitgevoerd dit jaar</p>
+              </div>
+              <ul className="space-y-1">
+                {inspectie_doel.personen.map(p => (
+                  <li key={p.naam} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="text-ink/70 truncate">{p.naam}</span>
+                    <span className="tabular-nums text-ink/50">{p.gedaan}/{p.doel}</span>
+                  </li>
+                ))}
+              </ul>
+            </Tegel>
+          )}
+
+          {/* Incidenten — naar status en gevolg */}
+          {toonIncidenten && (
+            <Tegel titel="Incidenten" href={`/${cid}/incidenten`} urgent={incidenten.per_status.open > 0}>
+              <Rij>
+                <Cijfer n={incidenten.per_status.open} label="open"
+                  kleur={incidenten.per_status.open > 0 ? 'text-amber-600' : 'text-ink/30'} />
+                <Cijfer n={incidenten.per_status.in_onderzoek} label="in onderzoek"
+                  kleur={incidenten.per_status.in_onderzoek > 0 ? 'text-blue-700' : 'text-ink/30'} />
+                <Cijfer n={incidenten.per_status.afgehandeld} label="afgehandeld" kleur="text-ink/60" />
+              </Rij>
+              {incidenten.totaal > 0 ? (
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  {Object.entries(incidenten.per_gevolg).map(([label, n]) => (
+                    <span key={label} className="text-[11px] bg-surface rounded-full px-2 py-0.5 text-ink/60">
+                      {label}: {n}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-ink/40 mt-3">Nog geen incidenten gemeld.</p>
+              )}
             </Tegel>
           )}
 
@@ -236,6 +323,72 @@ export default function DashboardClient({
           </Tegel>
 
         </div>
+
+        {/* ── Sectie: Bedrijfsvoering (handmatige velden, KAM/admin bewerkt) ── */}
+        <div className="flex items-center justify-between mt-8 mb-3">
+          <h2 className="text-xs font-medium uppercase tracking-wide text-ink/40">Bedrijfsvoering</h2>
+          {magBewerken && (
+            <Link
+              href={`/${cid}/dashboard/bedrijfsvoering`}
+              className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors"
+            >
+              Bewerken
+            </Link>
+          )}
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4">
+
+          {/* Klanttevredenheid */}
+          <Tegel titel="Klanttevredenheid">
+            <Rij kolommen={2}>
+              <Cijfer n={inst?.klachten_aantal ?? 0} label="klachten"
+                kleur={(inst?.klachten_aantal ?? 0) > 0 ? 'text-amber-600' : 'text-ink/30'} />
+              <div className="min-w-0">
+                <p className="text-2xl font-semibold tabular-nums text-ink">
+                  {inst?.tevredenheid_score != null ? inst.tevredenheid_score : '—'}
+                </p>
+                <p className="text-xs text-ink/50 mt-0.5 leading-tight">meetscore</p>
+              </div>
+            </Rij>
+            {inst?.tevredenheid_toelichting && (
+              <p className="text-xs text-ink/50 mt-3 whitespace-pre-wrap">{inst.tevredenheid_toelichting}</p>
+            )}
+          </Tegel>
+
+          {/* Audits */}
+          <Tegel titel="Audits">
+            <div className="space-y-1 text-sm">
+              <p className="text-ink">
+                <span className="font-semibold tabular-nums">
+                  {inst?.audit_intern_gedaan ?? 0}/{inst?.audit_intern_totaal ?? 0}
+                </span> interne audits
+              </p>
+              <p className="text-ink/70">Extern: {inst?.audit_extern_omschrijving || '—'}</p>
+              {inst?.audit_status && <p className="text-xs text-ink/50">Status: {inst.audit_status}</p>}
+            </div>
+          </Tegel>
+
+          {/* Doelstelling (vrije tekst) */}
+          <Tegel titel="Doelstelling">
+            {inst?.doelstelling_tekst
+              ? <p className="text-sm text-ink/80 whitespace-pre-wrap">{inst.doelstelling_tekst}</p>
+              : <p className="text-sm text-ink/40">Nog niet ingevuld.</p>}
+          </Tegel>
+
+          {/* Openstaande ISO-taken (vrije tekst) */}
+          <Tegel titel="Openstaande ISO-taken">
+            {inst?.iso_taken_tekst
+              ? <p className="text-sm text-ink/80 whitespace-pre-wrap">{inst.iso_taken_tekst}</p>
+              : <p className="text-sm text-ink/40">Nog niet ingevuld.</p>}
+          </Tegel>
+
+        </div>
+
+        {/* Ruimte voor de latere planning-tijdlijn (nog niet gebouwd). */}
+        <div className="mt-4 rounded-lg border border-dashed border-ink/15 p-5 text-center">
+          <p className="text-xs text-ink/30">Planning-tijdlijn — volgt later</p>
+        </div>
+
       </div>
     </main>
   )

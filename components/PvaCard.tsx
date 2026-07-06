@@ -172,235 +172,116 @@ export default function PvaCard({
   }
 
   const heeftConcept = !!item.concept_status
+  const prioBadge = `inline-block text-xs font-medium px-2 py-0.5 rounded ${PRIO_STYLE[item.prio] ?? 'bg-gray-100 text-gray-700'}`
+  const statusBadge = `inline-block text-xs font-medium px-2 py-0.5 rounded ${STATUS_BADGE[item.status] ?? 'bg-gray-100 text-gray-700'}`
+  const veldLabel = 'text-[11px] font-medium text-ink/40 uppercase tracking-wider mb-1'
 
   return (
     <div id={`actie-${item.nr}`} className="bg-white rounded-lg shadow-sm overflow-hidden scroll-mt-20">
 
-      {/* Klikbare kopregel */}
+      {/* Rustige, scanbare kopregel: onderwerp + de kernfeiten */}
       <button
         className="w-full flex items-start gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
       >
-        <span className={`shrink-0 inline-block font-mono text-xs font-medium px-2 py-1 rounded mt-0.5
-          ${PRIO_STYLE[item.prio] ?? 'bg-gray-100 text-gray-700'}`}>
-          {item.prio}
-        </span>
+        <span className={`shrink-0 mt-0.5 ${prioBadge}`}>{item.prio}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2 flex-wrap">
             <span className="font-mono text-xs text-ink/40">{item.nr}</span>
             <span className="font-medium text-ink">{item.onderwerp}</span>
           </div>
-          {item.termijn && (
-            <p className="text-xs text-ink/50 font-mono mt-0.5 truncate">{item.termijn}</p>
-          )}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-ink/50">
+            <span className={statusBadge}>{item.status}</span>
+            <span className="truncate">{houderNaam ? `👤 ${houderNaam}` : 'Niet toegewezen'}</span>
+            {item.termijn && <span className="truncate">🗓 {item.termijn}</span>}
+            {heeftConcept && <span className="text-accent font-medium">Voorstel: {item.concept_status}</span>}
+          </div>
         </div>
         <span className="text-ink/30 text-xs mt-1 shrink-0">{open ? '▲' : '▼'}</span>
       </button>
 
-      {/* Koppeling naar de bijbehorende RI&E-vragen (buiten de toggle-knop) */}
-      {refNums.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pb-1">
-          <span className="text-xs text-ink/40">RI&amp;E:</span>
-          {refNums.map(nr => (
-            <Link
-              key={nr}
-              href={`/${companyId}/rie#vraag-${nr}`}
-              className="inline-flex items-center px-2 py-2.5 -my-2.5 text-xs font-mono text-accent hover:underline"
-            >
-              {nr}
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {/* Status (read-only) + toewijzen */}
-      <div className="px-4 pb-3 border-t border-surface space-y-3">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-ink/40">Status</span>
-            <span className={`text-sm font-medium px-2 py-0.5 rounded ${STATUS_BADGE[item.status] ?? 'bg-gray-100 text-gray-700'}`}>
-              {item.status}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 flex-1 min-w-[160px]">
-            <span className="text-xs text-ink/40 shrink-0">Toegewezen aan</span>
-            {magBeheren ? (
-              <select
-                value={persoonId ?? ''}
-                onChange={e => changePersoon(e.target.value)}
-                className="text-sm border border-ink/20 rounded px-3 py-2.5 min-h-[44px] flex-1 bg-white"
-              >
-                <option value="">Niemand</option>
-                {personen.map(p => (
-                  <option key={p.id} value={p.id}>{p.naam}</option>
-                ))}
-              </select>
-            ) : (
-              <span className="text-sm text-ink/70">{houderNaam ?? '—'}</span>
-            )}
-          </div>
-
-          {saved && <span className="text-xs text-green-600 font-medium">✓ Opgeslagen</span>}
-        </div>
-
-        {/* Lopend concept */}
-        {heeftConcept && (
-          <div className="flex flex-wrap items-center gap-2 rounded border border-dashed border-accent/50 bg-accent/5 px-3 py-2">
-            <span className="text-xs font-medium px-2 py-0.5 rounded bg-accent/10 text-accent">
-              Concept: {item.concept_status}
-            </span>
-            {item.concept_opm && <span className="text-xs text-ink/60">{item.concept_opm}</span>}
-          </div>
-        )}
-
-        {/* Vrijgave-vastlegging */}
-        {item.vrijgegeven_op && (
-          <p className="text-xs text-ink/50">
-            Vrijgegeven door {item.vrijgegeven_door ?? '—'} op {formatDatum(item.vrijgegeven_op)}
-            {item.vrijgave_opmerking ? ` — ${item.vrijgave_opmerking}` : ''}
-          </p>
-        )}
-
-        {/* Beheer-acties */}
-        {magBeheren && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-ink/40 shrink-0">Concept voorstellen</span>
-              <select
-                value={item.concept_status ?? ''}
-                onChange={e => voorstelConcept(e.target.value)}
-                disabled={bezig}
-                className="text-sm border border-ink/20 rounded px-3 py-2.5 min-h-[44px] bg-white"
-              >
-                <option value="">—</option>
-                {STATUS_OPTS.map(s => <option key={s}>{s}</option>)}
-              </select>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              {heeftConcept && (
-                <>
-                  <button
-                    onClick={() => openPaneel('vrijgeven')}
-                    disabled={bezig}
-                    className="text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
-                  >
-                    Vrijgeven
-                  </button>
-                  <button
-                    onClick={() => openPaneel('terugsturen')}
-                    disabled={bezig}
-                    className="text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
-                  >
-                    Terugsturen
-                  </button>
-                </>
-              )}
-              <button
-                onClick={toggleHistorie}
-                className="text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/50 hover:border-ink/40 transition-colors"
-              >
-                Geschiedenis {histOpen ? '▲' : '▼'}
-              </button>
-            </div>
-
-            {/* Inline paneel: concept vrijgeven */}
-            {paneel === 'vrijgeven' && (
-              <div className="rounded border border-surface bg-surface/40 p-3 space-y-2">
-                <p className="text-xs text-ink/50">Concept “{item.concept_status}” wordt de echte status.</p>
-                <input
-                  value={vOpm}
-                  onChange={e => setVOpm(e.target.value)}
-                  placeholder="Opmerking (optioneel)"
-                  className="w-full text-sm border border-ink/20 rounded px-3 py-2 min-h-[44px] bg-white"
-                />
-                <input
-                  value={vBewijs}
-                  onChange={e => setVBewijs(e.target.value)}
-                  placeholder="bv. https://... of 'foto in dossier map X'"
-                  className="w-full text-sm border border-ink/20 rounded px-3 py-2 min-h-[44px] bg-white"
-                />
-                <p className="text-[11px] text-ink/40 -mt-1">Bewijs (link of korte verwijzing)</p>
-                <button
-                  onClick={doeVrijgeven}
-                  disabled={bezig}
-                  className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
-                >
-                  {bezig ? 'Bezig…' : 'Vrijgeven'}
-                </button>
-              </div>
-            )}
-
-            {/* Inline paneel: concept terugsturen */}
-            {paneel === 'terugsturen' && (
-              <div className="rounded border border-surface bg-surface/40 p-3 space-y-2">
-                <p className="text-xs text-ink/50">Het concept wordt verworpen; de echte status blijft.</p>
-                <input
-                  value={vOpm}
-                  onChange={e => setVOpm(e.target.value)}
-                  placeholder="Reden (optioneel)"
-                  className="w-full text-sm border border-ink/20 rounded px-3 py-2 min-h-[44px] bg-white"
-                />
-                <button
-                  onClick={doeTerugsturen}
-                  disabled={bezig}
-                  className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 font-medium hover:bg-red-50 transition-colors disabled:opacity-40"
-                >
-                  {bezig ? 'Bezig…' : 'Terugsturen'}
-                </button>
-              </div>
-            )}
-
-            {fout && <p className="text-xs text-red-600">{fout}</p>}
-
-            {/* Geschiedenis */}
-            {histOpen && (
-              <div className="rounded border border-surface bg-surface/40 p-3">
-                {histBezig && <p className="text-xs text-ink/40">Laden…</p>}
-                {!histBezig && historie && historie.length === 0 && (
-                  <p className="text-xs text-ink/40">Nog geen geschiedenis.</p>
-                )}
-                {!histBezig && historie && historie.length > 0 && (
-                  <ul className="space-y-2">
-                    {historie.map((h, i) => (
-                      <li key={i} className="text-xs text-ink/60 border-l-2 border-ink/10 pl-2">
-                        <span className="font-medium text-ink/80">{h.actor_naam ?? 'Onbekend'}</span>
-                        {h.actor_type ? <span className="text-ink/40"> ({h.actor_type})</span> : null}
-                        {' — '}{gebeurtenisLabel(h.gebeurtenis)}
-                        {(h.van_status || h.naar_status) && (
-                          <span className="text-ink/50"> · {h.van_status ?? '—'} → {h.naar_status ?? '—'}</span>
-                        )}
-                        <span className="text-ink/40"> · {formatDatum(h.created_at)}</span>
-                        {h.opmerking && <p className="text-ink/50 mt-0.5">{h.opmerking}</p>}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Uitklapbaar detail */}
+      {/* Alles onder de vouw: rustig detail + beheer (geen permanente tabelbrij) */}
       {open && (
         <div className="border-t border-surface px-4 pb-4 pt-3 space-y-4">
+
+          {/* RI&E-verwijzingen */}
+          {refNums.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-xs text-ink/40">RI&amp;E:</span>
+              {refNums.map(nr => (
+                <Link
+                  key={nr}
+                  href={`/${companyId}/rie#vraag-${nr}`}
+                  className="inline-flex items-center px-2 py-1 text-xs font-mono text-accent hover:underline"
+                >
+                  {nr}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* Maatregel + aanpak (inhoud 1-op-1 uit de RI&E) */}
           {item.maatregel && (
             <div>
-              <p className="text-xs font-medium text-ink/40 uppercase tracking-wider mb-1">Maatregel</p>
+              <p className={veldLabel}>Maatregel</p>
               <p className="text-sm text-ink leading-relaxed">{item.maatregel}</p>
             </div>
           )}
           {item.tree && (
             <div>
-              <p className="text-xs font-medium text-ink/40 uppercase tracking-wider mb-1">Aanpak</p>
+              <p className={veldLabel}>Aanpak</p>
               <p className="text-sm text-ink/70 leading-relaxed">{item.tree}</p>
             </div>
           )}
+
+          {/* Kernfeiten in een rustig raster i.p.v. een dichte regel */}
+          <div className="grid sm:grid-cols-2 gap-x-4 gap-y-3">
+            <div>
+              <p className={veldLabel}>Status</p>
+              <span className={statusBadge}>{item.status}</span>
+            </div>
+            <div>
+              <p className={veldLabel}>Prioriteit</p>
+              <span className={prioBadge}>{item.prio}</span>
+            </div>
+            <div>
+              <p className={veldLabel}>Verantwoordelijke</p>
+              {magBeheren ? (
+                <select
+                  value={persoonId ?? ''}
+                  onChange={e => changePersoon(e.target.value)}
+                  className="w-full text-sm border border-ink/20 rounded px-3 py-2 min-h-[40px] bg-white"
+                >
+                  <option value="">Niemand</option>
+                  {personen.map(p => (
+                    <option key={p.id} value={p.id}>{p.naam}</option>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-sm text-ink/70">{houderNaam ?? '—'}</p>
+              )}
+            </div>
+            <div>
+              <p className={veldLabel}>Termijn</p>
+              <p className="text-sm text-ink/70">
+                {item.termijn || (item.termijn_datum ? formatDatum(item.termijn_datum) : '—')}
+              </p>
+            </div>
+          </div>
+          {saved && <p className="text-xs text-green-600 font-medium">✓ Opgeslagen</p>}
+
+          {/* Vrijgave-vastlegging */}
+          {item.vrijgegeven_op && (
+            <p className="text-xs text-ink/50">
+              Vrijgegeven door {item.vrijgegeven_door ?? '—'} op {formatDatum(item.vrijgegeven_op)}
+              {item.vrijgave_opmerking ? ` — ${item.vrijgave_opmerking}` : ''}
+            </p>
+          )}
+
+          {/* Opmerking */}
           <div>
-            <p className="text-xs font-medium text-ink/40 uppercase tracking-wider mb-1">Opmerking</p>
+            <p className={veldLabel}>Opmerking</p>
             <textarea
               value={opm}
               onChange={e => setOpm(e.target.value)}
@@ -410,16 +291,142 @@ export default function PvaCard({
               className="w-full text-sm border border-ink/20 rounded px-3 py-2 resize-none bg-white"
             />
           </div>
+
+          {/* Bewijs */}
           <div>
-            <p className="text-xs font-medium text-ink/40 uppercase tracking-wider mb-1">Bewijs</p>
+            <p className={veldLabel}>Bewijs</p>
             <BewijsBlok modus="beheerder" actieId={item.id} />
           </div>
+
+          {/* Beheer-workflow (concept voorstellen / vrijgeven / terugsturen / geschiedenis / doorgeven) */}
           {magBeheren && (
-            <div>
-              <p className="text-xs font-medium text-ink/40 uppercase tracking-wider mb-1">Doorgeven</p>
-              {/* Na doorgeven verandert de houder; server-data herladen zodat de
-                  nieuwe houder (en evt. nieuwe persoon) klopt. */}
-              <Doorgeven modus="beheerder" actieId={item.id} onDoorgegeven={() => router.refresh()} />
+            <div className="border-t border-surface pt-3 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-ink/40 shrink-0">Concept voorstellen</span>
+                <select
+                  value={item.concept_status ?? ''}
+                  onChange={e => voorstelConcept(e.target.value)}
+                  disabled={bezig}
+                  className="text-sm border border-ink/20 rounded px-3 py-2 min-h-[40px] bg-white"
+                >
+                  <option value="">—</option>
+                  {STATUS_OPTS.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+
+              {heeftConcept && (
+                <div className="flex flex-wrap items-center gap-2 rounded border border-dashed border-accent/50 bg-accent/5 px-3 py-2">
+                  <span className="text-xs font-medium px-2 py-0.5 rounded bg-accent/10 text-accent">
+                    Concept: {item.concept_status}
+                  </span>
+                  {item.concept_opm && <span className="text-xs text-ink/60">{item.concept_opm}</span>}
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-3">
+                {heeftConcept && (
+                  <>
+                    <button
+                      onClick={() => openPaneel('vrijgeven')}
+                      disabled={bezig}
+                      className="text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+                    >
+                      Vrijgeven
+                    </button>
+                    <button
+                      onClick={() => openPaneel('terugsturen')}
+                      disabled={bezig}
+                      className="text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
+                    >
+                      Terugsturen
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={toggleHistorie}
+                  className="text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/50 hover:border-ink/40 transition-colors"
+                >
+                  Geschiedenis {histOpen ? '▲' : '▼'}
+                </button>
+              </div>
+
+              {paneel === 'vrijgeven' && (
+                <div className="rounded border border-surface bg-surface/40 p-3 space-y-2">
+                  <p className="text-xs text-ink/50">Concept “{item.concept_status}” wordt de echte status.</p>
+                  <input
+                    value={vOpm}
+                    onChange={e => setVOpm(e.target.value)}
+                    placeholder="Opmerking (optioneel)"
+                    className="w-full text-sm border border-ink/20 rounded px-3 py-2 min-h-[44px] bg-white"
+                  />
+                  <input
+                    value={vBewijs}
+                    onChange={e => setVBewijs(e.target.value)}
+                    placeholder="bv. https://... of 'foto in dossier map X'"
+                    className="w-full text-sm border border-ink/20 rounded px-3 py-2 min-h-[44px] bg-white"
+                  />
+                  <p className="text-[11px] text-ink/40 -mt-1">Bewijs (link of korte verwijzing)</p>
+                  <button
+                    onClick={doeVrijgeven}
+                    disabled={bezig}
+                    className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+                  >
+                    {bezig ? 'Bezig…' : 'Vrijgeven'}
+                  </button>
+                </div>
+              )}
+
+              {paneel === 'terugsturen' && (
+                <div className="rounded border border-surface bg-surface/40 p-3 space-y-2">
+                  <p className="text-xs text-ink/50">Het concept wordt verworpen; de echte status blijft.</p>
+                  <input
+                    value={vOpm}
+                    onChange={e => setVOpm(e.target.value)}
+                    placeholder="Reden (optioneel)"
+                    className="w-full text-sm border border-ink/20 rounded px-3 py-2 min-h-[44px] bg-white"
+                  />
+                  <button
+                    onClick={doeTerugsturen}
+                    disabled={bezig}
+                    className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 font-medium hover:bg-red-50 transition-colors disabled:opacity-40"
+                  >
+                    {bezig ? 'Bezig…' : 'Terugsturen'}
+                  </button>
+                </div>
+              )}
+
+              {fout && <p className="text-xs text-red-600">{fout}</p>}
+
+              {histOpen && (
+                <div className="rounded border border-surface bg-surface/40 p-3">
+                  {histBezig && <p className="text-xs text-ink/40">Laden…</p>}
+                  {!histBezig && historie && historie.length === 0 && (
+                    <p className="text-xs text-ink/40">Nog geen geschiedenis.</p>
+                  )}
+                  {!histBezig && historie && historie.length > 0 && (
+                    <ul className="space-y-2">
+                      {historie.map((h, i) => (
+                        <li key={i} className="text-xs text-ink/60 border-l-2 border-ink/10 pl-2">
+                          <span className="font-medium text-ink/80">{h.actor_naam ?? 'Onbekend'}</span>
+                          {h.actor_type ? <span className="text-ink/40"> ({h.actor_type})</span> : null}
+                          {' — '}{gebeurtenisLabel(h.gebeurtenis)}
+                          {(h.van_status || h.naar_status) && (
+                            <span className="text-ink/50"> · {h.van_status ?? '—'} → {h.naar_status ?? '—'}</span>
+                          )}
+                          <span className="text-ink/40"> · {formatDatum(h.created_at)}</span>
+                          {h.opmerking && <p className="text-ink/50 mt-0.5">{h.opmerking}</p>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              <div className="pt-1">
+                <p className={veldLabel}>Doorgeven</p>
+                {/* Na doorgeven verandert de houder; server-data herladen. */}
+                <Doorgeven modus="beheerder" actieId={item.id} onDoorgegeven={() => router.refresh()} />
+              </div>
             </div>
           )}
         </div>

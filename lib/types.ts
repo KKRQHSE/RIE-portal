@@ -8,6 +8,7 @@ export type PvaItem = {
   tree: string | null
   prio: string
   termijn: string | null
+  termijn_datum: string | null
   verantw: string | null
   status: string
   opm: string | null

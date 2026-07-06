@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import Link from 'next/link'
 import type { PvaItem, Company, Persoon } from '@/lib/types'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import PvaCard from './PvaCard'
@@ -99,58 +98,16 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
           )}
         </div>
 
-        <div className="flex flex-wrap gap-3 mb-6">
-          {magBeheren && (
-            <Link
-              href={`/${company.id}/dashboard`}
-              className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
-            >
-              Dashboard
-            </Link>
-          )}
-          <span className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white">
-            Plan van Aanpak
-          </span>
-          <Link
-            href={`/${company.id}/rie`}
-            className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
-          >
-            Volledige RI&amp;E
-          </Link>
-          {magBeheren && (
-            <Link
-              href={`/${company.id}/personen`}
-              className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
-            >
-              Personen
-            </Link>
-          )}
-          {magBeheren && (
-            <Link
-              href={`/${company.id}/modules`}
-              className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
-            >
-              Modules
-            </Link>
-          )}
-          {toonInspecties && (
-            <Link
-              href={`/${company.id}/inspecties`}
-              className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/60 border border-ink/20 hover:border-ink/40 transition-colors"
-            >
-              Werkplekinspectie
-            </Link>
-          )}
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-6 flex items-center gap-5">
+        {/* Overzicht: voortgang + openstaande acties bovenaan */}
+        <div className="bg-white rounded-lg shadow-sm p-5 mb-6 flex flex-wrap items-center gap-5">
           <ProgressRing value={afgerond} total={items.length} />
-          <div>
+          <div className="min-w-0">
             <p className="text-2xl font-semibold text-ink">{pct}%</p>
             <p className="text-sm text-ink/50">{afgerond} van {items.length} acties afgerond</p>
-            {hoogOpen > 0 && (
-              <p className="text-xs text-red-600 mt-1 font-medium">{hoogOpen} hoge prioriteit nog open</p>
-            )}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs">
+              <span className="text-ink/60">{items.length - afgerond} open</span>
+              {hoogOpen > 0 && <span className="text-red-600 font-medium">{hoogOpen} hoog nog open</span>}
+            </div>
           </div>
         </div>
 

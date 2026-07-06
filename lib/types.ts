@@ -434,6 +434,33 @@ export type ToolboxDashboard = {
   personen: ToolboxDashboardPersoon[]
 }
 
+// ---- Toolbox-sessies (aanwezigheid — tweede telwijze naast naar-rato) ----
+
+// Eén gehouden sessie met zijn opkomst (RPC toolbox_sessies_overzicht).
+export type ToolboxSessieRegel = {
+  sessie_id: string
+  datum: string
+  onderwerp: string
+  notitie: string | null
+  toolbox_id: string | null
+  opkomst: number
+  aanwezigen: string[]   // persoon_ids die aanwezig waren
+}
+
+// Per persoon het aantal bijgewoonde sessies. NEUTRAAL: geen doel, geen achterstand.
+export type ToolboxSessiePersoon = {
+  persoon_id: string
+  naam: string
+  functiegroep_naam: string | null
+  bijgewoond: number
+}
+
+export type ToolboxSessiesOverzicht = {
+  totaal_sessies: number
+  sessies: ToolboxSessieRegel[]
+  personen: ToolboxSessiePersoon[]
+}
+
 // ---- Toolbox juridische export (snapshot-only) ----
 
 export type ToolboxBewijssoort = 'digitaal' | 'fysiek_aanwezig'

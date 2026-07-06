@@ -4,14 +4,15 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
-import type { Company, Functiegroep, ToolboxOverzichtItem, ToolboxDashboard } from '@/lib/types'
+import type { Company, Functiegroep, ToolboxOverzichtItem, ToolboxDashboard, ToolboxSessiesOverzicht } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
 import ToolboxDashboardView from './ToolboxDashboardView'
+import ToolboxSessiesView from './ToolboxSessiesView'
 import ToolboxExport from './ToolboxExport'
 
 type Supa = ReturnType<typeof createClient>
-type View = 'dashboard' | 'toolboxen' | 'doelstellingen' | 'export'
+type View = 'dashboard' | 'sessies' | 'toolboxen' | 'doelstellingen' | 'export'
 
 const WAARSCHUWING =
   'Je wijkt af van de centrale toolbox op eigen initiatief. Gevolg: je krijgt centrale ' +
@@ -19,7 +20,7 @@ const WAARSCHUWING =
   'terugzet naar centraal.'
 
 export default function ToolboxClient({
-  company, huisstijl = VEILIGE_HUISSTIJL, initialOverzicht, functiegroepen, initialDoelen, dashboard,
+  company, huisstijl = VEILIGE_HUISSTIJL, initialOverzicht, functiegroepen, initialDoelen, dashboard, sessies,
 }: {
   company: Company
   huisstijl?: HuisstijlView
@@ -27,6 +28,7 @@ export default function ToolboxClient({
   functiegroepen: Functiegroep[]
   initialDoelen: Record<string, number>
   dashboard: ToolboxDashboard | null
+  sessies: ToolboxSessiesOverzicht | null
 }) {
   const [supabase] = useState<Supa>(() => createClient())
   const [view, setView] = useState<View>('dashboard')
@@ -62,6 +64,7 @@ export default function ToolboxClient({
 
         <div className="flex flex-wrap gap-2 mb-4">
           {tab('dashboard', 'Dashboard')}
+          {tab('sessies', 'Sessies')}
           {tab('toolboxen', 'Toolboxen')}
           {tab('doelstellingen', 'Doelstellingen')}
           {tab('export', 'Bewijs & export')}
@@ -71,6 +74,9 @@ export default function ToolboxClient({
 
         {view === 'dashboard' ? (
           <ToolboxDashboardView dashboard={dashboard} />
+        ) : view === 'sessies' ? (
+          <ToolboxSessiesView companyId={company.id} initial={sessies}
+            gekoppeldeToolboxen={overzicht.filter(t => t.gekoppeld)} />
         ) : view === 'toolboxen' ? (
           <KoppelBeheer companyId={company.id} supabase={supabase} overzicht={overzicht} onPatch={patch} setFout={setFout} />
         ) : view === 'doelstellingen' ? (

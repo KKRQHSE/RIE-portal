@@ -39,9 +39,9 @@ function Tegel({
 }) {
   const inner = (
     <div
-      className={`bg-white rounded-lg shadow-sm p-5 h-full min-h-[124px] ${
-        href ? 'hover:shadow-md transition-shadow' : ''
-      } ${urgent ? 'border-l-4 border-red-500' : ''}`}
+      className={`glass-tile rounded-2xl p-6 h-full min-h-[124px] transition duration-200 ${
+        href ? 'glass-tile-hover' : ''
+      } ${urgent ? 'border-l-4 border-l-red-500' : ''}`}
     >
       <p className="text-xs font-medium uppercase tracking-wide text-ink/40 mb-3">{titel}</p>
       {children}
@@ -88,7 +88,7 @@ export default function DashboardClient({
   const inst = instellingen
 
   return (
-    <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
+    <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-4xl mx-auto px-4 py-8">
 
         <div className="flex justify-end mb-2">
@@ -155,7 +155,7 @@ export default function DashboardClient({
 
         {/* ── Sectie: Modules (live cijfers, doorklikbaar) ── */}
         <h2 className="text-xs font-medium uppercase tracking-wide text-ink/40 mb-3">Modules</h2>
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-2 gap-5">
 
           {/* Voortgang PvA */}
           <Tegel titel="Voortgang Plan van Aanpak" href={`/${cid}/pva`}>
@@ -314,7 +314,7 @@ export default function DashboardClient({
             </Link>
           )}
         </div>
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-2 gap-5">
 
           {/* Klanttevredenheid */}
           <Tegel titel="Klanttevredenheid">

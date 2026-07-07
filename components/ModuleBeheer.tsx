@@ -120,7 +120,7 @@ export default function ModuleBeheer({
     'text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors disabled:opacity-50'
 
   return (
-    <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
+    <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-3xl mx-auto px-4 py-8">
 
         <div className="flex justify-end mb-2">
@@ -144,7 +144,7 @@ export default function ModuleBeheer({
             const bruikbaar = status === 'actief' && actief
 
             return (
-              <div key={item.module} className="bg-white rounded-lg shadow-sm p-4">
+              <div key={item.module} className="glass-tile rounded-2xl p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">

@@ -107,7 +107,7 @@ export default function CentraleBibliotheekAdmin({ initialRubrieken }: { initial
   }
 
   return (
-    <main className="min-h-screen bg-surface">
+    <main className="min-h-screen glass-bg">
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="flex justify-end mb-2"><LogoutButton /></div>
 
@@ -239,7 +239,7 @@ function RubriekKaart({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div className="glass-tile rounded-2xl overflow-hidden">
       <div className="flex items-center gap-2 p-4">
         <div className="flex flex-col shrink-0">
           <button onClick={() => onVerplaats(-1)} disabled={isEerste || bezig} className="text-ink/40 hover:text-ink disabled:opacity-25 text-xs leading-none px-1" aria-label="Rubriek omhoog">▲</button>

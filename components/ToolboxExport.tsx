@@ -87,7 +87,7 @@ export default function ToolboxExport({ companyId }: { companyId: string }) {
 
       {fout && <p className="text-sm text-red-600">{fout}</p>}
 
-      <div className="bg-white rounded-lg shadow-sm p-4">
+      <div className="glass-tile rounded-2xl p-4">
         {laden ? (
           <p className="text-sm text-ink/40">Laden…</p>
         ) : regels.length === 0 ? (

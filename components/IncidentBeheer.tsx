@@ -67,7 +67,7 @@ export default function IncidentBeheer({
   )
 
   return (
-    <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
+    <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="mb-6">
           <HuisstijlLogo huisstijl={huisstijl} className="mb-2" />
@@ -141,7 +141,7 @@ export default function IncidentBeheer({
               <div className="space-y-2">
                 {zichtbaar.map(i => (
                   <button key={i.id} onClick={() => setOpenId(i.id)}
-                    className="w-full text-left bg-white rounded-lg shadow-sm p-4 hover:bg-gray-50 transition-colors">
+                    className="w-full text-left glass-tile glass-tile-hover rounded-2xl p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-ink truncate">{i.omschrijving}</p>
@@ -210,7 +210,7 @@ function IncidentDashboard({
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <div className="bg-white rounded-lg shadow-sm p-3">
+        <div className="glass-tile rounded-2xl p-3">
           <div className="text-2xl font-semibold text-ink">{totaal}</div>
           <div className="text-xs text-ink/50 mt-0.5">Meldingen totaal</div>
         </div>
@@ -224,7 +224,7 @@ function IncidentDashboard({
         ))}
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm p-3">
+      <div className="glass-tile rounded-2xl p-3">
         <div className="text-xs font-medium text-ink/60 mb-2">Naar gevolg</div>
         <div className="flex flex-wrap gap-1.5">
           {gevolgOpties.map(g => {
@@ -251,7 +251,7 @@ function IncidentDashboard({
 function OorzaakTop({ titel, rijen }: { titel: string; rijen: Array<{ code: number; aantal: number; label: string }> }) {
   const max = Math.max(1, ...rijen.map(r => r.aantal))
   return (
-    <div className="bg-white rounded-lg shadow-sm p-3">
+    <div className="glass-tile rounded-2xl p-3">
       <div className="text-xs font-medium text-ink/60 mb-2">{titel}</div>
       {rijen.length === 0 ? (
         <p className="text-xs text-ink/40">Nog niet ingevuld.</p>

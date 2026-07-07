@@ -190,7 +190,7 @@ export default function InspectieClient({
   }
 
   return (
-    <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
+    <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-3xl mx-auto px-4 py-8">
 
         <div className="flex justify-end mb-2">
@@ -360,7 +360,7 @@ function Bibliotheek({
           const naam = enkel ? enkel.naam : 'Werkplekinspectie'
           const aantal = enkel ? enkel.punten.length : normPunten
           return (
-            <div className="bg-white rounded-lg shadow-sm p-4">
+            <div className="glass-tile rounded-2xl p-4">
               <p className="text-sm font-medium text-ink">{naam}</p>
               <p className="text-xs text-ink/50 mt-0.5">
                 Start een nieuwe werkplekinspectie ({aantal} {aantal === 1 ? 'punt' : 'punten'}).
@@ -378,7 +378,7 @@ function Bibliotheek({
         // Geen enkel pad → korte helper i.p.v. een leeg keuzescherm.
         if (paden === 0) {
           return (
-            <div className="bg-white rounded-lg shadow-sm p-4">
+            <div className="glass-tile rounded-2xl p-4">
               <p className="text-sm text-ink/60">
                 Nog geen inspectie mogelijk.{' '}
                 <button onClick={onNaarSjablonen} className="text-accent hover:underline">Maak een sjabloon</button>
@@ -497,7 +497,7 @@ function BibliotheekRij({ regel, onOpen }: { regel: BibliotheekRegel; onOpen: ()
   return (
     <button
       onClick={onOpen}
-      className="w-full bg-white rounded-lg shadow-sm p-4 text-left hover:bg-gray-50 transition-colors"
+      className="w-full glass-tile glass-tile-hover rounded-2xl p-4 text-left"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -699,7 +699,7 @@ function SjabloonKaart({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div className="glass-tile rounded-2xl overflow-hidden">
       <button
         onClick={() => setUit(o => !o)}
         className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-gray-50 transition-colors"

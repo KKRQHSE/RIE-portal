@@ -89,7 +89,7 @@ export default function ToolboxMaandoverzicht({
           const sessies = perMaand[i]
           const maandKey = `${jaar}-${String(i + 1).padStart(2, '0')}`
           return (
-            <div key={naam} className="bg-white rounded-lg shadow-sm">
+            <div key={naam} className="glass-tile rounded-2xl">
               <div className="flex items-center justify-between gap-3 px-5 py-3">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-ink">{naam}</p>
@@ -166,7 +166,7 @@ function TargetKop({
   const opTarget = sessiesDitJaar >= target && target > 0
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-5">
+    <div className="glass-tile rounded-2xl p-5">
       <div className="flex items-center justify-between gap-3 mb-3">
         <p className="text-xs font-medium uppercase tracking-wide text-ink/40">Target · {jaar}</p>
         <div className="flex items-center gap-1 text-sm">

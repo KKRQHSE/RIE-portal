@@ -197,7 +197,7 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
   }
 
   return (
-    <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
+    <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-3xl mx-auto px-4 py-8">
 
         <div className="flex justify-end mb-2">
@@ -270,7 +270,7 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
             const ingetrokken = !!link && link.ingetrokken
             const url = actief ? `${origin}/a/${link.token}` : ''
             return (
-              <div key={p.id} className="bg-white rounded-lg shadow-sm p-4">
+              <div key={p.id} className="glass-tile rounded-2xl p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">

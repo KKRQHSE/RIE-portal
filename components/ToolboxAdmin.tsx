@@ -69,7 +69,7 @@ export default function ToolboxAdmin({ initialToolboxen }: { initialToolboxen: T
   }
 
   return (
-    <main className="min-h-screen bg-surface">
+    <main className="min-h-screen glass-bg">
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="flex justify-end mb-2"><LogoutButton /></div>
         <div className="mb-6">
@@ -137,7 +137,7 @@ function ToolboxKaart({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div className="glass-tile rounded-2xl overflow-hidden">
       <button onClick={() => setUit(o => !o)} className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-gray-50" aria-expanded={uit}>
         <div className="min-w-0">
           <p className="font-medium text-ink truncate">{t.titel}</p>

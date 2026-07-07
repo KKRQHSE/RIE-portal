@@ -83,7 +83,7 @@ function RubriekBlok({
   const afwijkingen = rubriek.vragen.filter(v => v.afwijking).length
 
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div className="glass-tile rounded-2xl overflow-hidden">
       <div className="flex items-center justify-between gap-3 p-4">
         <div className="min-w-0">
           <p className="font-medium text-ink truncate">{rubriek.naam}</p>

@@ -87,7 +87,7 @@ export default function FunctiegroepBeheer({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm mb-6 overflow-hidden">
+    <div className="glass-tile rounded-2xl mb-6 overflow-hidden">
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-gray-50 transition-colors"

@@ -39,7 +39,7 @@ function Tegel({
 }) {
   const inner = (
     <div
-      className={`glass-tile rounded-2xl p-6 h-full min-h-[124px] transition duration-200 ${
+      className={`glass-tile rounded-3xl p-6 h-full min-h-[124px] ${
         href ? 'glass-tile-hover' : ''
       } ${urgent ? 'border-l-4 border-l-red-500' : ''}`}
     >

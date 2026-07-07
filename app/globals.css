@@ -38,32 +38,53 @@
 }
 
 .glass-tile {
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(10px) saturate(110%);
-  -webkit-backdrop-filter: blur(10px) saturate(110%);
-  border: 1px solid color-mix(in srgb, var(--color-ink, #14161B) 8%, transparent);
+  /* Heel subtiele verticale glans: iets lichter bovenaan, alsof licht invalt. */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.62));
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  /* Gelaagd: glossy top-edge (inset), faint inner ring, en drie ambient-lagen
+     zodat de tegel zichtbaar boven de achtergrond zweeft. */
   box-shadow:
-    0 1px 2px color-mix(in srgb, var(--color-ink, #14161B) 5%, transparent),
-    0 10px 30px -16px color-mix(in srgb, var(--color-ink, #14161B) 24%, transparent);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 1px color-mix(in srgb, var(--color-ink, #14161B) 3%, transparent),
+    0 1px 2px color-mix(in srgb, var(--color-ink, #14161B) 6%, transparent),
+    0 8px 16px -8px color-mix(in srgb, var(--color-ink, #14161B) 14%, transparent),
+    0 24px 48px -22px color-mix(in srgb, var(--color-ink, #14161B) 26%, transparent);
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.3s ease;
+  will-change: transform;
 }
 
-/* Doorklikbare tegel: scherpe, dunne accentrand + iets meer lift bij hover.
-   Dit is de ENIGE plek waar het accent de rand raakt — vol, niet vermengd. */
+/* Doorklikbare tegel: springt op met een zachte accent-GLOW eronder (kleur zit
+   in de schaduw, niet in het vlak → flashy maar nooit modderig) + dunne accentrand. */
 .glass-tile-hover:hover {
-  background: rgba(255, 255, 255, 0.86);
-  border-color: color-mix(in srgb, var(--color-accent, #FF5200) 55%, transparent);
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--color-accent, #FF5200) 35%, rgba(255, 255, 255, 0.65));
   box-shadow:
-    0 2px 4px color-mix(in srgb, var(--color-ink, #14161B) 6%, transparent),
-    0 18px 40px -18px color-mix(in srgb, var(--color-ink, #14161B) 30%, transparent);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.95),
+    inset 0 0 0 1px color-mix(in srgb, var(--color-accent, #FF5200) 10%, transparent),
+    0 2px 6px color-mix(in srgb, var(--color-ink, #14161B) 8%, transparent),
+    0 16px 32px -12px color-mix(in srgb, var(--color-ink, #14161B) 22%, transparent),
+    0 34px 60px -24px color-mix(in srgb, var(--color-accent, #FF5200) 40%, transparent);
 }
 
-/* Mobiel: backdrop-blur is zwaar op zwakke telefoons → nog lichter en opaquer. */
+/* Mobiel: backdrop-blur is zwaar op zwakke telefoons → nog lichter en opaquer,
+   geen lift (touch heeft geen hover). Glans/diepte blijven. */
 @media (max-width: 640px) {
   .glass-tile {
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(6px) saturate(130%);
+    -webkit-backdrop-filter: blur(6px) saturate(130%);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.86));
   }
+}
+
+/* Geen zin in beweging → de lift uit, glans/diepte blijven. */
+@media (prefers-reduced-motion: reduce) {
+  .glass-tile { transition: box-shadow 0.2s ease, border-color 0.2s ease; }
+  .glass-tile-hover:hover { transform: none; }
 }
 
 /* Geen backdrop-filter-ondersteuning → opaquere achtergrond, blur vervalt. */

@@ -74,17 +74,35 @@ export default function ActielijstClient({
     return m
   }, [personen])
 
-  function houder(item: PvaItem): string {
+  // De verantwoordelijke staat op RI&E/pva-acties als vrije tekst (verantw),
+  // op losse acties als persoon_id. Leid één naam af zodat filteren en tonen
+  // voor beide vormen klopt; null = écht niet toegewezen.
+  function houderNaam(item: PvaItem): string | null {
     if (item.persoon_id && naamVan.has(item.persoon_id)) return naamVan.get(item.persoon_id)!
-    if (item.verantw) return item.verantw
-    return 'Niet toegewezen'
+    const v = item.verantw?.trim()
+    return v ? v : null
   }
+
+  // Dropdown-opties uit de werkelijk voorkomende verantwoordelijken (niet uit de
+  // personenlijst), anders mist de vrije-tekst-namen.
+  const verantwOpties = useMemo(() => {
+    const set = new Set<string>()
+    rijen.forEach(({ item }) => {
+      const n = houderNaam(item)
+      if (n) set.add(n)
+    })
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'nl'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rijen, naamVan])
 
   const zichtbaar = rijen.filter(({ item, herkomst }) => {
     if (fStatus !== 'Alle' && item.status !== fStatus) return false
     if (fBron !== 'alle' && herkomst.soort !== fBron) return false
-    if (fVerantw === 'niet' && item.persoon_id) return false
-    if (fVerantw !== 'alle' && fVerantw !== 'niet' && item.persoon_id !== fVerantw) return false
+    if (fVerantw !== 'alle') {
+      const n = houderNaam(item)
+      if (fVerantw === 'niet') { if (n) return false }
+      else if (n !== fVerantw) return false
+    }
     return true
   })
 
@@ -151,7 +169,7 @@ export default function ActielijstClient({
             >
               <option value="alle">Iedereen</option>
               <option value="niet">Niet toegewezen</option>
-              {personen.map(p => <option key={p.id} value={p.id}>{p.naam}</option>)}
+              {verantwOpties.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
         </div>
@@ -263,7 +281,7 @@ export default function ActielijstClient({
                     <span className={`px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[item.status] ?? 'bg-gray-100 text-gray-700'}`}>
                       {item.status}
                     </span>
-                    <span className="truncate">👤 {houder(item)}</span>
+                    <span className="truncate">👤 {houderNaam(item) ?? 'Niet toegewezen'}</span>
                     {item.termijn && <span className="truncate">🗓 {item.termijn}</span>}
                   </div>
                 </div>

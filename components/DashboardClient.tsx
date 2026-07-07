@@ -23,6 +23,15 @@ type Props = {
   ifVorigJaar?: number | null
 }
 
+// De doelstelling is vrije tekst: soms één zin met puntkomma's, soms regels met
+// streepjes. Splits naar losse doelen zodat we ze prominent kunnen tonen.
+function parseDoelen(tekst: string | null | undefined): string[] {
+  if (!tekst) return []
+  const regels = tekst.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
+  const bron = regels.length > 1 ? regels : tekst.split(/[;•]/)
+  return bron.map(s => s.replace(/^[-*•\s]+/, '').trim()).filter(Boolean)
+}
+
 function datumNL(iso: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -358,6 +367,36 @@ export default function DashboardClient({
             </Link>
           )}
         </div>
+
+        {/* Doelstellingen — prominent heroblok i.p.v. een grijze bulletlijst. */}
+        <div className="glass-tile rounded-3xl p-6 mb-5">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="h-3.5 w-0.5 rounded-full bg-accent shrink-0" aria-hidden="true" />
+            <p className="text-xs font-medium uppercase tracking-wide text-ink/40">Doelstellingen</p>
+          </div>
+          {(() => {
+            const doelen = parseDoelen(inst?.doelstelling_tekst)
+            if (doelen.length === 0) {
+              return (
+                <p className="text-sm text-ink/40">
+                  Nog niet ingevuld.
+                  {magBewerken && <> <Link href={`/${cid}/dashboard/bedrijfsvoering`} className="text-accent hover:underline">Vul de doelstellingen in →</Link></>}
+                </p>
+              )
+            }
+            return (
+              <ul className="space-y-3">
+                {doelen.map((d, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <span className="mt-0.5 h-6 w-6 shrink-0 rounded-full bg-accent/10 text-accent inline-flex items-center justify-center text-sm font-semibold" aria-hidden="true">✓</span>
+                    <p className="text-base sm:text-lg text-ink font-medium leading-snug">{d}</p>
+                  </li>
+                ))}
+              </ul>
+            )
+          })()}
+        </div>
+
         <div className="grid sm:grid-cols-2 gap-5">
 
           {/* Klanttevredenheid */}
@@ -388,13 +427,6 @@ export default function DashboardClient({
               <p className="text-ink/70">Extern: {inst?.audit_extern_omschrijving || '—'}</p>
               {inst?.audit_status && <p className="text-xs text-ink/50">Status: {inst.audit_status}</p>}
             </div>
-          </Tegel>
-
-          {/* Doelstelling (vrije tekst) */}
-          <Tegel titel="Doelstelling">
-            {inst?.doelstelling_tekst
-              ? <p className="text-sm text-ink/80 whitespace-pre-wrap">{inst.doelstelling_tekst}</p>
-              : <p className="text-sm text-ink/40">Nog niet ingevuld.</p>}
           </Tegel>
 
           {/* Openstaande ISO-taken (vrije tekst) */}

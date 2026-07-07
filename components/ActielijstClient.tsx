@@ -8,6 +8,9 @@ import type { Company, Persoon, PvaItem } from '@/lib/types'
 import { BRON_FILTERS, type BronSoort, type Herkomst } from '@/lib/actie-herkomst'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
+import Gauge from './Gauge'
+
+const STATUS_OPTS_BEWERK = ['Open', 'In behandeling', 'Afgerond']
 
 export type ActieRij = { item: PvaItem; herkomst: Herkomst }
 
@@ -133,6 +136,23 @@ export default function ActielijstClient({
     setFormOpen(false); setBezig(false)
   }
 
+  // Status inline bijwerken (RLS: pva_update staat eigen-bedrijf toe). Optimistisch;
+  // bij fout terugdraaien naar de oude status. Hier landen ook de niet-RI&E-acties
+  // die niet meer op /pva staan, dus die blijven zo beheerbaar.
+  async function zetStatus(id: string, status: string) {
+    const oud = rijen.find(r => r.item.id === id)?.item.status
+    setRijen(prev => prev.map(r => (r.item.id === id ? { ...r, item: { ...r.item, status } } : r)))
+    setFout(null)
+    const supabase = createClient()
+    const { error } = await supabase.from('pva_items').update({ status }).eq('id', id)
+    if (error) {
+      setFout(error.message)
+      if (oud) setRijen(prev => prev.map(r => (r.item.id === id ? { ...r, item: { ...r.item, status: oud } } : r)))
+    }
+  }
+
+  const afgerondTotaal = rijen.filter(r => r.item.status === 'Afgerond').length
+
   return (
     <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-3xl mx-auto px-4 py-8">
@@ -145,6 +165,15 @@ export default function ActielijstClient({
           <HuisstijlLogo huisstijl={huisstijl} className="mb-2" />
           <h1 className="text-xl font-semibold text-ink">{company.name}</h1>
           <p className="text-sm text-ink/50 mt-0.5">Centrale actielijst — alle acties, met herkomst</p>
+        </div>
+
+        {/* Voortgang van alle acties (los van het Plan van Aanpak RI&E). */}
+        <div className="glass-tile rounded-2xl p-4 mb-4 flex items-center gap-4">
+          <Gauge value={afgerondTotaal} total={rijen.length} size={72} />
+          <div>
+            <p className="text-sm font-medium text-ink">{afgerondTotaal} van {rijen.length} acties afgerond</p>
+            <p className="text-xs text-ink/40 mt-0.5">alle bronnen samen</p>
+          </div>
         </div>
 
         {/* Filters */}
@@ -269,18 +298,28 @@ export default function ActielijstClient({
                 <div className="min-w-0">
                   <div className="flex items-baseline gap-2 flex-wrap">
                     <span className="font-mono text-xs text-ink/40">{item.nr}</span>
-                    {/* Beheer blijft in het Plan van Aanpak — geen verplaatsing. */}
-                    <Link
-                      href={`/${companyId}/pva#actie-${item.nr}`}
-                      className="font-medium text-ink hover:text-accent transition-colors"
-                    >
-                      {item.onderwerp || 'Zonder onderwerp'}
-                    </Link>
+                    {/* RI&E-acties: volledige beheer (concept/bewijs) blijft in het
+                        Plan van Aanpak RI&E. Overige bronnen beheer je hier inline. */}
+                    {herkomst.soort === 'rie' ? (
+                      <Link
+                        href={`/${companyId}/pva#actie-${item.nr}`}
+                        className="font-medium text-ink hover:text-accent transition-colors"
+                      >
+                        {item.onderwerp || 'Zonder onderwerp'}
+                      </Link>
+                    ) : (
+                      <span className="font-medium text-ink">{item.onderwerp || 'Zonder onderwerp'}</span>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-ink/50">
-                    <span className={`px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[item.status] ?? 'bg-gray-100 text-gray-700'}`}>
-                      {item.status}
-                    </span>
+                    <select
+                      value={item.status}
+                      onChange={e => zetStatus(item.id, e.target.value)}
+                      aria-label={`Status van actie ${item.nr}`}
+                      className={`text-xs font-medium rounded-full px-2 py-1 border-0 cursor-pointer appearance-none ${STATUS_BADGE[item.status] ?? 'bg-gray-100 text-gray-700'}`}
+                    >
+                      {STATUS_OPTS_BEWERK.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
                     <span className="truncate">👤 {houderNaam(item) ?? 'Niet toegewezen'}</span>
                     {item.termijn && <span className="truncate">🗓 {item.termijn}</span>}
                   </div>

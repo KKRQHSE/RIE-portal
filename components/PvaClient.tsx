@@ -84,7 +84,7 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
           <div>
             <HuisstijlLogo huisstijl={huisstijl} className="mb-2" />
             <h1 className="text-xl font-semibold text-ink">{company.name}</h1>
-            <p className="text-sm text-ink/50 mt-0.5">Plan van Aanpak</p>
+            <p className="text-sm text-ink/50 mt-0.5">Plan van Aanpak RI&amp;E</p>
             <Link
               href={`/${company.id}/actielijst`}
               className="inline-flex items-center gap-1 text-xs text-accent hover:underline mt-1"

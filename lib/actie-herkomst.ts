@@ -20,6 +20,14 @@ export const BRON_FILTERS: { code: BronSoort | 'alle'; label: string }[] = [
   { code: 'los',       label: 'Los' },
 ]
 
+// Is dit een uit de RI&E voortgekomen actie? Zelfde definitie als de 'rie'-tak
+// van bepaalHerkomst: geen bron_type én rie_versie/tree/ref gevuld. Gebruikt om
+// het Plan van Aanpak RI&E te scopen (los van de centrale actielijst).
+export function isRieActie(item: PvaItem): boolean {
+  if (item.bron_type) return false
+  return !!(item.rie_versie_id || item.tree?.trim() || item.ref?.trim())
+}
+
 // Minimale incident-info om incident-herkomst af te leiden én naar te linken.
 export type IncidentRef = { id: string; actie_ids: string[]; omschrijving: string; datum: string }
 

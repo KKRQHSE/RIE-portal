@@ -4,7 +4,8 @@ import PvaClient from '@/components/PvaClient'
 import type { Ritme } from '@/components/HerinnerBeheer'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
 import { haalPersonen } from '@/lib/personen-data'
-import type { Persoon } from '@/lib/types'
+import type { Persoon, PvaItem } from '@/lib/types'
+import { isRieActie } from '@/lib/actie-herkomst'
 
 export default async function PvaPage({
   params,
@@ -35,8 +36,10 @@ export default async function PvaPage({
   if (profile.role !== 'admin' && profile.company_id !== company_id) notFound()
   if (!company) notFound()
 
-  // Sorteer op nummer als integer (nr is text, bijv. "1".."20")
-  const sorted = (items ?? []).sort((a, b) => parseInt(a.nr) - parseInt(b.nr))
+  // Plan van Aanpak RI&E: alleen de uit de RI&E voortgekomen acties. Losse/
+  // incident/audit-acties horen in de centrale actielijst, niet hier.
+  const rieItems = ((items ?? []) as PvaItem[]).filter(isRieActie)
+  const sorted = rieItems.sort((a, b) => parseInt(a.nr) - parseInt(b.nr))
 
   // Beheer (personen + toewijzen): admin overal, client voor zijn eigen bedrijf.
   const magBeheren =

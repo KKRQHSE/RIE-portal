@@ -8,7 +8,7 @@ function Blok({ className = '' }: { className?: string }) {
 
 export default function LaadSkeleton() {
   return (
-    <main className="min-h-screen bg-surface">
+    <main className="min-h-screen glass-bg">
       <div className="max-w-4xl mx-auto px-4 py-8 animate-pulse">
         {/* Kop */}
         <Blok className="h-7 w-48 mb-2" />
@@ -24,7 +24,7 @@ export default function LaadSkeleton() {
         {/* Kaarten */}
         <div className="grid sm:grid-cols-2 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-lg shadow-sm p-5 min-h-[124px]">
+            <div key={i} className="glass-tile rounded-3xl p-5 min-h-[124px]">
               <Blok className="h-3 w-24 mb-4" />
               <Blok className="h-6 w-16 mb-2" />
               <Blok className="h-3 w-32 bg-ink/5" />

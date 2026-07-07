@@ -33,8 +33,8 @@ export default function LoginForm() {
   }
 
   return (
-    <main className="min-h-screen bg-surface flex items-center justify-center px-4">
-      <div className="w-full max-w-sm bg-white rounded-lg shadow-sm p-8">
+    <main className="min-h-screen glass-bg flex items-center justify-center px-4">
+      <div className="w-full max-w-sm glass-tile rounded-2xl p-8">
         <div className="mb-8">
           <Image src="/logo.jpg" alt="QHSE Totaal" width={180} height={60} className="object-contain" />
         </div>

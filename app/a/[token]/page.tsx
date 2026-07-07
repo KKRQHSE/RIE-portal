@@ -24,8 +24,8 @@ function str(v: unknown): string | null {
 
 function OngeldigeLink() {
   return (
-    <main className="min-h-screen bg-surface flex items-center justify-center px-4">
-      <div className="bg-white rounded-lg shadow-sm p-8 max-w-md text-center">
+    <main className="min-h-screen glass-bg flex items-center justify-center px-4">
+      <div className="glass-tile rounded-2xl p-8 max-w-md text-center">
         <h1 className="text-lg font-semibold text-ink mb-2">Deze link is niet meer geldig</h1>
         <p className="text-sm text-ink/50">
           De deellink is verlopen of ingetrokken. Vraag je KAM-coördinator om een nieuwe link.

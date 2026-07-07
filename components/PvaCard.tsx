@@ -177,7 +177,7 @@ export default function PvaCard({
   const veldLabel = 'text-[11px] font-medium text-ink/40 uppercase tracking-wider mb-1'
 
   return (
-    <div id={`actie-${item.nr}`} className="bg-white rounded-lg shadow-sm overflow-hidden scroll-mt-20">
+    <div id={`actie-${item.nr}`} className="glass-tile rounded-2xl overflow-hidden scroll-mt-20">
 
       {/* Rustige, scanbare kopregel: onderwerp + de kernfeiten */}
       <button

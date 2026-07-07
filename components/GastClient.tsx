@@ -82,7 +82,7 @@ async function haalHistorieOp(token: string, actieId: string): Promise<HistorieR
 
 export default function GastClient({ token, persoonNaam, bedrijfNaam, acties, huisstijl = VEILIGE_HUISSTIJL }: Props) {
   return (
-    <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
+    <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="mb-6">
           <HuisstijlLogo huisstijl={huisstijl} className="mb-3" />
@@ -177,7 +177,7 @@ function GastActieKaart({ token, actie }: { token: string; actie: GastActie }) {
   // Doorgegeven: de actie is verhuisd; toon alleen nog een bevestiging.
   if (doorgegevenAan) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-4">
+      <div className="glass-tile rounded-2xl p-4">
         <div className="flex items-baseline gap-2 flex-wrap">
           {actie.nr && <span className="font-mono text-xs text-ink/40">{actie.nr}</span>}
           <span className="font-medium text-ink">{actie.onderwerp}</span>
@@ -190,7 +190,7 @@ function GastActieKaart({ token, actie }: { token: string; actie: GastActie }) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4">
+    <div className="glass-tile rounded-2xl p-4">
       <div className="flex items-start gap-3">
         {actie.prio && (
           <span className={`shrink-0 font-mono text-xs font-medium px-2 py-1 rounded mt-0.5 ${PRIO_STYLE[actie.prio] ?? 'bg-gray-100 text-gray-700'}`}>

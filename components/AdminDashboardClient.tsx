@@ -32,7 +32,7 @@ export default function AdminDashboardClient({
   email: string | null
 }) {
   return (
-    <main className="min-h-screen bg-surface">
+    <main className="min-h-screen glass-bg">
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-xl font-semibold text-ink">Beheer</h1>
@@ -44,7 +44,7 @@ export default function AdminDashboardClient({
         </p>
 
         {bedrijven.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="glass-tile rounded-2xl p-6">
             <p className="text-sm text-ink/50">Nog geen bedrijven om te tonen.</p>
           </div>
         ) : (
@@ -53,15 +53,15 @@ export default function AdminDashboardClient({
               // Visuele aandacht-signalering: rood bij overschreden termijn,
               // accent bij wachtende beoordelingen, anders neutraal.
               const rand = b.over_termijn > 0
-                ? 'border-l-4 border-red-500'
+                ? 'border-l-4 border-l-red-500'
                 : b.te_beoordelen > 0
-                ? 'border-l-4 border-accent'
-                : 'border-l-4 border-transparent'
+                ? 'border-l-4 border-l-accent'
+                : 'border-l-4 border-l-transparent'
               return (
                 <Link
                   key={b.id}
                   href={`/${b.id}/dashboard`}
-                  className={`block bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow ${rand}`}
+                  className={`block glass-tile glass-tile-hover rounded-2xl p-4 ${rand}`}
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">

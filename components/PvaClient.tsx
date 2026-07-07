@@ -70,7 +70,7 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
     .map(p => ({ id: p.id, naam: p.naam, aantal: openPerPersoon.get(p.id) ?? 0 }))
 
   return (
-    <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
+    <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-3xl mx-auto px-4 py-8">
 
         <div className="flex justify-end mb-2">
@@ -98,7 +98,7 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
         </div>
 
         {/* Overzicht: voortgang + openstaande acties bovenaan */}
-        <div className="bg-white rounded-lg shadow-sm p-5 mb-6 flex flex-wrap items-center gap-5">
+        <div className="glass-tile rounded-2xl p-5 mb-6 flex flex-wrap items-center gap-5">
           <Gauge value={afgerond} total={items.length} />
           <div className="min-w-0">
             <p className="text-sm font-medium text-ink">{afgerond} van {items.length} acties afgerond</p>

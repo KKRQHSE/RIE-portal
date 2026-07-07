@@ -41,8 +41,8 @@ export default function SetWachtwoord() {
   }
 
   return (
-    <main className="min-h-screen bg-surface flex items-center justify-center px-4">
-      <div className="w-full max-w-sm bg-white rounded-lg shadow-sm p-8">
+    <main className="min-h-screen glass-bg flex items-center justify-center px-4">
+      <div className="w-full max-w-sm glass-tile rounded-2xl p-8">
         <h1 className="text-xl font-semibold text-ink mb-6">Nieuw wachtwoord instellen</h1>
 
         {status === 'checking' && (

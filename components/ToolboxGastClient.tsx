@@ -68,7 +68,7 @@ export default function ToolboxGastClient({
   const kop = persoonNaam ? t('hallo').replace('{naam}', persoonNaam) : t('toolboxen')
 
   return (
-    <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
+    <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-xl mx-auto px-4 py-8">
         <div className="flex justify-end mb-2">
           <TaalWissel taal={taal} onTaal={setTaal} />
@@ -84,7 +84,7 @@ export default function ToolboxGastClient({
             {toolboxen.length === 0 && <p className="text-center text-ink/40 py-10 text-sm">{t('geenToolboxen')}</p>}
             {toolboxen.map(tb => (
               <button key={tb.toolbox_id} onClick={() => openToolbox(tb)}
-                className="w-full text-left bg-white rounded-lg shadow-sm p-4 hover:bg-gray-50 transition-colors">
+                className="w-full text-left glass-tile glass-tile-hover rounded-2xl p-4">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-medium text-ink">{tb.titel}</span>
                   {tb.afgerond_dit_jaar
@@ -97,7 +97,7 @@ export default function ToolboxGastClient({
         )}
 
         {open && (
-          <div className="bg-white rounded-lg shadow-sm p-5 space-y-4">
+          <div className="glass-tile rounded-2xl p-5 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <h2 className="text-lg font-semibold text-ink">{open.titel}</h2>
               <button onClick={sluit} className="text-xs text-ink/40 hover:text-ink shrink-0">{t('sluiten')}</button>

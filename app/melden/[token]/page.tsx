@@ -21,8 +21,8 @@ type RawData = {
 
 function OngeldigeLink() {
   return (
-    <main className="min-h-screen bg-surface flex items-center justify-center px-4">
-      <div className="bg-white rounded-lg shadow-sm p-8 max-w-md text-center">
+    <main className="min-h-screen glass-bg flex items-center justify-center px-4">
+      <div className="glass-tile rounded-2xl p-8 max-w-md text-center">
         <h1 className="text-lg font-semibold text-ink mb-2">Deze meldlink is niet geldig</h1>
         <p className="text-sm text-ink/50">
           De link is ingetrokken of onjuist. Vraag je contactpersoon om de actuele meldlink of QR-code.

@@ -159,8 +159,8 @@ export default function IncidentMeldClient({
 
   if (klaar) {
     return (
-      <main className="min-h-screen bg-surface flex items-center justify-center px-4" style={huisstijlStyle(huisstijl)}>
-        <div className="bg-white rounded-lg shadow-sm p-8 max-w-md text-center">
+      <main className="min-h-screen glass-bg flex items-center justify-center px-4" style={huisstijlStyle(huisstijl)}>
+        <div className="glass-tile rounded-2xl p-8 max-w-md text-center">
           <div className="w-12 h-12 rounded-full bg-accent/10 text-accent flex items-center justify-center mx-auto mb-4 text-2xl">✓</div>
           <h1 className="text-lg font-semibold text-ink mb-2">{t('klaarTitel')}</h1>
           <p className="text-sm text-ink/60">
@@ -175,7 +175,7 @@ export default function IncidentMeldClient({
   const label = 'block text-sm font-medium text-ink mb-1'
 
   return (
-    <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
+    <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-xl mx-auto px-4 py-8">
         <div className="flex justify-end mb-2">
           <TaalWissel taal={taal} onTaal={setTaal} />
@@ -188,7 +188,7 @@ export default function IncidentMeldClient({
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-4 space-y-4">
+        <div className="glass-tile rounded-2xl p-4 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={label} htmlFor="datum">{t('datum')}</label>

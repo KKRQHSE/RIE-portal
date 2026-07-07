@@ -58,7 +58,7 @@ export default function ModuleCard({ companyId, module, vragen, fotos, filter, h
   if (filter === 'Nee' && shown.length === 0) return null
 
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div className="glass-tile rounded-2xl overflow-hidden">
       <button
         className="w-full flex items-center gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
         onClick={() => setOpen(o => !o)}

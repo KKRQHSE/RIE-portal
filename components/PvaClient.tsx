@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import type { PvaItem, Company, Persoon } from '@/lib/types'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import PvaCard from './PvaCard'
@@ -84,6 +85,12 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
             <HuisstijlLogo huisstijl={huisstijl} className="mb-2" />
             <h1 className="text-xl font-semibold text-ink">{company.name}</h1>
             <p className="text-sm text-ink/50 mt-0.5">Plan van Aanpak</p>
+            <Link
+              href={`/${company.id}/actielijst`}
+              className="inline-flex items-center gap-1 text-xs text-accent hover:underline mt-1"
+            >
+              Centrale actielijst (alle bronnen) →
+            </Link>
           </div>
           {company.approved_at && (
             <div className="text-right">

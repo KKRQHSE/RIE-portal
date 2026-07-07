@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-06T21:12:53.182Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-07T08:02:19.202Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -1018,6 +1018,44 @@ begin
       from public.actie_historie where pva_item_id = p_actie_id
     ) h
   ), '[]'::jsonb);
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.actie_los_toevoegen(p_company_id uuid, p_onderwerp text, p_persoon_id uuid DEFAULT NULL::uuid, p_termijn_datum date DEFAULT NULL::date, p_prio text DEFAULT 'Middel'::text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_nr   integer;
+  v_prio text;
+  v_id   uuid;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+  if coalesce(btrim(p_onderwerp), '') = '' then
+    raise exception 'Onderwerp is verplicht';
+  end if;
+
+  v_prio := case when p_prio in ('Hoog', 'Middel', 'Laag') then p_prio else 'Middel' end;
+
+  -- Volgend vrij nummer binnen dit bedrijf (nr is tekst, numeriek gebruikt).
+  select coalesce(max(case when nr ~ '^[0-9]+$' then nr::int end), 0) + 1
+    into v_nr
+    from pva_items
+   where company_id = p_company_id;
+
+  insert into pva_items
+    (company_id, nr, onderwerp, status, prio, persoon_id, termijn, termijn_datum,
+     bron_type, updated_at, updated_by)
+  values
+    (p_company_id, v_nr::text, btrim(p_onderwerp), 'Open', v_prio, p_persoon_id,
+     case when p_termijn_datum is not null then to_char(p_termijn_datum, 'DD-MM-YYYY') else null end,
+     p_termijn_datum, 'los', now(), auth.email())
+  returning id into v_id;
+
+  return v_id;
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.bedrijf_norm_overzicht(p_company_id uuid)
@@ -4380,6 +4418,9 @@ GRANT EXECUTE ON FUNCTION public.actie_doorgeven(p_actie_id uuid, p_naam text, p
 REVOKE EXECUTE ON FUNCTION public.actie_historie_ophalen(p_actie_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.actie_historie_ophalen(p_actie_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.actie_historie_ophalen(p_actie_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.actie_los_toevoegen(p_company_id uuid, p_onderwerp text, p_persoon_id uuid, p_termijn_datum date, p_prio text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.actie_los_toevoegen(p_company_id uuid, p_onderwerp text, p_persoon_id uuid, p_termijn_datum date, p_prio text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.actie_los_toevoegen(p_company_id uuid, p_onderwerp text, p_persoon_id uuid, p_termijn_datum date, p_prio text) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.bedrijf_norm_overzicht(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.bedrijf_norm_overzicht(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.bedrijf_norm_overzicht(p_company_id uuid) TO service_role;

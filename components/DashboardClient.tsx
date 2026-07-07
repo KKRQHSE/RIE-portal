@@ -157,7 +157,15 @@ export default function DashboardClient({
         )}
 
         {/* ── Sectie: Modules (live cijfers, doorklikbaar) ── */}
-        <h2 className="text-xs font-medium uppercase tracking-wide text-ink/40 mb-3">Modules</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-medium uppercase tracking-wide text-ink/40">Modules</h2>
+          <Link
+            href={`/${cid}/actielijst`}
+            className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center gap-1.5 rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors"
+          >
+            Centrale actielijst →
+          </Link>
+        </div>
         <div className="grid sm:grid-cols-2 gap-5">
 
           {/* Voortgang PvA */}

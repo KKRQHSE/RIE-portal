@@ -22,6 +22,10 @@ export type PvaItem = {
   vrijgegeven_door: string | null
   vrijgave_opmerking: string | null
   vrijgave_bewijs: string | null
+  // Herkomst-velden (optioneel: niet elke query selecteert ze expliciet).
+  rie_versie_id?: string | null
+  bron_type?: string | null
+  bron_id?: string | null
 }
 
 export type HistorieRegel = {

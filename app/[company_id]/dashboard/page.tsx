@@ -38,6 +38,7 @@ export default async function CompanyDashboardPage({
     { data: toolboxDash },
     { data: ifRij },
     { data: pvaRie },
+    { data: auditRows },
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
@@ -58,6 +59,9 @@ export default async function CompanyDashboardPage({
       .select('if_dit_jaar, if_vorig_jaar').eq('company_id', company_id).maybeSingle(),
     // RI&E-gescopete PvA-voortgang (los van de centrale actielijst).
     supabase.rpc('dashboard_pva_rie', { p_company_id: company_id }),
+    // Interne audits van dit jaar (voor de "X van N"-tegel).
+    supabase.from('audit').select('status').eq('company_id', company_id)
+      .eq('jaar', new Date().getFullYear()),
     haalHuisstijl(company_id),
   ])
 
@@ -87,6 +91,8 @@ export default async function CompanyDashboardPage({
       ifDitJaar={(ifRij as { if_dit_jaar: number | null } | null)?.if_dit_jaar ?? null}
       ifVorigJaar={(ifRij as { if_vorig_jaar: number | null } | null)?.if_vorig_jaar ?? null}
       pvaRie={pvaRie as PvaRieVoortgang}
+      auditsTotaal={(auditRows as { status: string }[] | null)?.length ?? 0}
+      auditsGedaan={(auditRows as { status: string }[] | null)?.filter(a => a.status !== 'gepland').length ?? 0}
     />
   )
 }

@@ -28,6 +28,64 @@ export type PvaItem = {
   bron_id?: string | null
 }
 
+// ── Auditmodule ──────────────────────────────────────────────────────────
+export type AuditSjabloon = 'vca' | 'iso'
+export type AuditStatus = 'gepland' | 'uitgevoerd' | 'afgerond'
+
+export type Audit = {
+  id: string
+  company_id: string
+  sjabloon: AuditSjabloon
+  titel: string
+  status: AuditStatus
+  jaar: number
+  datum: string | null
+  gesproken_met: string | null
+  besproken_onderwerpen: string[]
+  bewijsdocumenten: string[]
+  samenvatting: string | null
+  positieve_waarnemingen: string[]
+  conclusie: string | null
+  aangemaakt_op: string
+  bijgewerkt_op: string
+}
+
+export type AuditVcaBevindingStatus = 'geen_bemerkingen' | 'verbeterpunt' | 'afwijking'
+export type AuditVcaBevinding = {
+  id: string
+  audit_id: string
+  company_id: string
+  code: string
+  hoofdstuk: string
+  hoofdstuk_titel: string
+  titel: string
+  omschrijving: string | null
+  volgorde: number
+  status: AuditVcaBevindingStatus
+  toelichting: string | null
+  actie_id: string | null
+}
+
+export type AuditIsoObservatie = {
+  id: string
+  audit_id: string
+  company_id: string
+  thema: string
+  iso_clausule: string | null
+  observatie: string | null
+  volgorde: number
+}
+
+export type AuditVerbeterpunt = {
+  id: string
+  audit_id: string
+  company_id: string
+  constatering: string
+  soort: 'verbeterpunt' | 'afwijking'
+  actie_id: string | null
+  volgorde: number
+}
+
 export type HistorieRegel = {
   gebeurtenis: string
   van_status: string | null

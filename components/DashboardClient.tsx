@@ -26,6 +26,8 @@ type Props = {
   ifDitJaar?: number | null
   ifVorigJaar?: number | null
   pvaRie?: PvaRieVoortgang | null
+  auditsTotaal?: number
+  auditsGedaan?: number
 }
 
 // De doelstelling is vrije tekst: soms één zin met puntkomma's, soms regels met
@@ -107,7 +109,7 @@ export default function DashboardClient({
   company, overzicht, huisstijl = VEILIGE_HUISSTIJL,
   toonInspecties = false, toonToolbox = false, toonIncidenten = false,
   toolbox = null, magBewerken = false, ifDitJaar = null, ifVorigJaar = null,
-  pvaRie = null,
+  pvaRie = null, auditsTotaal = 0, auditsGedaan = 0,
 }: Props) {
   const {
     pva, te_beoordelen, prio_open, termijn, rie, inspecties,
@@ -457,15 +459,13 @@ export default function DashboardClient({
             )}
           </Tegel>
 
-          {/* Audits — voortgang interne audits als gauge. */}
-          <Tegel titel="Audits">
+          {/* Audits — voortgang interne audits (auditmodule) als gauge, doorklik. */}
+          <Tegel titel="Audits" href={`/${cid}/audits`}>
             <div className="flex items-center gap-4">
-              <Gauge value={inst?.audit_intern_gedaan ?? 0} total={inst?.audit_intern_totaal ?? 0} size={64} />
+              <Gauge value={auditsGedaan} total={auditsTotaal} size={64} label="uitgevoerd" />
               <div className="min-w-0 space-y-1 text-sm">
                 <p className="text-ink">
-                  <span className="font-semibold tabular-nums">
-                    {inst?.audit_intern_gedaan ?? 0}/{inst?.audit_intern_totaal ?? 0}
-                  </span> interne audits
+                  <span className="font-semibold tabular-nums">{auditsGedaan} van {auditsTotaal}</span> interne audits dit jaar
                 </p>
                 <p className="text-ink/70 truncate">Extern: {inst?.audit_extern_omschrijving || '—'}</p>
                 {inst?.audit_status && <p className="text-xs text-ink/50">Status: {inst.audit_status}</p>}

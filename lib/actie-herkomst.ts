@@ -52,8 +52,8 @@ export function bepaalHerkomst(
     return { soort: 'inspectie', label: 'uit werkplekinspectie', href: `/${companyId}/inspecties` }
   }
   if (bt === 'audit_bevinding') {
-    // Audit-module volgt (fase 2); bron al herkenbaar, nog geen eigen scherm.
-    return { soort: 'audit', label: 'uit audit', href: null }
+    // bron_id = het audit-id → klikbare herkomst terug naar de bronaudit.
+    return { soort: 'audit', label: 'uit audit', href: item.bron_id ? `/${companyId}/audits/${item.bron_id}` : `/${companyId}/audits` }
   }
 
   const inc = incidentPerActie.get(item.id)

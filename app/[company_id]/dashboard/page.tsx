@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
-import DashboardClient, { type ToolboxNaarRato } from '@/components/DashboardClient'
+import DashboardClient, { type ToolboxNaarRato, type PvaRieVoortgang } from '@/components/DashboardClient'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
 import type { DashboardOverzicht } from '@/lib/types'
 
@@ -37,6 +37,7 @@ export default async function CompanyDashboardPage({
     { data: incidentenModule },
     { data: toolboxDash },
     { data: ifRij },
+    { data: pvaRie },
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
@@ -55,6 +56,8 @@ export default async function CompanyDashboardPage({
     // IF-getal (Incident Frequency) — RLS geeft alleen de eigen-bedrijf-rij.
     supabase.from('bedrijf_dashboard_instelling')
       .select('if_dit_jaar, if_vorig_jaar').eq('company_id', company_id).maybeSingle(),
+    // RI&E-gescopete PvA-voortgang (los van de centrale actielijst).
+    supabase.rpc('dashboard_pva_rie', { p_company_id: company_id }),
     haalHuisstijl(company_id),
   ])
 
@@ -83,6 +86,7 @@ export default async function CompanyDashboardPage({
       magBewerken={magBeheren}
       ifDitJaar={(ifRij as { if_dit_jaar: number | null } | null)?.if_dit_jaar ?? null}
       ifVorigJaar={(ifRij as { if_vorig_jaar: number | null } | null)?.if_vorig_jaar ?? null}
+      pvaRie={pvaRie as PvaRieVoortgang}
     />
   )
 }

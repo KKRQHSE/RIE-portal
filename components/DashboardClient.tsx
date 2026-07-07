@@ -10,6 +10,10 @@ import LogoutButton from './LogoutButton'
 // Toolbox naar-rato (doel-per-persoon), hergebruikt uit toolbox_dashboard().bedrijf.
 export type ToolboxNaarRato = { doel: number; gedaan: number; pct: number | null }
 
+// RI&E-gescopete PvA-voortgang (dashboard_pva_rie): alleen uit de RI&E
+// voortgekomen acties, los van de centrale actielijst.
+export type PvaRieVoortgang = { totaal: number; open: number; in_behandeling: number; afgerond: number; pct: number }
+
 type Props = {
   company: Company
   overzicht: DashboardOverzicht
@@ -21,6 +25,7 @@ type Props = {
   magBewerken?: boolean
   ifDitJaar?: number | null
   ifVorigJaar?: number | null
+  pvaRie?: PvaRieVoortgang | null
 }
 
 // De doelstelling is vrije tekst: soms één zin met puntkomma's, soms regels met
@@ -93,13 +98,15 @@ export default function DashboardClient({
   company, overzicht, huisstijl = VEILIGE_HUISSTIJL,
   toonInspecties = false, toonToolbox = false, toonIncidenten = false,
   toolbox = null, magBewerken = false, ifDitJaar = null, ifVorigJaar = null,
+  pvaRie = null,
 }: Props) {
   const {
-    pva, te_beoordelen, prio_open, termijn, rie, inspecties,
+    te_beoordelen, prio_open, termijn, rie, inspecties,
     inspectie_doel, toolbox_sessies, incidenten, norm_bijgewerkt, bewijs, instellingen,
   } = overzicht
   const cid = company.id
   const inst = instellingen
+  const pr = pvaRie ?? { totaal: 0, open: 0, in_behandeling: 0, afgerond: 0, pct: 0 }
 
   return (
     <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
@@ -211,14 +218,15 @@ export default function DashboardClient({
         </div>
         <div className="grid sm:grid-cols-2 gap-5">
 
-          {/* Voortgang PvA */}
-          <Tegel titel="Voortgang Plan van Aanpak" href={`/${cid}/pva`}>
+          {/* Voortgang Plan van Aanpak RI&E — alleen de uit de RI&E voortgekomen
+              acties (los van de centrale actielijst, die alle bronnen omvat). */}
+          <Tegel titel="Voortgang Plan van Aanpak RI&E" href={`/${cid}/pva`}>
             <div className="flex items-center gap-5">
-              <Gauge value={pva.afgerond} total={pva.totaal} />
+              <Gauge value={pr.afgerond} total={pr.totaal} />
               <div>
-                <p className="text-sm font-medium text-ink">{pva.afgerond} van {pva.totaal} afgerond</p>
+                <p className="text-sm font-medium text-ink">{pr.afgerond} van {pr.totaal} afgerond</p>
                 <p className="text-xs text-ink/40 mt-1">
-                  {pva.open} open · {pva.in_behandeling} in behandeling
+                  {pr.open} open · {pr.in_behandeling} in behandeling
                 </p>
               </div>
             </div>

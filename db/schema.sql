@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-07T09:39:22.061Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-07T11:12:23.295Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -38,6 +38,59 @@ CREATE TABLE public.actie_historie (
   actor_naam text,
   actor_type text,
   created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.audit (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  sjabloon text NOT NULL,
+  titel text NOT NULL,
+  status text DEFAULT 'gepland'::text NOT NULL,
+  jaar integer NOT NULL,
+  datum date,
+  gesproken_met text,
+  besproken_onderwerpen text[] DEFAULT '{}'::text[] NOT NULL,
+  bewijsdocumenten text[] DEFAULT '{}'::text[] NOT NULL,
+  samenvatting text,
+  positieve_waarnemingen text[] DEFAULT '{}'::text[] NOT NULL,
+  conclusie text,
+  aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL,
+  bijgewerkt_op timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.audit_iso_observatie (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  audit_id uuid NOT NULL,
+  company_id uuid NOT NULL,
+  thema text NOT NULL,
+  iso_clausule text,
+  observatie text,
+  volgorde integer DEFAULT 0 NOT NULL
+);
+
+CREATE TABLE public.audit_vca_bevinding (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  audit_id uuid NOT NULL,
+  company_id uuid NOT NULL,
+  code text NOT NULL,
+  hoofdstuk text NOT NULL,
+  hoofdstuk_titel text NOT NULL,
+  titel text NOT NULL,
+  omschrijving text,
+  volgorde integer NOT NULL,
+  status text DEFAULT 'geen_bemerkingen'::text NOT NULL,
+  toelichting text,
+  actie_id uuid
+);
+
+CREATE TABLE public.audit_verbeterpunt (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  audit_id uuid NOT NULL,
+  company_id uuid NOT NULL,
+  constatering text NOT NULL,
+  soort text DEFAULT 'verbeterpunt'::text NOT NULL,
+  actie_id uuid,
+  volgorde integer DEFAULT 0 NOT NULL
 );
 
 CREATE TABLE public.bedrijf_dashboard_instelling (
@@ -130,6 +183,15 @@ CREATE TABLE public.bewijs (
   verwijderd_op timestamp with time zone,
   verwijderd_door text,
   created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.centrale_audit_vca_paragraaf (
+  code text NOT NULL,
+  hoofdstuk text NOT NULL,
+  hoofdstuk_titel text NOT NULL,
+  titel text NOT NULL,
+  omschrijving text,
+  volgorde integer NOT NULL
 );
 
 CREATE TABLE public.centrale_rubriek (
@@ -529,6 +591,10 @@ CREATE TABLE public.vragen (
 -- ============================================================
 
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_pkey PRIMARY KEY (id);
+ALTER TABLE public.audit ADD CONSTRAINT audit_pkey PRIMARY KEY (id);
+ALTER TABLE public.audit_iso_observatie ADD CONSTRAINT audit_iso_observatie_pkey PRIMARY KEY (id);
+ALTER TABLE public.audit_vca_bevinding ADD CONSTRAINT audit_vca_bevinding_pkey PRIMARY KEY (id);
+ALTER TABLE public.audit_verbeterpunt ADD CONSTRAINT audit_verbeterpunt_pkey PRIMARY KEY (id);
 ALTER TABLE public.bedrijf_dashboard_instelling ADD CONSTRAINT bedrijf_dashboard_instelling_pkey PRIMARY KEY (company_id);
 ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT bedrijf_doelstelling_pkey PRIMARY KEY (company_id, functiegroep_id);
 ALTER TABLE public.bedrijf_inspectie_doel ADD CONSTRAINT bedrijf_inspectie_doel_pkey PRIMARY KEY (company_id, persoon_id);
@@ -539,6 +605,7 @@ ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT bedrijf_toolbox_afwi
 ALTER TABLE public.bedrijf_toolbox_instelling ADD CONSTRAINT bedrijf_toolbox_instelling_pkey PRIMARY KEY (company_id);
 ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT bedrijf_vraag_afwijking_pkey PRIMARY KEY (company_id, vraag_id);
 ALTER TABLE public.bewijs ADD CONSTRAINT bewijs_pkey PRIMARY KEY (id);
+ALTER TABLE public.centrale_audit_vca_paragraaf ADD CONSTRAINT centrale_audit_vca_paragraaf_pkey PRIMARY KEY (code);
 ALTER TABLE public.centrale_rubriek ADD CONSTRAINT centrale_rubriek_pkey PRIMARY KEY (id);
 ALTER TABLE public.centrale_toolbox ADD CONSTRAINT centrale_toolbox_pkey PRIMARY KEY (id);
 ALTER TABLE public.centrale_toolbox_vraag ADD CONSTRAINT centrale_toolbox_vraag_pkey PRIMARY KEY (id);
@@ -579,6 +646,10 @@ ALTER TABLE public.personen ADD CONSTRAINT personen_company_id_email_key UNIQUE 
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_company_id_nr_key UNIQUE (company_id, nr);
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_company_id_versie_key UNIQUE (company_id, versie);
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_company_id_nr_key UNIQUE (company_id, nr);
+ALTER TABLE public.audit ADD CONSTRAINT audit_sjabloon_check CHECK ((sjabloon = ANY (ARRAY['vca'::text, 'iso'::text])));
+ALTER TABLE public.audit ADD CONSTRAINT audit_status_check CHECK ((status = ANY (ARRAY['gepland'::text, 'uitgevoerd'::text, 'afgerond'::text])));
+ALTER TABLE public.audit_vca_bevinding ADD CONSTRAINT audit_vca_bevinding_status_check CHECK ((status = ANY (ARRAY['geen_bemerkingen'::text, 'verbeterpunt'::text, 'afwijking'::text])));
+ALTER TABLE public.audit_verbeterpunt ADD CONSTRAINT audit_verbeterpunt_soort_check CHECK ((soort = ANY (ARRAY['verbeterpunt'::text, 'afwijking'::text])));
 ALTER TABLE public.bedrijf_dashboard_instelling ADD CONSTRAINT bedrijf_dashboard_instelling_audit_intern_gedaan_check CHECK ((audit_intern_gedaan >= 0));
 ALTER TABLE public.bedrijf_dashboard_instelling ADD CONSTRAINT bedrijf_dashboard_instelling_audit_intern_totaal_check CHECK ((audit_intern_totaal >= 0));
 ALTER TABLE public.bedrijf_dashboard_instelling ADD CONSTRAINT bedrijf_dashboard_instelling_klachten_aantal_check CHECK ((klachten_aantal >= 0));
@@ -613,6 +684,15 @@ ALTER TABLE public.toolbox_sessie ADD CONSTRAINT toolbox_sessie_onderwerp_check 
 ALTER TABLE public.users ADD CONSTRAINT users_role_check CHECK ((role = ANY (ARRAY['client'::text, 'admin'::text])));
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_pva_item_id_fkey FOREIGN KEY (pva_item_id) REFERENCES pva_items(id) ON DELETE CASCADE;
+ALTER TABLE public.audit ADD CONSTRAINT audit_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.audit_iso_observatie ADD CONSTRAINT audit_iso_observatie_audit_id_fkey FOREIGN KEY (audit_id) REFERENCES audit(id) ON DELETE CASCADE;
+ALTER TABLE public.audit_iso_observatie ADD CONSTRAINT audit_iso_observatie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.audit_vca_bevinding ADD CONSTRAINT audit_vca_bevinding_actie_id_fkey FOREIGN KEY (actie_id) REFERENCES pva_items(id) ON DELETE SET NULL;
+ALTER TABLE public.audit_vca_bevinding ADD CONSTRAINT audit_vca_bevinding_audit_id_fkey FOREIGN KEY (audit_id) REFERENCES audit(id) ON DELETE CASCADE;
+ALTER TABLE public.audit_vca_bevinding ADD CONSTRAINT audit_vca_bevinding_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.audit_verbeterpunt ADD CONSTRAINT audit_verbeterpunt_actie_id_fkey FOREIGN KEY (actie_id) REFERENCES pva_items(id) ON DELETE SET NULL;
+ALTER TABLE public.audit_verbeterpunt ADD CONSTRAINT audit_verbeterpunt_audit_id_fkey FOREIGN KEY (audit_id) REFERENCES audit(id) ON DELETE CASCADE;
+ALTER TABLE public.audit_verbeterpunt ADD CONSTRAINT audit_verbeterpunt_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_dashboard_instelling ADD CONSTRAINT bedrijf_dashboard_instelling_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT bedrijf_doelstelling_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT bedrijf_doelstelling_functiegroep_id_fkey FOREIGN KEY (functiegroep_id) REFERENCES functiegroep(id) ON DELETE CASCADE;
@@ -689,6 +769,10 @@ ALTER TABLE public.vragen ADD CONSTRAINT vragen_rie_versie_id_fkey FOREIGN KEY (
 
 CREATE INDEX actie_historie_company_idx ON public.actie_historie USING btree (company_id);
 CREATE INDEX actie_historie_item_idx ON public.actie_historie USING btree (pva_item_id);
+CREATE INDEX audit_company_jaar_idx ON public.audit USING btree (company_id, jaar);
+CREATE INDEX audit_iso_observatie_audit_idx ON public.audit_iso_observatie USING btree (audit_id);
+CREATE INDEX audit_vca_bevinding_audit_idx ON public.audit_vca_bevinding USING btree (audit_id);
+CREATE INDEX audit_verbeterpunt_audit_idx ON public.audit_verbeterpunt USING btree (audit_id);
 CREATE INDEX bedrijf_inspectie_doel_company_idx ON public.bedrijf_inspectie_doel USING btree (company_id);
 CREATE INDEX bedrijf_rubriek_company_idx ON public.bedrijf_rubriek USING btree (company_id);
 CREATE INDEX bedrijf_toolbox_afwijking_company_idx ON public.bedrijf_toolbox_afwijking USING btree (company_id);
@@ -736,6 +820,10 @@ CREATE INDEX vragen_module_idx ON public.vragen USING btree (module_id);
 -- ============================================================
 
 ALTER TABLE public.actie_historie ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_iso_observatie ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_vca_bevinding ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_verbeterpunt ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_dashboard_instelling ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_doelstelling ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_inspectie_doel ENABLE ROW LEVEL SECURITY;
@@ -746,6 +834,7 @@ ALTER TABLE public.bedrijf_toolbox_afwijking ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_toolbox_instelling ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_vraag_afwijking ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bewijs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.centrale_audit_vca_paragraaf ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.centrale_rubriek ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.centrale_toolbox ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.centrale_toolbox_vraag ENABLE ROW LEVEL SECURITY;
@@ -784,6 +873,18 @@ ALTER TABLE public.vragen ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY historie_select ON public.actie_historie AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
+CREATE POLICY audit_all ON public.audit AS PERMISSIVE FOR ALL TO public
+  USING (mag_bedrijf_beheren(company_id))
+  WITH CHECK (mag_bedrijf_beheren(company_id));
+CREATE POLICY audit_iso_observatie_all ON public.audit_iso_observatie AS PERMISSIVE FOR ALL TO public
+  USING (mag_bedrijf_beheren(company_id))
+  WITH CHECK (mag_bedrijf_beheren(company_id));
+CREATE POLICY audit_vca_bevinding_all ON public.audit_vca_bevinding AS PERMISSIVE FOR ALL TO public
+  USING (mag_bedrijf_beheren(company_id))
+  WITH CHECK (mag_bedrijf_beheren(company_id));
+CREATE POLICY audit_verbeterpunt_all ON public.audit_verbeterpunt AS PERMISSIVE FOR ALL TO public
+  USING (mag_bedrijf_beheren(company_id))
+  WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_dashboard_instelling_sel ON public.bedrijf_dashboard_instelling AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_doelstelling_sel ON public.bedrijf_doelstelling AS PERMISSIVE FOR SELECT TO public
@@ -807,6 +908,11 @@ CREATE POLICY bedrijf_vraag_afwijking_sel ON public.bedrijf_vraag_afwijking AS P
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bewijs_select ON public.bewijs AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
+CREATE POLICY centrale_audit_vca_adm ON public.centrale_audit_vca_paragraaf AS PERMISSIVE FOR ALL TO public
+  USING (is_admin())
+  WITH CHECK (is_admin());
+CREATE POLICY centrale_audit_vca_sel ON public.centrale_audit_vca_paragraaf AS PERMISSIVE FOR SELECT TO public
+  USING ((auth.uid() IS NOT NULL));
 CREATE POLICY centrale_rubriek_adm ON public.centrale_rubriek AS PERMISSIVE FOR ALL TO public
   USING (is_admin())
   WITH CHECK (is_admin());
@@ -1058,6 +1164,82 @@ begin
   returning id into v_id;
 
   return v_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.audit_aanmaken(p_company_id uuid, p_sjabloon text, p_titel text, p_jaar integer, p_status text DEFAULT 'gepland'::text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_audit uuid;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if p_sjabloon not in ('vca', 'iso') then raise exception 'Onbekend sjabloon'; end if;
+  if coalesce(btrim(p_titel), '') = '' then raise exception 'Titel is verplicht'; end if;
+
+  insert into audit (company_id, sjabloon, titel, jaar, status)
+  values (p_company_id, p_sjabloon, btrim(p_titel), coalesce(p_jaar, extract(year from current_date)::int),
+          case when p_status in ('gepland','uitgevoerd','afgerond') then p_status else 'gepland' end)
+  returning id into v_audit;
+
+  if p_sjabloon = 'vca' then
+    insert into audit_vca_bevinding
+      (audit_id, company_id, code, hoofdstuk, hoofdstuk_titel, titel, omschrijving, volgorde)
+    select v_audit, p_company_id, code, hoofdstuk, hoofdstuk_titel, titel, omschrijving, volgorde
+      from centrale_audit_vca_paragraaf
+     order by volgorde;
+  end if;
+
+  return v_audit;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.audit_bevinding_naar_actie(p_soort text, p_bron_id uuid)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_company uuid;
+  v_audit   uuid;
+  v_tekst   text;
+  v_actie   uuid;
+  v_nr      integer;
+begin
+  if p_soort = 'vca' then
+    select b.company_id, b.audit_id, coalesce(nullif(btrim(b.toelichting), ''), b.titel), b.actie_id
+      into v_company, v_audit, v_tekst, v_actie
+      from audit_vca_bevinding b where b.id = p_bron_id;
+  elsif p_soort = 'verbeterpunt' then
+    select v.company_id, v.audit_id, v.constatering, v.actie_id
+      into v_company, v_audit, v_tekst, v_actie
+      from audit_verbeterpunt v where v.id = p_bron_id;
+  else
+    raise exception 'Onbekend soort';
+  end if;
+
+  if v_company is null then raise exception 'Bron niet gevonden'; end if;
+  if not mag_bedrijf_beheren(v_company) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+
+  -- Al een actie? Hergebruik (idempotent).
+  if v_actie is not null then return v_actie; end if;
+
+  select coalesce(max(case when nr ~ '^[0-9]+$' then nr::int end), 0) + 1
+    into v_nr from pva_items where company_id = v_company;
+
+  insert into pva_items (company_id, nr, onderwerp, status, prio, bron_type, bron_id, updated_at)
+  values (v_company, v_nr::text, coalesce(v_tekst, 'Auditbevinding'), 'Open', 'Middel',
+          'audit_bevinding', v_audit, now())
+  returning id into v_actie;
+
+  if p_soort = 'vca' then
+    update audit_vca_bevinding set actie_id = v_actie where id = p_bron_id;
+  else
+    update audit_verbeterpunt set actie_id = v_actie where id = p_bron_id;
+  end if;
+
+  return v_actie;
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.bedrijf_norm_overzicht(p_company_id uuid)
@@ -4457,6 +4639,14 @@ GRANT EXECUTE ON FUNCTION public.actie_historie_ophalen(p_actie_id uuid) TO serv
 REVOKE EXECUTE ON FUNCTION public.actie_los_toevoegen(p_company_id uuid, p_onderwerp text, p_persoon_id uuid, p_termijn_datum date, p_prio text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.actie_los_toevoegen(p_company_id uuid, p_onderwerp text, p_persoon_id uuid, p_termijn_datum date, p_prio text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.actie_los_toevoegen(p_company_id uuid, p_onderwerp text, p_persoon_id uuid, p_termijn_datum date, p_prio text) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.audit_aanmaken(p_company_id uuid, p_sjabloon text, p_titel text, p_jaar integer, p_status text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.audit_aanmaken(p_company_id uuid, p_sjabloon text, p_titel text, p_jaar integer, p_status text) TO anon;
+GRANT EXECUTE ON FUNCTION public.audit_aanmaken(p_company_id uuid, p_sjabloon text, p_titel text, p_jaar integer, p_status text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.audit_aanmaken(p_company_id uuid, p_sjabloon text, p_titel text, p_jaar integer, p_status text) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.audit_bevinding_naar_actie(p_soort text, p_bron_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.audit_bevinding_naar_actie(p_soort text, p_bron_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.audit_bevinding_naar_actie(p_soort text, p_bron_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.audit_bevinding_naar_actie(p_soort text, p_bron_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.bedrijf_norm_overzicht(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.bedrijf_norm_overzicht(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.bedrijf_norm_overzicht(p_company_id uuid) TO service_role;

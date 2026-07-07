@@ -6,15 +6,18 @@ type Props = {
   value: number
   total: number
   size?: number
-  /** Kort label onder het percentage, bv. "afgerond". */
+  /** Kort label onder het middenlabel, bv. "afgerond". */
   label?: string
+  /** Overschrijft het percentage in het midden, bv. "7,8" voor een score. */
+  centerText?: string
 }
 
 // Speedometer-achtige voortgangsgauge: een 270°-boog met een neutrale track en
 // een accent-gefillde waardeboog (huisstijl-gradient), met het percentage groot
 // in het midden. De boog vult op bij het laden. Kleuren volledig token-gedreven
 // (--color-accent / --color-ink) — niets hardcoded.
-export default function Gauge({ value, total, size = 92, label }: Props) {
+export default function Gauge({ value, total, size = 92, label, centerText }: Props) {
+  const centerFont = size >= 80 ? 'text-xl' : size >= 64 ? 'text-base' : 'text-sm'
   const R = 40
   const CIRC = 2 * Math.PI * R
   const SWEEP = 0.75 // 270° zichtbaar, opening onderaan
@@ -57,7 +60,9 @@ export default function Gauge({ value, total, size = 92, label }: Props) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-xl font-semibold text-ink tabular-nums leading-none">{procent}%</span>
+        <span className={`${centerFont} font-semibold text-ink tabular-nums leading-none`}>
+          {centerText ?? `${procent}%`}
+        </span>
         {label && <span className="text-[10px] text-ink/40 mt-0.5">{label}</span>}
       </div>
     </div>

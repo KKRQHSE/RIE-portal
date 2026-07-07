@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import Gauge from './Gauge'
 import type { ToolboxSessiesOverzicht, ToolboxSessieRegel, ToolboxSessiePersoon, ToolboxOverzichtItem } from '@/lib/types'
 
 type Supa = ReturnType<typeof createClient>
@@ -178,11 +179,14 @@ function TargetKop({
         </div>
       </div>
 
-      {/* Kernboodschap: X van [target] gehouden dit jaar */}
-      <div className="flex flex-wrap items-baseline gap-x-2">
-        <span className="text-3xl font-semibold text-ink tabular-nums">{sessiesDitJaar}</span>
-        <span className="text-xl text-ink/30 tabular-nums">van {target}</span>
-        <span className="text-sm text-ink/60 ml-1">gehouden dit jaar</span>
+      {/* Kernboodschap: X van [target] gehouden dit jaar, met gauge */}
+      <div className="flex items-center gap-4">
+        <Gauge value={sessiesDitJaar} total={target} size={72} />
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <span className="text-3xl font-semibold text-ink tabular-nums">{sessiesDitJaar}</span>
+          <span className="text-xl text-ink/30 tabular-nums">van {target}</span>
+          <span className="text-sm text-ink/60 ml-1">gehouden dit jaar</span>
+        </div>
       </div>
 
       {/* Maanddekking */}

@@ -37,6 +37,15 @@ function parseDoelen(tekst: string | null | undefined): string[] {
   return bron.map(s => s.replace(/^[-*•\s]+/, '').trim()).filter(Boolean)
 }
 
+// Kwalitatief oordeel bij een tevredenheidsscore op schaal 1-10 (7,8 = erg goed).
+function tevredenheidLabel(score: number): string {
+  if (score >= 9) return 'uitstekend'
+  if (score >= 7.5) return 'erg goed'
+  if (score >= 6) return 'goed'
+  if (score >= 5) return 'voldoende'
+  return 'aandacht nodig'
+}
+
 function datumNL(iso: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -101,7 +110,7 @@ export default function DashboardClient({
   pvaRie = null,
 }: Props) {
   const {
-    te_beoordelen, prio_open, termijn, rie, inspecties,
+    pva, te_beoordelen, prio_open, termijn, rie, inspecties,
     inspectie_doel, toolbox_sessies, incidenten, norm_bijgewerkt, bewijs, instellingen,
   } = overzicht
   const cid = company.id
@@ -232,6 +241,17 @@ export default function DashboardClient({
             </div>
           </Tegel>
 
+          {/* Centrale actielijst — alle bronnen samen (los van PvA RI&E). */}
+          <Tegel titel="Centrale actielijst" href={`/${cid}/actielijst`}>
+            <div className="flex items-center gap-5">
+              <Gauge value={pva.afgerond} total={pva.totaal} />
+              <div>
+                <p className="text-sm font-medium text-ink">{pva.afgerond} van {pva.totaal} afgerond</p>
+                <p className="text-xs text-ink/40 mt-1">alle bronnen: RI&amp;E, inspectie, incident, audit, los</p>
+              </div>
+            </div>
+          </Tegel>
+
           {/* RI&E-geldigheid */}
           <Tegel titel="RI&E" href={`/${cid}/rie`}>
             {rie ? (
@@ -280,10 +300,13 @@ export default function DashboardClient({
                 <div className="flex-1 min-w-0 pr-4">
                   <p className="text-[11px] text-ink/40 mb-1">Doel per persoon</p>
                   {toolbox ? (
-                    <>
-                      <Ratio gedaan={toolbox.gedaan} doel={toolbox.doel} />
-                      <p className="text-xs text-ink/50 mt-0.5">{toolbox.pct ?? 0}% van de norm</p>
-                    </>
+                    <div className="flex items-center gap-2">
+                      <Gauge value={toolbox.gedaan} total={toolbox.doel} size={48} />
+                      <div className="min-w-0">
+                        <Ratio gedaan={toolbox.gedaan} doel={toolbox.doel} />
+                        <p className="text-[11px] text-ink/40 mt-0.5">van de norm</p>
+                      </div>
+                    </div>
                   ) : (
                     <p className="text-sm text-ink/40">—</p>
                   )}
@@ -313,9 +336,12 @@ export default function DashboardClient({
           {/* Inspectie-doelen per persoon */}
           {toonInspecties && inspectie_doel.personen.length > 0 && (
             <Tegel titel="Inspectie-doelen per persoon" href={`/${cid}/inspecties`}>
-              <div className="flex items-baseline gap-2 mb-2">
-                <Ratio gedaan={inspectie_doel.totaal_gedaan} doel={inspectie_doel.totaal_doel} />
-                <p className="text-xs text-ink/50">uitgevoerd dit jaar</p>
+              <div className="flex items-center gap-3 mb-3">
+                <Gauge value={inspectie_doel.totaal_gedaan} total={inspectie_doel.totaal_doel} size={56} />
+                <div>
+                  <Ratio gedaan={inspectie_doel.totaal_gedaan} doel={inspectie_doel.totaal_doel} />
+                  <p className="text-xs text-ink/50">uitgevoerd dit jaar</p>
+                </div>
               </div>
               <ul className="space-y-1">
                 {inspectie_doel.personen.map(p => (
@@ -407,33 +433,43 @@ export default function DashboardClient({
 
         <div className="grid sm:grid-cols-2 gap-5">
 
-          {/* Klanttevredenheid */}
+          {/* Klanttevredenheid — score als beoordeling op schaal 1-10. */}
           <Tegel titel="Klanttevredenheid">
-            <Rij kolommen={2}>
-              <Cijfer n={inst?.klachten_aantal ?? 0} label="klachten"
-                kleur={(inst?.klachten_aantal ?? 0) > 0 ? 'text-amber-600' : 'text-ink/30'} />
+            <div className="flex items-center gap-4">
+              <Gauge
+                value={inst?.tevredenheid_score ?? 0}
+                total={10}
+                size={76}
+                centerText={inst?.tevredenheid_score != null ? String(inst.tevredenheid_score).replace('.', ',') : '—'}
+                label="/ 10"
+              />
               <div className="min-w-0">
-                <p className="text-2xl font-semibold tabular-nums text-ink">
-                  {inst?.tevredenheid_score != null ? inst.tevredenheid_score : '—'}
+                {inst?.tevredenheid_score != null && (
+                  <p className="text-base font-semibold text-ink capitalize leading-tight">{tevredenheidLabel(inst.tevredenheid_score)}</p>
+                )}
+                <p className="text-xs text-ink/50 mt-0.5">
+                  {inst?.klachten_aantal ?? 0} {(inst?.klachten_aantal ?? 0) === 1 ? 'klacht' : 'klachten'}
                 </p>
-                <p className="text-xs text-ink/50 mt-0.5 leading-tight">meetscore</p>
               </div>
-            </Rij>
+            </div>
             {inst?.tevredenheid_toelichting && (
               <p className="text-xs text-ink/50 mt-3 whitespace-pre-wrap">{inst.tevredenheid_toelichting}</p>
             )}
           </Tegel>
 
-          {/* Audits */}
+          {/* Audits — voortgang interne audits als gauge. */}
           <Tegel titel="Audits">
-            <div className="space-y-1 text-sm">
-              <p className="text-ink">
-                <span className="font-semibold tabular-nums">
-                  {inst?.audit_intern_gedaan ?? 0}/{inst?.audit_intern_totaal ?? 0}
-                </span> interne audits
-              </p>
-              <p className="text-ink/70">Extern: {inst?.audit_extern_omschrijving || '—'}</p>
-              {inst?.audit_status && <p className="text-xs text-ink/50">Status: {inst.audit_status}</p>}
+            <div className="flex items-center gap-4">
+              <Gauge value={inst?.audit_intern_gedaan ?? 0} total={inst?.audit_intern_totaal ?? 0} size={64} />
+              <div className="min-w-0 space-y-1 text-sm">
+                <p className="text-ink">
+                  <span className="font-semibold tabular-nums">
+                    {inst?.audit_intern_gedaan ?? 0}/{inst?.audit_intern_totaal ?? 0}
+                  </span> interne audits
+                </p>
+                <p className="text-ink/70 truncate">Extern: {inst?.audit_extern_omschrijving || '—'}</p>
+                {inst?.audit_status && <p className="text-xs text-ink/50">Status: {inst.audit_status}</p>}
+              </div>
             </div>
           </Tegel>
 

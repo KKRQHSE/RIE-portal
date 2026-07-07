@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import type { DashboardAdminRegel } from '@/lib/types'
 import LogoutButton from './LogoutButton'
+import Gauge from './Gauge'
 
 function datumNL(iso: string | null): string {
   if (!iso) return '—'
@@ -71,14 +72,8 @@ export default function AdminDashboardClient({
                         {b.rie_status && <> · RI&amp;E {b.rie_status}</>}
                       </p>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-lg font-semibold text-ink tabular-nums">{b.pct}%</p>
-                      <p className="text-xs text-ink/40 tabular-nums">{b.pva_afgerond}/{b.pva_totaal}</p>
-                    </div>
-                  </div>
-                  {/* Dunne voortgangsbalk voor snel scannen */}
-                  <div className="h-1.5 rounded-full bg-ink/10 mt-3 overflow-hidden">
-                    <div className="h-full rounded-full bg-accent" style={{ width: `${b.pct}%` }} />
+                    <Gauge value={b.pva_afgerond} total={b.pva_totaal} size={56}
+                      label={`${b.pva_afgerond}/${b.pva_totaal}`} />
                   </div>
                   <div className="flex flex-wrap items-center gap-2 mt-3">
                     <Badge n={b.te_beoordelen} label="te beoordelen" />

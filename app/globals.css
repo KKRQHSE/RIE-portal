@@ -24,51 +24,52 @@
   border-radius: 0.5rem;
 }
 
-/* ---- Apple-stijl frosted-glass tegels ----
-   ALLE tint komt uit --color-accent (huisstijl) via color-mix; niets hardcoded,
-   dus het klopt per klant. De achtergrond geeft het glas iets om doorheen te
-   schijnen; zonder achtergrond is blur onzichtbaar. */
+/* ---- Apple-stijl frosted-glass tegels — fris & licht ----
+   Het accent (huisstijl) zit BEWUST NIET in de grote vlakken of de glas-tint:
+   oranje × grijs × blur werd modderbruin. De tegels zijn helder (bijna wit),
+   randen/schaduw zijn neutraal op basis van de --color-ink-token. Het accent
+   komt alleen scherp en klein terug (label-streepje in de component, en de
+   hover-rand hieronder). Niets hardcoded — alles via de huisstijl-tokens. */
 .glass-bg {
   background:
-    radial-gradient(125% 85% at 12% -5%,
-      color-mix(in srgb, var(--color-accent, #FF5200) 13%, transparent), transparent 58%),
-    radial-gradient(110% 75% at 105% 0%,
-      color-mix(in srgb, var(--color-accent, #FF5200) 8%, transparent), transparent 55%),
+    radial-gradient(120% 90% at 50% -10%,
+      rgba(255, 255, 255, 0.9), transparent 60%),
     var(--color-surface, #F1F2F4);
 }
 
 .glass-tile {
-  background: color-mix(in srgb, var(--color-accent, #FF5200) 7%, rgba(255, 255, 255, 0.62));
-  backdrop-filter: blur(16px) saturate(135%);
-  -webkit-backdrop-filter: blur(16px) saturate(135%);
-  border: 1px solid color-mix(in srgb, var(--color-accent, #FF5200) 16%, rgba(255, 255, 255, 0.55));
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(10px) saturate(110%);
+  -webkit-backdrop-filter: blur(10px) saturate(110%);
+  border: 1px solid color-mix(in srgb, var(--color-ink, #14161B) 8%, transparent);
   box-shadow:
-    0 1px 2px rgba(20, 22, 27, 0.04),
-    0 8px 24px -12px color-mix(in srgb, var(--color-accent, #FF5200) 22%, rgba(20, 22, 27, 0.18));
+    0 1px 2px color-mix(in srgb, var(--color-ink, #14161B) 5%, transparent),
+    0 10px 30px -16px color-mix(in srgb, var(--color-ink, #14161B) 24%, transparent);
 }
 
+/* Doorklikbare tegel: scherpe, dunne accentrand + iets meer lift bij hover.
+   Dit is de ENIGE plek waar het accent de rand raakt — vol, niet vermengd. */
 .glass-tile-hover:hover {
-  background: color-mix(in srgb, var(--color-accent, #FF5200) 11%, rgba(255, 255, 255, 0.66));
+  background: rgba(255, 255, 255, 0.86);
+  border-color: color-mix(in srgb, var(--color-accent, #FF5200) 55%, transparent);
   box-shadow:
-    0 2px 4px rgba(20, 22, 27, 0.05),
-    0 16px 36px -14px color-mix(in srgb, var(--color-accent, #FF5200) 30%, rgba(20, 22, 27, 0.22));
+    0 2px 4px color-mix(in srgb, var(--color-ink, #14161B) 6%, transparent),
+    0 18px 40px -18px color-mix(in srgb, var(--color-ink, #14161B) 30%, transparent);
 }
 
-/* Mobiel: backdrop-blur is zwaar op zwakke telefoons → lichtere, opaquere
-   variant met veel minder blur. Tint/rand/diepte blijven, dus nog steeds glas. */
+/* Mobiel: backdrop-blur is zwaar op zwakke telefoons → nog lichter en opaquer. */
 @media (max-width: 640px) {
   .glass-tile {
-    backdrop-filter: blur(6px) saturate(120%);
-    -webkit-backdrop-filter: blur(6px) saturate(120%);
-    background: color-mix(in srgb, var(--color-accent, #FF5200) 8%, rgba(255, 255, 255, 0.9));
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    background: rgba(255, 255, 255, 0.9);
   }
 }
 
-/* Geen backdrop-filter-ondersteuning → opaquere achtergrond zodat de tekst
-   leesbaar blijft (het blur-effect vervalt dan simpelweg). */
+/* Geen backdrop-filter-ondersteuning → opaquere achtergrond, blur vervalt. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass-tile {
-    background: color-mix(in srgb, var(--color-accent, #FF5200) 8%, rgba(255, 255, 255, 0.92));
+    background: rgba(255, 255, 255, 0.93);
   }
 }
 

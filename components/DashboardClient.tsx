@@ -43,7 +43,10 @@ function Tegel({
         href ? 'glass-tile-hover' : ''
       } ${urgent ? 'border-l-4 border-l-red-500' : ''}`}
     >
-      <p className="text-xs font-medium uppercase tracking-wide text-ink/40 mb-3">{titel}</p>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="h-3.5 w-0.5 rounded-full bg-accent shrink-0" aria-hidden="true" />
+        <p className="text-xs font-medium uppercase tracking-wide text-ink/40">{titel}</p>
+      </div>
       {children}
     </div>
   )

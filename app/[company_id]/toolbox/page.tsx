@@ -45,6 +45,7 @@ export default async function ToolboxPage({
       huisstijl={huisstijl}
       initialOverzicht={(overzicht ?? []) as ToolboxOverzichtItem[]}
       sessies={sessies as ToolboxSessiesOverzicht | null}
+      isAdmin={profile.role === 'admin'}
     />
   )
 }

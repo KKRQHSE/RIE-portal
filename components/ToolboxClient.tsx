@@ -18,12 +18,15 @@ const WAARSCHUWING =
   'terugzet naar centraal.'
 
 export default function ToolboxClient({
-  company, huisstijl = VEILIGE_HUISSTIJL, initialOverzicht, sessies,
+  company, huisstijl = VEILIGE_HUISSTIJL, initialOverzicht, sessies, isAdmin = false,
 }: {
   company: Company
   huisstijl?: HuisstijlView
   initialOverzicht: ToolboxOverzichtItem[]
   sessies: ToolboxSessiesOverzicht | null
+  // Koppelen/beheren en bewijs&export zijn beheerwerk: alleen voor de admin.
+  // De klant (KAM) ziet enkel het maandoverzicht.
+  isAdmin?: boolean
 }) {
   const [supabase] = useState<Supa>(() => createClient())
   const [view, setView] = useState<View>('maandoverzicht')
@@ -52,15 +55,18 @@ export default function ToolboxClient({
           <p className="text-sm text-ink/50 mt-0.5">Toolboxen</p>
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-4">
-          {tab('maandoverzicht', 'Maandoverzicht')}
-          {tab('toolboxen', 'Toolboxen')}
-          {tab('export', 'Bewijs & export')}
-        </div>
+        {isAdmin && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {tab('maandoverzicht', 'Maandoverzicht')}
+            {tab('toolboxen', 'Toolboxen')}
+            {tab('export', 'Bewijs & export')}
+          </div>
+        )}
 
         {fout && <p className="text-sm text-red-600 mb-3">{fout}</p>}
 
-        {view === 'maandoverzicht' ? (
+        {/* Niet-admin: altijd alleen het maandoverzicht, ongeacht de view-state. */}
+        {!isAdmin || view === 'maandoverzicht' ? (
           <ToolboxMaandoverzicht companyId={company.id} initial={sessies}
             gekoppeldeToolboxen={overzicht.filter(t => t.gekoppeld)} />
         ) : view === 'toolboxen' ? (

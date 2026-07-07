@@ -168,7 +168,7 @@ function TargetKop({
   return (
     <div className="glass-tile rounded-2xl p-5">
       <div className="flex items-center justify-between gap-3 mb-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-ink/40">Target · {jaar}</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-ink/40">Toolboxsessies · {jaar}</p>
         <div className="flex items-center gap-1 text-sm">
           <button type="button" onClick={() => onJaar(jaar - 1)} aria-label="Vorig jaar"
             className="min-h-[36px] min-w-[36px] rounded-full hover:bg-ink/5 text-ink/60">◀</button>
@@ -178,37 +178,40 @@ function TargetKop({
         </div>
       </div>
 
+      {/* Kernboodschap: X van [target] gehouden dit jaar */}
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <span className="text-3xl font-semibold text-ink tabular-nums">{sessiesDitJaar}</span>
+        <span className="text-xl text-ink/30 tabular-nums">van {target}</span>
+        <span className="text-sm text-ink/60 ml-1">gehouden dit jaar</span>
+      </div>
+
       {/* Maanddekking */}
-      <div className="flex items-center gap-1 mb-2" aria-hidden>
+      <div className="flex items-center gap-1 mt-4 mb-2" aria-hidden>
         {Array.from({ length: 12 }, (_, i) => (
           <span key={i} className={`h-2 flex-1 rounded-full ${i < maandenGedekt ? 'bg-accent' : 'bg-ink/10'}`} />
         ))}
       </div>
 
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="text-2xl font-semibold text-ink tabular-nums">{sessiesDitJaar}</span>
-        <span className="text-sm text-ink/60">
-          {sessiesDitJaar === 1 ? 'sessie' : 'sessies'} gehouden
-          {' · '}doel{' '}
-          {bewerk ? (
-            <span className="inline-flex items-center gap-1">
-              <input type="number" min={0} value={waarde} onChange={e => setWaarde(e.target.value)}
-                aria-label="Jaartarget" className="w-16 text-sm border border-ink/20 rounded px-2 py-1 bg-white" />
-              <button type="button" onClick={opslaan} disabled={bezig}
-                className="text-xs px-2 py-1 rounded-full bg-accent text-white hover:opacity-90 disabled:opacity-40">OK</button>
-              <button type="button" onClick={() => { setBewerk(false); setWaarde(String(target)) }}
-                className="text-xs px-2 py-1 rounded-full border border-ink/20 text-ink/60">×</button>
-            </span>
-          ) : (
-            <button type="button" onClick={() => setBewerk(true)}
-              className="font-medium text-ink underline decoration-dotted underline-offset-2 hover:text-accent">
-              {target}/jaar
-            </button>
-          )}
-        </span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${opTarget ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
-          {maandenGedekt} van 12 maanden
+          {maandenGedekt} van 12 maanden gedekt
         </span>
+        {bewerk ? (
+          <span className="inline-flex items-center gap-1">
+            <span className="text-xs text-ink/50">doel/jaar</span>
+            <input type="number" min={0} value={waarde} onChange={e => setWaarde(e.target.value)}
+              aria-label="Jaartarget" className="w-16 text-sm border border-ink/20 rounded px-2 py-1 bg-white" />
+            <button type="button" onClick={opslaan} disabled={bezig}
+              className="text-xs px-2 py-1 rounded-full bg-accent text-white hover:opacity-90 disabled:opacity-40">OK</button>
+            <button type="button" onClick={() => { setBewerk(false); setWaarde(String(target)) }}
+              className="text-xs px-2 py-1 rounded-full border border-ink/20 text-ink/60">×</button>
+          </span>
+        ) : (
+          <button type="button" onClick={() => setBewerk(true)}
+            className="text-xs text-ink/50 underline decoration-dotted underline-offset-2 hover:text-accent">
+            doel aanpassen
+          </button>
+        )}
       </div>
     </div>
   )

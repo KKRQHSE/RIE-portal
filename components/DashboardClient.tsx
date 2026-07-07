@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import type { Company, DashboardOverzicht } from '@/lib/types'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
-import ProgressRing from './ProgressRing'
+import Gauge from './Gauge'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
 
@@ -163,10 +163,9 @@ export default function DashboardClient({
           {/* Voortgang PvA */}
           <Tegel titel="Voortgang Plan van Aanpak" href={`/${cid}/pva`}>
             <div className="flex items-center gap-5">
-              <ProgressRing value={pva.afgerond} total={pva.totaal} />
+              <Gauge value={pva.afgerond} total={pva.totaal} />
               <div>
-                <p className="text-2xl font-semibold text-ink">{pva.pct}%</p>
-                <p className="text-sm text-ink/50">{pva.afgerond} van {pva.totaal} afgerond</p>
+                <p className="text-sm font-medium text-ink">{pva.afgerond} van {pva.totaal} afgerond</p>
                 <p className="text-xs text-ink/40 mt-1">
                   {pva.open} open · {pva.in_behandeling} in behandeling
                 </p>

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { PvaItem, Company, Persoon } from '@/lib/types'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import PvaCard from './PvaCard'
-import ProgressRing from './ProgressRing'
+import Gauge from './Gauge'
 import FilterBar from './FilterBar'
 import LogoutButton from './LogoutButton'
 import NaamVragen from './NaamVragen'
@@ -56,7 +56,6 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
 
   const afgerond = items.filter(i => i.status === 'Afgerond').length
   const hoogOpen = items.filter(i => i.prio === 'Hoog' && i.status !== 'Afgerond').length
-  const pct = items.length > 0 ? Math.round((afgerond / items.length) * 100) : 0
 
   // Actiehouders met openstaande acties (voor de handmatige herinnering-keuze).
   // De eigenlijke verzendbaarheid (e-mail, geldige link, rem) bepaalt de server.
@@ -100,10 +99,9 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
 
         {/* Overzicht: voortgang + openstaande acties bovenaan */}
         <div className="bg-white rounded-lg shadow-sm p-5 mb-6 flex flex-wrap items-center gap-5">
-          <ProgressRing value={afgerond} total={items.length} />
+          <Gauge value={afgerond} total={items.length} />
           <div className="min-w-0">
-            <p className="text-2xl font-semibold text-ink">{pct}%</p>
-            <p className="text-sm text-ink/50">{afgerond} van {items.length} acties afgerond</p>
+            <p className="text-sm font-medium text-ink">{afgerond} van {items.length} acties afgerond</p>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs">
               <span className="text-ink/60">{items.length - afgerond} open</span>
               {hoogOpen > 0 && <span className="text-red-600 font-medium">{hoogOpen} hoog nog open</span>}

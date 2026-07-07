@@ -551,6 +551,8 @@ export type DashboardInstelling = {
   audit_status: string | null
   doelstelling_tekst: string | null
   iso_taken_tekst: string | null
+  if_dit_jaar: number | null
+  if_vorig_jaar: number | null
   updated_at: string
 }
 

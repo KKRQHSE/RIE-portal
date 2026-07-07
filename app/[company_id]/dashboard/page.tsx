@@ -36,6 +36,7 @@ export default async function CompanyDashboardPage({
     { data: toolboxModule },
     { data: incidentenModule },
     { data: toolboxDash },
+    { data: ifRij },
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
@@ -51,6 +52,9 @@ export default async function CompanyDashboardPage({
     moduleActief('incidenten'),
     // Toolbox naar-rato (doel-per-persoon) hergebruikt de al-geteste toolbox_dashboard-RPC.
     supabase.rpc('toolbox_dashboard', { p_company_id: company_id }),
+    // IF-getal (Incident Frequency) — RLS geeft alleen de eigen-bedrijf-rij.
+    supabase.from('bedrijf_dashboard_instelling')
+      .select('if_dit_jaar, if_vorig_jaar').eq('company_id', company_id).maybeSingle(),
     haalHuisstijl(company_id),
   ])
 
@@ -77,6 +81,8 @@ export default async function CompanyDashboardPage({
       toonIncidenten={!!incidentenModule}
       toolbox={toolboxBedrijf}
       magBewerken={magBeheren}
+      ifDitJaar={(ifRij as { if_dit_jaar: number | null } | null)?.if_dit_jaar ?? null}
+      ifVorigJaar={(ifRij as { if_vorig_jaar: number | null } | null)?.if_vorig_jaar ?? null}
     />
   )
 }

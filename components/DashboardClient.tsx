@@ -19,6 +19,8 @@ type Props = {
   toonIncidenten?: boolean
   toolbox?: ToolboxNaarRato | null
   magBewerken?: boolean
+  ifDitJaar?: number | null
+  ifVorigJaar?: number | null
 }
 
 function datumNL(iso: string | null): string {
@@ -81,7 +83,7 @@ function Ratio({ gedaan, doel, kleur }: { gedaan: number; doel: number; kleur?: 
 export default function DashboardClient({
   company, overzicht, huisstijl = VEILIGE_HUISSTIJL,
   toonInspecties = false, toonToolbox = false, toonIncidenten = false,
-  toolbox = null, magBewerken = false,
+  toolbox = null, magBewerken = false, ifDitJaar = null, ifVorigJaar = null,
 }: Props) {
   const {
     pva, te_beoordelen, prio_open, termijn, rie, inspecties,
@@ -114,6 +116,38 @@ export default function DashboardClient({
               )}
             </div>
           )}
+        </div>
+
+        {/* IF-getal (Incident Frequency) — prominent bovenaan. Puur invoer. */}
+        <div className="glass-tile rounded-3xl p-6 mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="h-3.5 w-0.5 rounded-full bg-accent shrink-0" aria-hidden="true" />
+            <p
+              className="text-xs font-medium uppercase tracking-wide text-ink/40 cursor-help"
+              title="Incident Frequency: het aantal verzuimongevallen per miljoen gewerkte uren. Een veiligheidskengetal — lager is beter."
+            >
+              IF-getal · Incident Frequency
+            </p>
+          </div>
+          <div className="flex flex-wrap items-end gap-x-10 gap-y-4">
+            <div>
+              <p className="text-4xl font-semibold text-ink tabular-nums leading-none">
+                {ifDitJaar != null ? ifDitJaar : '—'}
+              </p>
+              <p className="text-xs text-ink/50 mt-1.5">Dit jaar</p>
+            </div>
+            <div>
+              <p className="text-3xl font-semibold text-ink/50 tabular-nums leading-none">
+                {ifVorigJaar != null ? ifVorigJaar : '—'}
+              </p>
+              <p className="text-xs text-ink/40 mt-1.5">Vorig jaar</p>
+            </div>
+            {ifDitJaar == null && ifVorigJaar == null && magBewerken && (
+              <Link href={`/${cid}/dashboard/bedrijfsvoering`} className="text-xs text-accent hover:underline mb-1">
+                Vul het IF-getal in →
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Te beoordelen — de inbox. Alleen prominent als er iets wacht. */}

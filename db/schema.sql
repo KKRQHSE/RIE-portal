@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-07T08:02:19.202Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-07T09:22:02.764Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -51,7 +51,9 @@ CREATE TABLE public.bedrijf_dashboard_instelling (
   audit_status text,
   doelstelling_tekst text,
   iso_taken_tekst text,
-  updated_at timestamp with time zone DEFAULT now() NOT NULL
+  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+  if_dit_jaar numeric(6,2),
+  if_vorig_jaar numeric(6,2)
 );
 
 CREATE TABLE public.bedrijf_doelstelling (
@@ -1717,7 +1719,7 @@ begin
   return v;
 end;
 $function$;
-CREATE OR REPLACE FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text)
+CREATE OR REPLACE FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text, p_if_dit_jaar numeric DEFAULT NULL::numeric, p_if_vorig_jaar numeric DEFAULT NULL::numeric)
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -1733,12 +1735,13 @@ begin
   insert into bedrijf_dashboard_instelling (
     company_id, klachten_aantal, tevredenheid_score, tevredenheid_toelichting,
     audit_intern_gedaan, audit_intern_totaal, audit_extern_omschrijving, audit_status,
-    doelstelling_tekst, iso_taken_tekst, updated_at
+    doelstelling_tekst, iso_taken_tekst, if_dit_jaar, if_vorig_jaar, updated_at
   ) values (
     p_company_id, coalesce(p_klachten_aantal, 0), p_tevredenheid_score, nullif(btrim(coalesce(p_tevredenheid_toelichting, '')), ''),
     coalesce(p_audit_intern_gedaan, 0), coalesce(p_audit_intern_totaal, 0),
     nullif(btrim(coalesce(p_audit_extern_omschrijving, '')), ''), nullif(btrim(coalesce(p_audit_status, '')), ''),
-    nullif(btrim(coalesce(p_doelstelling_tekst, '')), ''), nullif(btrim(coalesce(p_iso_taken_tekst, '')), ''), now()
+    nullif(btrim(coalesce(p_doelstelling_tekst, '')), ''), nullif(btrim(coalesce(p_iso_taken_tekst, '')), ''),
+    p_if_dit_jaar, p_if_vorig_jaar, now()
   )
   on conflict (company_id) do update set
     klachten_aantal           = excluded.klachten_aantal,
@@ -1750,6 +1753,8 @@ begin
     audit_status              = excluded.audit_status,
     doelstelling_tekst        = excluded.doelstelling_tekst,
     iso_taken_tekst           = excluded.iso_taken_tekst,
+    if_dit_jaar               = excluded.if_dit_jaar,
+    if_vorig_jaar             = excluded.if_vorig_jaar,
     updated_at                = now();
 end;
 $function$;
@@ -4472,10 +4477,10 @@ GRANT EXECUTE ON FUNCTION public.create_deellink(p_persoon_id uuid, p_vervalt_op
 REVOKE EXECUTE ON FUNCTION public.dashboard_admin_overzicht() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dashboard_admin_overzicht() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.dashboard_admin_overzicht() TO service_role;
-REVOKE EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text) TO anon;
-GRANT EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text, p_if_dit_jaar numeric, p_if_vorig_jaar numeric) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text, p_if_dit_jaar numeric, p_if_vorig_jaar numeric) TO anon;
+GRANT EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text, p_if_dit_jaar numeric, p_if_vorig_jaar numeric) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text, p_if_dit_jaar numeric, p_if_vorig_jaar numeric) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.dashboard_overzicht(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dashboard_overzicht(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.dashboard_overzicht(p_company_id uuid) TO service_role;

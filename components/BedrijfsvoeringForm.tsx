@@ -36,6 +36,8 @@ export default function BedrijfsvoeringForm({
   const [auditStatus, setAuditStatus] = useState(initial?.audit_status ?? '')
   const [doelstelling, setDoelstelling] = useState(initial?.doelstelling_tekst ?? '')
   const [isoTaken, setIsoTaken] = useState(initial?.iso_taken_tekst ?? '')
+  const [ifDitJaar, setIfDitJaar] = useState(initial?.if_dit_jaar != null ? String(initial.if_dit_jaar) : '')
+  const [ifVorigJaar, setIfVorigJaar] = useState(initial?.if_vorig_jaar != null ? String(initial.if_vorig_jaar) : '')
 
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
@@ -57,6 +59,8 @@ export default function BedrijfsvoeringForm({
         p_audit_status: auditStatus,
         p_doelstelling_tekst: doelstelling,
         p_iso_taken_tekst: isoTaken,
+        p_if_dit_jaar: numOrNull(ifDitJaar),
+        p_if_vorig_jaar: numOrNull(ifVorigJaar),
       })
       if (error) {
         setFout('Opslaan mislukt. Probeer het opnieuw.')
@@ -108,6 +112,24 @@ export default function BedrijfsvoeringForm({
               <label className={label} htmlFor="toelichting">Toelichting</label>
               <textarea id="toelichting" rows={2} className={`${veld} min-h-[72px]`}
                 value={toelichting} onChange={e => setToelichting(e.target.value)} />
+            </div>
+          </div>
+
+          {/* IF-getal (Incident Frequency) */}
+          <div className={kaart}>
+            <p className="text-xs font-medium uppercase tracking-wide text-ink/40">IF-getal (Incident Frequency)</p>
+            <p className="text-xs text-ink/50 -mt-2">Aantal verzuimongevallen per miljoen gewerkte uren. Puur invoer, geen berekening.</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={label} htmlFor="ifDitJaar">IF dit jaar</label>
+                <input id="ifDitJaar" type="number" step="0.01" inputMode="decimal" className={veld}
+                  placeholder="bv. 0" value={ifDitJaar} onChange={e => setIfDitJaar(e.target.value)} />
+              </div>
+              <div>
+                <label className={label} htmlFor="ifVorigJaar">IF vorig jaar</label>
+                <input id="ifVorigJaar" type="number" step="0.01" inputMode="decimal" className={veld}
+                  placeholder="bv. 2.5" value={ifVorigJaar} onChange={e => setIfVorigJaar(e.target.value)} />
+              </div>
             </div>
           </div>
 

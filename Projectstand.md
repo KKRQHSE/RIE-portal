@@ -121,6 +121,7 @@ Werkende Next.js/Supabase-app, in twee browsertest-ronden groen op de kritieke p
 - Testen op twee niveaus: code-checks door de codeerhulp, visueel en gedrag door browsertest.
 - Veilige standaard: nieuwe functies breken bestaande werking nooit; opt-in.
 - Nieuwe per-bedrijf/admin-RPC's krijgen standaard géén anon/PUBLIC-EXECUTE — alleen `authenticated` + `service_role`, guards altijd null-veilig (`coalesce(..., false)`); token-flows zijn de bewuste uitzondering (Beslissing 62).
+- Communicatie- en werkstijl (toon nuchter/direct, kort en scanbaar, Nederlands, eerlijk, werkende code): vast uitgangspunt voor al het werk, zie Beslissing 64.
 
 ---
 

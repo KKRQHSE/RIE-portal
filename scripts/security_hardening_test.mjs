@@ -120,14 +120,15 @@ async function run(pgc) {
   const clientA = await maakGebruiker('A', aCompany, 'client')
   const adminClient = await maakGebruiker('ADMIN', null, 'admin')
 
-  // Admin maakt een link-toolbox (geen video/quiz vereist) en A koppelt hem.
+  // Admin maakt een link-toolbox (geen video/quiz vereist) en koppelt hem aan A.
+  // Koppelen is admin-werk sinds 0040; een KAM kan dit niet meer zelf.
   const { data: tbId } = await adminClient.rpc('centrale_toolbox_opslaan', {
     p_id: null, p_titel: 'SECTEST_tb', p_tekst: 'x', p_video_url: null,
     p_vereist_video: false, p_vereist_quiz: false, p_quiz_slaaggrens: 70,
     p_quiz_uitleg_modus: 'aan_eind', p_toegang: 'link', p_volgorde: 999,
   })
   if (tbId) toolboxIds.push(tbId)
-  await clientA.rpc('toolbox_koppelen', { p_company_id: aCompany, p_toolbox_id: tbId })
+  await adminClient.rpc('toolbox_koppelen', { p_company_id: aCompany, p_toolbox_id: tbId })
   const { data: fgId } = await clientA.rpc('functiegroep_opslaan', { p_id: null, p_company_id: aCompany, p_naam: 'SECTEST_groep', p_volgorde: 1 })
   const { data: p1 } = await admin.from('personen').insert({ company_id: aCompany, naam: 'SECTEST_P1', status: 'actief' }).select('id').single()
   const { data: token } = await clientA.rpc('create_deellink', { p_persoon_id: p1.id })
@@ -175,6 +176,12 @@ async function run(pgc) {
   {
     const { data, error } = await clientA.rpc('toolbox_bewijs_overzicht', { p_company_id: aCompany, p_van: `${y}-01-01`, p_tot: `${y}-12-31` })
     check('KAM A kan export nog gebruiken (regressie 0021)', !error && Array.isArray(data), error?.message)
+  }
+  {
+    // 0040: koppelen is géén KAM-werk meer. Bewust hier, naast de regressiechecks,
+    // zodat een latere verruiming van de guard direct opvalt.
+    const { error } = await clientA.rpc('toolbox_koppelen', { p_company_id: aCompany, p_toolbox_id: tbId })
+    check('KAM A kan NIET meer koppelen (admin-only, 0040)', !!error && /beheerders/i.test(error.message || ''), error?.message ?? 'GEEN fout!')
   }
   {
     const { data, error } = await adminClient.rpc('dashboard_admin_overzicht')

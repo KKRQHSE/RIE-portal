@@ -110,10 +110,10 @@ async function run() {
     check('klant A kan niet direct in centrale_toolbox schrijven (RLS)', !!error)
   }
 
-  // A richt zijn bedrijf in: functiegroep + doel + koppelen.
+  // A richt zijn bedrijf in: functiegroep + doel. Koppelen is admin-werk (0040).
   const { data: fgId } = await clientA.rpc('functiegroep_opslaan', { p_id: null, p_company_id: aCompany, p_naam: 'TBTEST_groep', p_volgorde: 1 })
   await clientA.rpc('doelstelling_zetten', { p_company_id: aCompany, p_functiegroep_id: fgId, p_doel_per_jaar: 12 })
-  await clientA.rpc('toolbox_koppelen', { p_company_id: aCompany, p_toolbox_id: tbId })
+  await adminClient.rpc('toolbox_koppelen', { p_company_id: aCompany, p_toolbox_id: tbId })
 
   // Personen: P1 (instroom 1 juli), P2 (uitgestroomd vorig jaar). Beide in groep.
   const y = new Date().getUTCFullYear()
@@ -176,7 +176,7 @@ async function run() {
       p_quiz_uitleg_modus: 'aan_eind', p_toegang: 'link', p_volgorde: 998,
     })
     if (tbVideo) toolboxIds.push(tbVideo)
-    await clientA.rpc('toolbox_koppelen', { p_company_id: aCompany, p_toolbox_id: tbVideo })
+    await adminClient.rpc('toolbox_koppelen', { p_company_id: aCompany, p_toolbox_id: tbVideo })
     const { error } = await anon.rpc('toolbox_afronden_token', { p_token: token, p_toolbox_id: tbVideo, p_video_bekeken: false, p_quiz_antwoorden: [], p_naam_bevestigd: true, p_handtekening: 'data:image/png;base64,CCCC' })
     check('server weigert afronden zonder gehaalde video (vereist_video)', !!error && /video.*bekeken/i.test(error.message || ''), error?.message)
   }
@@ -203,6 +203,32 @@ async function run() {
   {
     const { error } = await clientB.rpc('toolbox_koppelen', { p_company_id: aCompany, p_toolbox_id: tbId })
     check('B kan voor A geen toolbox koppelen', !!error)
+  }
+
+  // ADMIN-ONLY BEHEER (0040): koppelen/afwijken is beheerwerk. Een KAM mag het niet
+  // meer, ook niet voor zijn EIGEN bedrijf — de UI verbergt het al, de server nu ook.
+  // Let op: dit is een andere grens dan cross-company hierboven. Daar weigert de
+  // server omdat het een vreemd bedrijf is; hier omdat de rol niet volstaat.
+  {
+    const beheerRpcs = [
+      ['toolbox_koppelen', { p_company_id: aCompany, p_toolbox_id: tbId }],
+      ['toolbox_ontkoppelen', { p_company_id: aCompany, p_toolbox_id: tbId }],
+      ['toolbox_uitzetten', { p_company_id: aCompany, p_toolbox_id: tbId }],
+      ['toolbox_terug_naar_centraal', { p_company_id: aCompany, p_toolbox_id: tbId }],
+      ['toolbox_lokaal_aanpassen', { p_company_id: aCompany, p_toolbox_id: tbId, p_lokale_titel: 'x', p_lokale_tekst: 'x', p_lokale_video_url: null }],
+    ]
+    for (const [naam, params] of beheerRpcs) {
+      const { error } = await clientA.rpc(naam, params)
+      check(`KAM A mag ${naam} niet meer (admin-only)`, !!error && /beheerders/i.test(error.message || ''), error?.message ?? 'GEEN fout!')
+    }
+  }
+  {
+    // Positieve tegenhanger: de admin kan het nog wél, en de koppeling van A staat
+    // er nog (de geweigerde ontkoppel-poging hierboven heeft niets gesloopt).
+    const { error } = await adminClient.rpc('toolbox_koppelen', { p_company_id: aCompany, p_toolbox_id: tbId })
+    check('admin kan nog wel koppelen voor A', !error, error?.message)
+    const { data } = await clientA.rpc('bedrijf_toolbox_overzicht', { p_company_id: aCompany })
+    check('KAM A ziet zijn gekoppelde toolbox nog (lezen blijft)', !!data?.find(t => t.toolbox_id === tbId)?.gekoppeld)
   }
 
   // NAAR-RATO: P1 half jaar → half doel; P2 uitgestroomd → uit de noemer.

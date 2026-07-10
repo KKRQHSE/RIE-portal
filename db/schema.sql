@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-07T11:12:23.295Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-10T07:02:09.494Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -4172,7 +4172,7 @@ CREATE OR REPLACE FUNCTION public.toolbox_koppelen(p_company_id uuid, p_toolbox_
  SET search_path TO 'public'
 AS $function$
 begin
-  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not is_admin() then raise exception 'Alleen voor beheerders'; end if;
   if not exists (select 1 from centrale_toolbox where id = p_toolbox_id and gearchiveerd_op is null) then
     raise exception 'Toolbox niet gevonden of gearchiveerd';
   end if;
@@ -4188,7 +4188,7 @@ CREATE OR REPLACE FUNCTION public.toolbox_lokaal_aanpassen(p_company_id uuid, p_
 AS $function$
 declare v_versie integer;
 begin
-  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not is_admin() then raise exception 'Alleen voor beheerders'; end if;
   if coalesce(btrim(p_lokale_tekst),'') = '' then raise exception 'Lokale tekst is verplicht'; end if;
   select versie into v_versie from centrale_toolbox where id = p_toolbox_id and gearchiveerd_op is null;
   if v_versie is null then raise exception 'Toolbox niet gevonden'; end if;
@@ -4213,7 +4213,7 @@ CREATE OR REPLACE FUNCTION public.toolbox_ontkoppelen(p_company_id uuid, p_toolb
  SET search_path TO 'public'
 AS $function$
 begin
-  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not is_admin() then raise exception 'Alleen voor beheerders'; end if;
   delete from bedrijf_toolbox where company_id = p_company_id and toolbox_id = p_toolbox_id;
 end;
 $function$;
@@ -4371,7 +4371,7 @@ CREATE OR REPLACE FUNCTION public.toolbox_terug_naar_centraal(p_company_id uuid,
  SET search_path TO 'public'
 AS $function$
 begin
-  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not is_admin() then raise exception 'Alleen voor beheerders'; end if;
   delete from bedrijf_toolbox_afwijking where company_id = p_company_id and toolbox_id = p_toolbox_id;
 end;
 $function$;
@@ -4383,7 +4383,7 @@ CREATE OR REPLACE FUNCTION public.toolbox_uitzetten(p_company_id uuid, p_toolbox
 AS $function$
 declare v_versie integer;
 begin
-  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not is_admin() then raise exception 'Alleen voor beheerders'; end if;
   select versie into v_versie from centrale_toolbox where id = p_toolbox_id and gearchiveerd_op is null;
   if v_versie is null then raise exception 'Toolbox niet gevonden'; end if;
   if not exists (select 1 from bedrijf_toolbox where company_id = p_company_id and toolbox_id = p_toolbox_id) then

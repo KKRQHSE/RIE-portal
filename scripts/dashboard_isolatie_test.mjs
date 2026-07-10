@@ -69,7 +69,9 @@ function check(naam, ok, detail) {
   console.log(`${ok ? 'PASS' : 'FAIL'} — ${naam}${detail ? ` (${detail})` : ''}`)
 }
 
-// Alle 10 parameters van dashboard_instelling_zetten, met overschrijfbare waarden.
+// Alle 12 parameters van dashboard_instelling_zetten, met overschrijfbare waarden.
+// De laatste twee (IF-getal, migratie 0036) hebben een default null, zodat een
+// oudere frontend die er 10 stuurt blijft werken.
 function zetArgs(companyId, over = {}) {
   return {
     p_company_id: companyId,
@@ -82,6 +84,8 @@ function zetArgs(companyId, over = {}) {
     p_audit_status: 'gepland',
     p_doelstelling_tekst: 'DASHTEST_doel',
     p_iso_taken_tekst: 'DASHTEST_iso',
+    p_if_dit_jaar: 3.25,
+    p_if_vorig_jaar: 5.5,
     ...over,
   }
 }
@@ -146,6 +150,33 @@ async function run() {
     check('A ziet eigen bedrijfsvoering (positieve controle)',
       !error && (data?.length ?? 0) === 1 && data[0].audit_status === 'gepland',
       error ? error.message : `${data?.length ?? '?'} rijen`)
+  }
+
+  // --- IF-getal (migratie 0036): round-trip. Puur invoer, geen berekening. ---
+  {
+    const { data, error } = await clientA.from('bedrijf_dashboard_instelling')
+      .select('if_dit_jaar, if_vorig_jaar').eq('company_id', aId).single()
+    check('IF-getal dit jaar bewaard zoals ingevoerd', !error && Number(data?.if_dit_jaar) === 3.25, `${data?.if_dit_jaar}`)
+    check('IF-getal vorig jaar bewaard zoals ingevoerd', Number(data?.if_vorig_jaar) === 5.5, `${data?.if_vorig_jaar}`)
+  }
+  {
+    // Het dashboard leest deze twee kolommen rechtstreeks (dashboard/page.tsx),
+    // dus RLS is hier de enige afscherming.
+    const { data } = await clientA.from('bedrijf_dashboard_instelling')
+      .select('if_dit_jaar').eq('company_id', bId)
+    check('A ziet het IF-getal van B niet', (data?.length ?? 0) === 0, `${data?.length ?? '?'} rijen`)
+  }
+  {
+    // Achterwaartse compatibiliteit: de twee IF-params hebben default null, dus
+    // een aanroep met de oude 10 argumenten mag niet stuk.
+    const oud = zetArgs(aId)
+    delete oud.p_if_dit_jaar
+    delete oud.p_if_vorig_jaar
+    const { error } = await clientA.rpc('dashboard_instelling_zetten', oud)
+    check('RPC accepteert nog de oude 10 argumenten (default null)', !error, error?.message)
+    const { data } = await clientA.from('bedrijf_dashboard_instelling')
+      .select('if_dit_jaar').eq('company_id', aId).single()
+    check('Weglaten van de IF-params wist het getal (expliciet null)', data?.if_dit_jaar === null, `${data?.if_dit_jaar}`)
   }
 
   // --- Lezen: A mag de velden van B NIET zien (0 rijen via RLS) ---

@@ -62,6 +62,7 @@ if (!SERVICE) {
 }
 
 const admin = createClient(URL, SERVICE, { auth: { persistSession: false, autoRefreshToken: false } })
+const anon = createClient(URL, ANON, { auth: { persistSession: false, autoRefreshToken: false } })
 
 const TS = Date.now()
 const PW = 'Insptest!' + TS
@@ -166,7 +167,7 @@ async function run() {
   const A = await maakBedrijf('A')
   const B = await maakBedrijf('B')
   const clientA = await maakGebruiker('A', A.companyId)
-  await maakGebruiker('B', B.companyId) // bewijst dat B echt een geldige user is
+  const clientB = await maakGebruiker('B', B.companyId)
 
   // --- Positieve controle: A ziet zijn EIGEN sjabloon wel ---
   {
@@ -399,6 +400,120 @@ async function run() {
       .select('doel_per_jaar').eq('company_id', B.companyId).eq('persoon_id', B.persoonId).single()
     check('B-inspectie-doel bleef ongewijzigd na aanvallen van A', !!data && data.doel_per_jaar === 7)
   }
+
+  // ===== FOTO'S BIJ DE INSPECTIE (migratie 0045) =====
+  // Twee niveaus: bevinding_id null = bij de inspectie, gezet = bij dat punt.
+  {
+    const { data, error } = await clientA.rpc('inspectie_foto_pad', {
+      p_inspectie_id: A.inspectieId, p_bevinding_id: null, p_bestandsnaam: 'werkplek.JPG',
+    })
+    check('A reserveert een pad voor een inspectiefoto (positieve controle)', !error && !!data?.pad, error?.message)
+    // Het pad is bedrijf-geprefixt: dat is wat de storage-RLS afdwingt.
+    check('pad begint met het eigen company_id', data?.pad?.startsWith(`${A.companyId}/${A.inspectieId}/`), data?.pad)
+    check('extensie wordt genormaliseerd naar kleine letters', data?.pad?.endsWith('.jpg'), data?.pad)
+  }
+  {
+    const { data, error } = await clientA.rpc('inspectie_foto_pad', {
+      p_inspectie_id: A.inspectieId, p_bevinding_id: A.bevindingId, p_bestandsnaam: 'punt.jpg',
+    })
+    check('A reserveert een pad op bevindingniveau', !error && !!data?.pad, error?.message)
+  }
+
+  // Cross-company: A mag niets met de inspectie van B.
+  {
+    const { error } = await clientA.rpc('inspectie_foto_pad', {
+      p_inspectie_id: B.inspectieId, p_bevinding_id: null, p_bestandsnaam: 'hack.jpg',
+    })
+    check('A kan geen pad reserveren op de inspectie van B', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+  {
+    const { error } = await clientA.rpc('inspectie_foto_registreren', {
+      p_inspectie_id: B.inspectieId, p_bevinding_id: null, p_pad: `${B.companyId}/${B.inspectieId}/x.jpg`,
+      p_bestandsnaam: 'hack.jpg', p_type: 'image/jpeg', p_grootte: 10,
+    })
+    check('A kan geen foto registreren bij B', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+  // Een bevinding van B hangen aan een inspectie van A moet stuklopen.
+  {
+    const { error } = await clientA.rpc('inspectie_foto_pad', {
+      p_inspectie_id: A.inspectieId, p_bevinding_id: B.bevindingId, p_bestandsnaam: 'x.jpg',
+    })
+    check('bevinding van B kan niet aan inspectie van A gehangen worden', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+  // Padvervalsing: registreren met een pad buiten <company>/<inspectie>/.
+  {
+    const { error } = await clientA.rpc('inspectie_foto_registreren', {
+      p_inspectie_id: A.inspectieId, p_bevinding_id: null, p_pad: `${B.companyId}/${B.inspectieId}/gestolen.jpg`,
+      p_bestandsnaam: 'x.jpg', p_type: 'image/jpeg', p_grootte: 10,
+    })
+    check('vervalst opslagpad wordt geweigerd', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+  {
+    const { error } = await anon.rpc('inspectie_foto_pad', {
+      p_inspectie_id: A.inspectieId, p_bevinding_id: null, p_bestandsnaam: 'x.jpg',
+    })
+    check('anon kan geen pad reserveren (EXECUTE ingetrokken)', !!error)
+  }
+  // De interne helper is voor niemand aanroepbaar behalve service_role.
+  {
+    const { error } = await clientA.rpc('inspectie_foto_context', {
+      p_inspectie_id: A.inspectieId, p_bevinding_id: null, p_moet_lopen: false,
+    })
+    check('interne helper inspectie_foto_context is niet aanroepbaar', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+
+  // Registreren + lezen + isolatie van de rij zelf.
+  let fotoId = null
+  {
+    const pad = `${A.companyId}/${A.inspectieId}/INSPTEST_foto.jpg`
+    const { data, error } = await clientA.rpc('inspectie_foto_registreren', {
+      p_inspectie_id: A.inspectieId, p_bevinding_id: A.bevindingId, p_pad: pad,
+      p_bestandsnaam: 'INSPTEST_foto.jpg', p_type: 'image/jpeg', p_grootte: 1234,
+    })
+    fotoId = data
+    check('A registreert een foto bij zijn bevinding (positieve controle)', !error && !!data, error?.message)
+  }
+  {
+    const { data } = await clientA.from('inspectie_foto').select('id, bevinding_id').eq('id', fotoId)
+    check('A leest zijn eigen foto-rij', (data?.length ?? 0) === 1 && data[0].bevinding_id === A.bevindingId)
+  }
+  {
+    const { data } = await clientB.from('inspectie_foto').select('id').eq('id', fotoId)
+    check('B ziet de foto van A niet (RLS)', (data?.length ?? 0) === 0, `${data?.length ?? '?'} rijen`)
+  }
+  {
+    const { data } = await anon.from('inspectie_foto').select('id')
+    check('anon ziet geen foto-rijen', (data?.length ?? 0) === 0, `${data?.length ?? '?'} rijen`)
+  }
+  {
+    const { error } = await clientA.from('inspectie_foto').insert({
+      inspectie_id: A.inspectieId, company_id: A.companyId, storage_pad: 'x/y.jpg',
+    })
+    check('directe insert in inspectie_foto wordt geweigerd (geen write-policy)', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+  {
+    const { error } = await clientB.rpc('inspectie_foto_verwijderen', { p_foto_id: fotoId })
+    check('B kan de foto van A niet verwijderen', !!error, error ? 'geweigerd' : 'GEEN fout!')
+  }
+
+  // Bevroren na afronden: geen foto's meer bij, en geen foto's meer af.
+  {
+    await clientA.rpc('inspectie_afronden', { p_inspectie_id: A.inspectieId, p_conclusie: 'INSPTEST_klaar' })
+    {
+      const { error } = await clientA.rpc('inspectie_foto_pad', {
+        p_inspectie_id: A.inspectieId, p_bevinding_id: null, p_bestandsnaam: 'na.jpg',
+      })
+      check('geen nieuwe foto bij een AFGERONDE inspectie', !!error && /afgerond/i.test(error.message || ''), error?.message)
+    }
+    {
+      const { error } = await clientA.rpc('inspectie_foto_verwijderen', { p_foto_id: fotoId })
+      check('foto van een AFGERONDE inspectie kan niet weg', !!error && /afgerond/i.test(error.message || ''), error?.message)
+    }
+    {
+      const { data } = await admin.from('inspectie_foto').select('id').eq('id', fotoId)
+      check('de foto staat er na die pogingen nog steeds', (data?.length ?? 0) === 1)
+    }
+  }
 }
 
 async function cleanup() {
@@ -406,6 +521,7 @@ async function cleanup() {
   if (companyIds.length) {
     for (const tbl of [
       'pva_items',
+      'inspectie_foto',
       'inspectie_historie',
       'inspectie_bevinding',
       'inspectie',

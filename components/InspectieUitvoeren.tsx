@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { INSP_TEKST, vertaal, type Taal } from '@/lib/i18n-werknemer'
+import { MAX_BYTES, isAfbeelding, isToegestaanType } from '@/lib/bewijs'
+import { verkleinAfbeelding } from '@/lib/afbeelding'
+import { INSPECTIE_FOTO_BUCKET, type InspectieFotoItem } from '@/lib/inspectie-foto'
 import TaalWissel, { useTaal } from './TaalWissel'
 import type {
   Inspectie,
@@ -48,8 +51,22 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
   const [laden, setLaden] = useState(true)
   const [fout, setFout] = useState<string | null>(null)
   const [afrondBezig, setAfrondBezig] = useState(false)
+  const [fotos, setFotos] = useState<InspectieFotoItem[]>([])
 
   const readOnly = status === 'afgerond' || status === 'geannuleerd'
+
+  // Foto's komen niet uit de tabel maar via een route die per foto een kortlevende
+  // signed URL mint. De bucket is privé; er bestaat geen permanente link.
+  const herlaadFotos = useCallback(async () => {
+    const res = await fetch('/api/inspectie/foto-download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inspectieId: inspectie.id }),
+    })
+    if (!res.ok) return
+    const { fotos: f } = (await res.json()) as { fotos?: InspectieFotoItem[] }
+    setFotos(f ?? [])
+  }, [inspectie.id])
 
   const herlaad = useCallback(async () => {
     const [bev, hist] = await Promise.all([
@@ -73,6 +90,8 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
   // gebeuren pas ná de await (asynchroon), niet synchroon in de effect-body.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { herlaad() }, [herlaad])
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { herlaadFotos() }, [herlaadFotos])
 
   function patchBevinding(id: string, updates: Partial<InspectieBevinding>) {
     setBevindingen(prev => prev.map(b => (b.id === id ? { ...b, ...updates } : b)))
@@ -168,6 +187,9 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
                 bevinding={b}
                 readOnly={readOnly}
                 t={t}
+                inspectieId={inspectie.id}
+                fotos={fotos.filter(f => f.bevinding_id === b.id)}
+                onFotosGewijzigd={herlaadFotos}
                 onPatch={updates => patchBevinding(b.id, updates)}
                 onHistorieGewijzigd={herlaad}
               />
@@ -175,6 +197,17 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
           )
         })}
       </div>
+
+      {/* Foto's bij de inspectie als geheel (bevinding_id = null) */}
+      {bevindingen.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <p className="text-xs font-medium text-ink/40 uppercase tracking-wider mb-2">{t('fotoBijInspectie')}</p>
+          <FotoBlok
+            inspectieId={inspectie.id} bevindingId={null} readOnly={readOnly} t={t}
+            fotos={fotos.filter(f => f.bevinding_id === null)} onGewijzigd={herlaadFotos}
+          />
+        </div>
+      )}
 
       {/* Algemene conclusie */}
       {bevindingen.length > 0 && (
@@ -240,11 +273,16 @@ type RowProps = {
   bevinding: InspectieBevinding
   readOnly: boolean
   t: Vertaler
+  inspectieId: string
+  fotos: InspectieFotoItem[]
+  onFotosGewijzigd: () => void
   onPatch: (updates: Partial<InspectieBevinding>) => void
   onHistorieGewijzigd: () => void
 }
 
-function BevindingRow({ companyId, nummer, bevinding, readOnly, t, onPatch, onHistorieGewijzigd }: RowProps) {
+function BevindingRow({
+  companyId, nummer, bevinding, readOnly, t, inspectieId, fotos, onFotosGewijzigd, onPatch, onHistorieGewijzigd,
+}: RowProps) {
   const supabase = createClient()
   const [opmerking, setOpmerking] = useState(bevinding.opmerking ?? '')
   const [bezig, setBezig] = useState(false)
@@ -435,7 +473,150 @@ function BevindingRow({ companyId, nummer, bevinding, readOnly, t, onPatch, onHi
         <p className="text-xs text-ink/60">{t('directHersteld').replace('{opmerking}', bevinding.opmerking)}</p>
       )}
 
+      {/* Foto's bij dit punt. Verborgen bij een afgeronde inspectie zonder foto's,
+          zodat een leeg rapport niet volloopt met lege blokjes. */}
+      {(!readOnly || fotos.length > 0) && (
+        <FotoBlok
+          inspectieId={inspectieId} bevindingId={bevinding.id} readOnly={readOnly} t={t}
+          fotos={fotos} onGewijzigd={onFotosGewijzigd} compact
+        />
+      )}
+
       {fout && <p className="text-xs text-red-600">{fout}</p>}
+    </div>
+  )
+}
+
+// ---- Foto's bij een inspectie of bij één bevinding (migratie 0045) ----
+// bevindingId === null → foto bij de inspectie als geheel.
+//
+// De bucket is PRIVÉ. Wat hier getoond wordt zijn kortlevende signed URL's die de
+// server per aanvraag mint; er bestaat geen permanente link naar een foto. Uploaden
+// gaat via een gereserveerd, bedrijf-geprefixt pad dat de RPC bepaalt — de client
+// kiest het pad nooit zelf.
+
+function FotoBlok({
+  inspectieId, bevindingId, fotos, readOnly, t, onGewijzigd, compact = false,
+}: {
+  inspectieId: string
+  bevindingId: string | null
+  fotos: InspectieFotoItem[]
+  readOnly: boolean
+  t: Vertaler
+  onGewijzigd: () => void
+  compact?: boolean
+}) {
+  const supabase = createClient()
+  const [bezig, setBezig] = useState(false)
+  const [fout, setFout] = useState<string | null>(null)
+  const invoerId = `foto-${bevindingId ?? 'inspectie'}`
+
+  async function uploadEen(file: File) {
+    if (!isToegestaanType(file.type)) throw new Error(t('foutFotoType'))
+
+    let blob: Blob = file
+    let naam = file.name
+    let type = file.type
+    if (isAfbeelding(file.type)) {
+      try {
+        const v = await verkleinAfbeelding(file)
+        blob = v.blob; naam = v.naam; type = v.type
+      } catch { /* origineel proberen */ }
+    }
+    if (blob.size > MAX_BYTES) throw new Error(t('foutFotoTeGroot'))
+
+    const res = await fetch('/api/inspectie/foto-upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inspectieId, bevindingId, bestandsnaam: naam }),
+    })
+    if (!res.ok) throw new Error(t('foutFotoUpload'))
+    const { pad, uploadToken } = (await res.json()) as { pad?: string; uploadToken?: string }
+    if (!pad || !uploadToken) throw new Error(t('foutFotoUpload'))
+
+    const { error: upErr } = await supabase.storage
+      .from(INSPECTIE_FOTO_BUCKET)
+      .uploadToSignedUrl(pad, uploadToken, blob, { contentType: type })
+    if (upErr) throw new Error(t('foutFotoUpload'))
+
+    const { error: regErr } = await supabase.rpc('inspectie_foto_registreren', {
+      p_inspectie_id: inspectieId, p_bevinding_id: bevindingId, p_pad: pad,
+      p_bestandsnaam: naam, p_type: type, p_grootte: blob.size,
+    })
+    if (regErr) throw new Error(t('foutFotoUpload'))
+  }
+
+  async function kies(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = '' // zelfde bestand nogmaals kiezen blijft mogelijk
+    if (files.length === 0) return
+    setBezig(true); setFout(null)
+    try {
+      for (const f of files) await uploadEen(f)
+      onGewijzigd()
+    } catch (err) {
+      setFout(err instanceof Error ? err.message : t('foutFotoUpload'))
+    } finally {
+      setBezig(false)
+    }
+  }
+
+  async function verwijder(fotoId: string) {
+    setFout(null)
+    const res = await fetch('/api/inspectie/foto-verwijderen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fotoId }),
+    })
+    if (!res.ok) { setFout(t('foutFotoVerwijder')); return }
+    onGewijzigd()
+  }
+
+  return (
+    <div className={compact ? 'pt-1' : ''}>
+      {fotos.length === 0 && readOnly && <p className="text-xs text-ink/40">{t('fotoGeen')}</p>}
+
+      {fotos.length > 0 && (
+        <ul className="flex flex-wrap gap-2 mb-2">
+          {fotos.map(f => (
+            <li key={f.id} className="relative">
+              {f.downloadUrl ? (
+                <a href={f.downloadUrl} target="_blank" rel="noopener noreferrer">
+                  {/* Signed URL van een privé-bucket: geen next/image-optimalisatie
+                      (die zou de URL naar een cachebare route spiegelen). */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={f.downloadUrl} alt={f.bestandsnaam ?? 'Foto'}
+                    className="h-20 w-20 object-cover rounded border border-ink/10" />
+                </a>
+              ) : (
+                <span className="h-20 w-20 rounded border border-ink/10 bg-surface inline-block" />
+              )}
+              {!readOnly && (
+                <button type="button" onClick={() => verwijder(f.id)} aria-label={t('fotoVerwijder')}
+                  title={t('fotoVerwijder')}
+                  className="absolute -top-1.5 -right-1.5 h-6 w-6 rounded-full bg-white border border-ink/20 text-ink/50 hover:text-red-600 hover:border-red-300 text-xs leading-none">
+                  ✕
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {!readOnly && (
+        <>
+          <input id={invoerId} type="file" accept="image/*" capture="environment" multiple
+            onChange={kies} disabled={bezig} className="sr-only" />
+          <label htmlFor={invoerId}
+            className={`text-xs px-3 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full border cursor-pointer transition-colors
+              ${bezig ? 'opacity-50 cursor-wait border-ink/20 bg-white text-ink/40'
+                      : 'border-ink/20 bg-white text-ink/60 hover:border-accent hover:text-accent'}`}>
+            {bezig ? t('fotoBezig') : `+ ${t('fotoToevoegen')}`}
+          </label>
+        </>
+      )}
+
+      {fout && <p className="text-xs text-red-600 mt-1">{fout}</p>}
     </div>
   )
 }

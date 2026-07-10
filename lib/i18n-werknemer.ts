@@ -120,6 +120,18 @@ export const INSP_TEKST: Woordenboek = {
   foutToelichtingVerplicht: { nl: 'Een toelichting is verplicht bij ‘meteen hersteld’.', tr: '‘Hemen giderildi’ için açıklama zorunludur.' },
   foutOpslaan:      { nl: 'Opslaan mislukt', tr: 'Kaydetme başarısız' },
   foutActie:        { nl: 'Actie aanmaken mislukt', tr: 'Görev oluşturulamadı' },
+
+  // Foto's (0045). ⚠️ Ook machinevertaling — laten nakijken.
+  fotos:            { nl: 'Foto’s', tr: 'Fotoğraflar' },
+  fotoToevoegen:    { nl: 'Foto toevoegen', tr: 'Fotoğraf ekle' },
+  fotoBijInspectie: { nl: 'Foto’s bij deze inspectie', tr: 'Bu denetime ait fotoğraflar' },
+  fotoVerwijder:    { nl: 'Foto verwijderen', tr: 'Fotoğrafı sil' },
+  fotoBezig:        { nl: 'Uploaden…', tr: 'Yükleniyor…' },
+  fotoGeen:         { nl: 'Nog geen foto’s.', tr: 'Henüz fotoğraf yok.' },
+  foutFotoTeGroot:  { nl: 'Foto is te groot (max 5 MB).', tr: 'Fotoğraf çok büyük (en fazla 5 MB).' },
+  foutFotoType:     { nl: 'Dit bestandstype is niet toegestaan.', tr: 'Bu dosya türüne izin verilmiyor.' },
+  foutFotoUpload:   { nl: 'Foto uploaden mislukt.', tr: 'Fotoğraf yüklenemedi.' },
+  foutFotoVerwijder: { nl: 'Foto verwijderen mislukt.', tr: 'Fotoğraf silinemedi.' },
 }
 
 // Incident-meldformulier (/melden/[token] → IncidentMeldClient)

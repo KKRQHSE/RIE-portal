@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-10T09:32:32.581Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-10T09:44:42.965Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -409,6 +409,19 @@ CREATE TABLE public.inspectie_bevinding (
   rubriek_naam_snap text
 );
 
+CREATE TABLE public.inspectie_foto (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  inspectie_id uuid NOT NULL,
+  bevinding_id uuid,
+  company_id uuid NOT NULL,
+  storage_pad text NOT NULL,
+  bestandsnaam text,
+  type text,
+  grootte bigint,
+  aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL,
+  aangemaakt_door uuid
+);
+
 CREATE TABLE public.inspectie_historie (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
@@ -636,6 +649,7 @@ ALTER TABLE public.incident_gevolg_soort ADD CONSTRAINT incident_gevolg_soort_pk
 ALTER TABLE public.incident_meldlink ADD CONSTRAINT incident_meldlink_pkey PRIMARY KEY (company_id);
 ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_pkey PRIMARY KEY (id);
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT inspectie_bevinding_pkey PRIMARY KEY (id);
+ALTER TABLE public.inspectie_foto ADD CONSTRAINT inspectie_foto_pkey PRIMARY KEY (id);
 ALTER TABLE public.inspectie_historie ADD CONSTRAINT inspectie_historie_pkey PRIMARY KEY (id);
 ALTER TABLE public.inspectie_sjabloon ADD CONSTRAINT inspectie_sjabloon_pkey PRIMARY KEY (id);
 ALTER TABLE public.inspectie_sjabloon_punt ADD CONSTRAINT inspectie_sjabloon_punt_pkey PRIMARY KEY (id);
@@ -748,6 +762,10 @@ ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_sjabloon_id_fkey FOREIGN K
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT inspectie_bevinding_actie_id_fkey FOREIGN KEY (actie_id) REFERENCES pva_items(id) ON DELETE SET NULL;
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT inspectie_bevinding_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT inspectie_bevinding_inspectie_id_fkey FOREIGN KEY (inspectie_id) REFERENCES inspectie(id) ON DELETE CASCADE;
+ALTER TABLE public.inspectie_foto ADD CONSTRAINT inspectie_foto_aangemaakt_door_fkey FOREIGN KEY (aangemaakt_door) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.inspectie_foto ADD CONSTRAINT inspectie_foto_bevinding_id_fkey FOREIGN KEY (bevinding_id) REFERENCES inspectie_bevinding(id) ON DELETE CASCADE;
+ALTER TABLE public.inspectie_foto ADD CONSTRAINT inspectie_foto_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.inspectie_foto ADD CONSTRAINT inspectie_foto_inspectie_id_fkey FOREIGN KEY (inspectie_id) REFERENCES inspectie(id) ON DELETE CASCADE;
 ALTER TABLE public.inspectie_historie ADD CONSTRAINT inspectie_historie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.inspectie_historie ADD CONSTRAINT inspectie_historie_inspectie_id_fkey FOREIGN KEY (inspectie_id) REFERENCES inspectie(id) ON DELETE CASCADE;
 ALTER TABLE public.inspectie_historie ADD CONSTRAINT inspectie_historie_wie_fkey FOREIGN KEY (wie) REFERENCES auth.users(id) ON DELETE SET NULL;
@@ -814,6 +832,9 @@ CREATE INDEX incident_company_status_idx ON public.incident USING btree (company
 CREATE INDEX incident_foto_company_idx ON public.incident_foto USING btree (company_id);
 CREATE INDEX incident_foto_incident_idx ON public.incident_foto USING btree (incident_id);
 CREATE INDEX inspectie_company_idx ON public.inspectie USING btree (company_id, status);
+CREATE INDEX inspectie_foto_bevinding_idx ON public.inspectie_foto USING btree (bevinding_id);
+CREATE INDEX inspectie_foto_company_idx ON public.inspectie_foto USING btree (company_id);
+CREATE INDEX inspectie_foto_inspectie_idx ON public.inspectie_foto USING btree (inspectie_id);
 CREATE INDEX inspectie_historie_idx ON public.inspectie_historie USING btree (inspectie_id, wanneer DESC);
 CREATE INDEX isp_punt_sjabloon_idx ON public.inspectie_sjabloon_punt USING btree (sjabloon_id, volgorde);
 CREATE INDEX module_historie_company_idx ON public.module_historie USING btree (company_id, wanneer DESC);
@@ -870,6 +891,7 @@ ALTER TABLE public.incident_gevolg_soort ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.incident_meldlink ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie_bevinding ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.inspectie_foto ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie_historie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie_sjabloon ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie_sjabloon_punt ENABLE ROW LEVEL SECURITY;
@@ -1006,6 +1028,8 @@ CREATE POLICY inspectie_bevinding_sel ON public.inspectie_bevinding AS PERMISSIV
 CREATE POLICY inspectie_bevinding_wr ON public.inspectie_bevinding AS PERMISSIVE FOR ALL TO public
   USING (mag_bedrijf_beheren(company_id))
   WITH CHECK (mag_bedrijf_beheren(company_id));
+CREATE POLICY inspectie_foto_sel ON public.inspectie_foto AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY inspectie_historie_sel ON public.inspectie_historie AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY inspectie_historie_wr ON public.inspectie_historie AS PERMISSIVE FOR ALL TO public
@@ -3245,6 +3269,94 @@ begin
     set doel_per_jaar = excluded.doel_per_jaar, updated_at = now();
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.inspectie_foto_context(p_inspectie_id uuid, p_bevinding_id uuid, p_moet_lopen boolean)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_company uuid; v_status text;
+begin
+  select company_id, status into v_company, v_status
+    from inspectie where id = p_inspectie_id;
+  if v_company is null then raise exception 'Inspectie niet gevonden'; end if;
+  if not mag_bedrijf_beheren(v_company) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if p_moet_lopen and v_status in ('afgerond', 'geannuleerd') then
+    raise exception 'Deze inspectie is afgerond; foto''s kunnen niet meer wijzigen';
+  end if;
+
+  -- Een bevinding moet bij DEZE inspectie horen.
+  if p_bevinding_id is not null and not exists (
+    select 1 from inspectie_bevinding
+     where id = p_bevinding_id and inspectie_id = p_inspectie_id
+  ) then
+    raise exception 'Bevinding hoort niet bij deze inspectie';
+  end if;
+
+  return v_company;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.inspectie_foto_pad(p_inspectie_id uuid, p_bevinding_id uuid, p_bestandsnaam text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_company uuid; v_ext text; v_pad text;
+begin
+  v_company := inspectie_foto_context(p_inspectie_id, p_bevinding_id, true);
+
+  v_ext := lower(coalesce(nullif(regexp_replace(p_bestandsnaam, '^.*\.', ''), p_bestandsnaam), 'bin'));
+
+  v_pad := v_company || '/' || p_inspectie_id || '/'
+           || replace(gen_random_uuid()::text, '-', '') || '.' || v_ext;
+
+  return jsonb_build_object('pad', v_pad, 'company_id', v_company);
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.inspectie_foto_registreren(p_inspectie_id uuid, p_bevinding_id uuid, p_pad text, p_bestandsnaam text, p_type text, p_grootte bigint)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_company uuid; v_id uuid;
+begin
+  v_company := inspectie_foto_context(p_inspectie_id, p_bevinding_id, true);
+
+  -- Defense-in-depth: het pad moet binnen <company>/<inspectie>/ vallen.
+  if p_pad is null or p_pad not like (v_company::text || '/' || p_inspectie_id::text || '/%') then
+    raise exception 'Ongeldig opslagpad';
+  end if;
+
+  insert into inspectie_foto
+    (inspectie_id, bevinding_id, company_id, storage_pad, bestandsnaam, type, grootte, aangemaakt_door)
+  values
+    (p_inspectie_id, p_bevinding_id, v_company, p_pad, p_bestandsnaam, p_type, p_grootte, auth.uid())
+  returning id into v_id;
+
+  return v_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.inspectie_foto_verwijderen(p_foto_id uuid)
+ RETURNS text
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_inspectie uuid; v_pad text;
+begin
+  select inspectie_id, storage_pad into v_inspectie, v_pad
+    from inspectie_foto where id = p_foto_id;
+  if v_inspectie is null then raise exception 'Foto niet gevonden'; end if;
+
+  -- Guard + bevroren-check via dezelfde helper.
+  perform inspectie_foto_context(v_inspectie, null, true);
+
+  delete from inspectie_foto where id = p_foto_id;
+  return v_pad;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.inspectie_rapport(p_inspectie_id uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -4879,6 +4991,17 @@ GRANT EXECUTE ON FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid
 GRANT EXECUTE ON FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer) TO anon;
 GRANT EXECUTE ON FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.inspectie_foto_context(p_inspectie_id uuid, p_bevinding_id uuid, p_moet_lopen boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.inspectie_foto_context(p_inspectie_id uuid, p_bevinding_id uuid, p_moet_lopen boolean) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.inspectie_foto_pad(p_inspectie_id uuid, p_bevinding_id uuid, p_bestandsnaam text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.inspectie_foto_pad(p_inspectie_id uuid, p_bevinding_id uuid, p_bestandsnaam text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_foto_pad(p_inspectie_id uuid, p_bevinding_id uuid, p_bestandsnaam text) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.inspectie_foto_registreren(p_inspectie_id uuid, p_bevinding_id uuid, p_pad text, p_bestandsnaam text, p_type text, p_grootte bigint) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.inspectie_foto_registreren(p_inspectie_id uuid, p_bevinding_id uuid, p_pad text, p_bestandsnaam text, p_type text, p_grootte bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_foto_registreren(p_inspectie_id uuid, p_bevinding_id uuid, p_pad text, p_bestandsnaam text, p_type text, p_grootte bigint) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.inspectie_foto_verwijderen(p_foto_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.inspectie_foto_verwijderen(p_foto_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_foto_verwijderen(p_foto_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.inspectie_rapport(p_inspectie_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_rapport(p_inspectie_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_rapport(p_inspectie_id uuid) TO service_role;
@@ -4955,15 +5078,12 @@ REVOKE EXECUTE ON FUNCTION public.toolbox_bewijs_overzicht(p_company_id uuid, p_
 GRANT EXECUTE ON FUNCTION public.toolbox_bewijs_overzicht(p_company_id uuid, p_van date, p_tot date) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_bewijs_overzicht(p_company_id uuid, p_van date, p_tot date) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.toolbox_bron_archiveren(p_id uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.toolbox_bron_archiveren(p_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.toolbox_bron_archiveren(p_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_bron_archiveren(p_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.toolbox_bron_herstellen(p_id uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.toolbox_bron_herstellen(p_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.toolbox_bron_herstellen(p_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_bron_herstellen(p_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.toolbox_bron_opslaan(p_id uuid, p_naam text, p_url text, p_omschrijving text, p_volgorde integer) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.toolbox_bron_opslaan(p_id uuid, p_naam text, p_url text, p_omschrijving text, p_volgorde integer) TO anon;
 GRANT EXECUTE ON FUNCTION public.toolbox_bron_opslaan(p_id uuid, p_naam text, p_url text, p_omschrijving text, p_volgorde integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_bron_opslaan(p_id uuid, p_naam text, p_url text, p_omschrijving text, p_volgorde integer) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.toolbox_dashboard(p_company_id uuid) FROM PUBLIC;

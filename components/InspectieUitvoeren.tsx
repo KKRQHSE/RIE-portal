@@ -27,8 +27,14 @@ function formatDatum(iso: string | null, taal: Taal): string {
     : d.toLocaleDateString(taal === 'tr' ? 'tr-TR' : 'nl-NL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+// Alle vier de waarden van inspectie_status_check. Ontbreekt er één, dan valt de
+// badge terug op de ruwe Nederlandse databasewaarde — precies de bug die 'concept'
+// hier eerder veroorzaakte.
 const STATUS_SLEUTEL: Record<string, string> = {
-  open: 'statusOpen', afgerond: 'statusAfgerond', geannuleerd: 'statusGeannuleerd',
+  concept: 'statusConcept',
+  ingediend: 'statusIngediend',
+  afgerond: 'statusAfgerond',
+  geannuleerd: 'statusGeannuleerd',
 }
 
 type Props = {
@@ -585,7 +591,7 @@ function FotoBlok({
                   {/* Signed URL van een privé-bucket: geen next/image-optimalisatie
                       (die zou de URL naar een cachebare route spiegelen). */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={f.downloadUrl} alt={f.bestandsnaam ?? 'Foto'}
+                  <img src={f.downloadUrl} alt={f.bestandsnaam ?? t('fotos')}
                     className="h-20 w-20 object-cover rounded border border-ink/10" />
                 </a>
               ) : (

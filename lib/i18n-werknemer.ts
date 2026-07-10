@@ -78,7 +78,11 @@ export const TB_TEKST: Woordenboek = {
 export const INSP_TEKST: Woordenboek = {
   terugOverzicht:   { nl: 'Terug naar overzicht', tr: 'Genel görünüme dön' },
   inspectie:        { nl: 'Inspectie', tr: 'Denetim' },
-  statusOpen:       { nl: 'open', tr: 'açık' },
+  // De vier waarden van inspectie_status_check. 'concept' is de status van een
+  // LOPENDE inspectie — die stond eerder niet in deze map, waardoor de badge in
+  // het Turks terugviel op de ruwe Nederlandse databasewaarde.
+  statusConcept:    { nl: 'concept', tr: 'taslak' },
+  statusIngediend:  { nl: 'ingediend', tr: 'gönderildi' },
   statusAfgerond:   { nl: 'afgerond', tr: 'tamamlandı' },
   statusGeannuleerd: { nl: 'geannuleerd', tr: 'iptal edildi' },
   uitgevoerdOp:     { nl: 'Uitgevoerd op {datum}', tr: '{datum} tarihinde yapıldı' },

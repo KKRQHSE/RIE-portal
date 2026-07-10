@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
-import type { Company, ToolboxOverzichtItem, ToolboxSessiesOverzicht } from '@/lib/types'
+import type { Company, ToolboxOverzichtItem, ToolboxSessiesOverzicht, ToolboxBron } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
 import ToolboxMaandoverzicht from './ToolboxMaandoverzicht'
@@ -18,7 +18,7 @@ const WAARSCHUWING =
   'terugzet naar centraal.'
 
 export default function ToolboxClient({
-  company, huisstijl = VEILIGE_HUISSTIJL, initialOverzicht, sessies, isAdmin = false,
+  company, huisstijl = VEILIGE_HUISSTIJL, initialOverzicht, sessies, isAdmin = false, bronnen = [],
 }: {
   company: Company
   huisstijl?: HuisstijlView
@@ -27,6 +27,8 @@ export default function ToolboxClient({
   // Koppelen/beheren en bewijs&export zijn beheerwerk: alleen voor de admin.
   // De klant (KAM) ziet enkel het maandoverzicht.
   isAdmin?: boolean
+  // Onderwerpenbibliotheek: leesbaar voor elke ingelogde gebruiker (0043).
+  bronnen?: ToolboxBron[]
 }) {
   const [supabase] = useState<Supa>(() => createClient())
   const [view, setView] = useState<View>('maandoverzicht')
@@ -68,7 +70,7 @@ export default function ToolboxClient({
         {/* Niet-admin: altijd alleen het maandoverzicht, ongeacht de view-state. */}
         {!isAdmin || view === 'maandoverzicht' ? (
           <ToolboxMaandoverzicht companyId={company.id} initial={sessies}
-            gekoppeldeToolboxen={overzicht.filter(t => t.gekoppeld)} />
+            gekoppeldeToolboxen={overzicht.filter(t => t.gekoppeld)} bronnen={bronnen} />
         ) : view === 'toolboxen' ? (
           <KoppelBeheer companyId={company.id} supabase={supabase} overzicht={overzicht} onPatch={patch} setFout={setFout} />
         ) : (

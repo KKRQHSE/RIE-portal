@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import type { CentraleToolboxMetVragen, CentraleToolboxVraag } from '@/lib/types'
+import type { CentraleToolboxMetVragen, CentraleToolboxVraag, ToolboxBron } from '@/lib/types'
 import LogoutButton from './LogoutButton'
 
 type Toolbox = CentraleToolboxMetVragen
@@ -30,7 +30,12 @@ function Archiveerknop({ label, onBevestig }: { label: string; onBevestig: () =>
   )
 }
 
-export default function ToolboxAdmin({ initialToolboxen }: { initialToolboxen: Toolbox[] }) {
+export default function ToolboxAdmin({
+  initialToolboxen, initialBronnen = [],
+}: {
+  initialToolboxen: Toolbox[]
+  initialBronnen?: ToolboxBron[]
+}) {
   const [supabase] = useState<Supa>(() => createClient())
   const [toolboxen, setToolboxen] = useState<Toolbox[]>(initialToolboxen)
   const [nieuw, setNieuw] = useState('')
@@ -105,6 +110,8 @@ export default function ToolboxAdmin({ initialToolboxen }: { initialToolboxen: T
               onPatch={u => patch(t.id, u)} onArchiveer={() => archiveer(t.id)} setFout={setFout} />
           ))}
         </div>
+
+        <BronnenBeheer supabase={supabase} initial={initialBronnen} setFout={setFout} />
       </div>
     </main>
   )
@@ -307,5 +314,134 @@ function Quizbeheer({
           className="text-sm px-4 py-2 min-h-[44px] rounded-full bg-ink text-white hover:opacity-90 disabled:opacity-40">Vraag toevoegen</button>
       </div>
     </div>
+  )
+}
+
+// ---- Onderwerpenbibliotheek (0043) ----
+// Beheerde links naar externe toolbox-bronnen. De uitvoerder ziet ze als
+// inspiratie bij het aanmaken van een sessie; hij typt het onderwerp zelf.
+// Archiveren is een soft delete — er is bewust geen verwijder-RPC.
+
+function BronnenBeheer({
+  supabase, initial, setFout,
+}: {
+  supabase: Supa
+  initial: ToolboxBron[]
+  setFout: (v: string | null) => void
+}) {
+  const [bronnen, setBronnen] = useState<ToolboxBron[]>(initial)
+  const [naam, setNaam] = useState('')
+  const [url, setUrl] = useState('')
+  const [omschrijving, setOmschrijving] = useState('')
+  const [bezig, setBezig] = useState(false)
+
+  const actief = bronnen.filter(b => !b.gearchiveerd_op)
+  const gearchiveerd = bronnen.filter(b => b.gearchiveerd_op)
+
+  async function voegToe() {
+    if (!naam.trim() || !url.trim()) return
+    setBezig(true); setFout(null)
+    const volgorde = actief.reduce((m, b) => Math.max(m, b.volgorde), 0) + 1
+    const { data, error } = await supabase.rpc('toolbox_bron_opslaan', {
+      p_id: null, p_naam: naam.trim(), p_url: url.trim(),
+      p_omschrijving: omschrijving.trim() || null, p_volgorde: volgorde,
+    })
+    setBezig(false)
+    if (error) { setFout(error.message); return }
+    setBronnen(prev => [...prev, {
+      id: data as string, naam: naam.trim(), url: url.trim(),
+      omschrijving: omschrijving.trim() || null, volgorde, gearchiveerd_op: null,
+    }])
+    setNaam(''); setUrl(''); setOmschrijving('')
+  }
+
+  async function bewaar(b: ToolboxBron, u: Partial<ToolboxBron>) {
+    const nieuw = { ...b, ...u }
+    setBronnen(prev => prev.map(x => (x.id === b.id ? nieuw : x)))
+    setFout(null)
+    const { error } = await supabase.rpc('toolbox_bron_opslaan', {
+      p_id: b.id, p_naam: nieuw.naam, p_url: nieuw.url,
+      p_omschrijving: nieuw.omschrijving, p_volgorde: nieuw.volgorde,
+    })
+    if (error) setFout(error.message)
+  }
+
+  async function archiveer(id: string) {
+    setFout(null)
+    const { error } = await supabase.rpc('toolbox_bron_archiveren', { p_id: id })
+    if (error) { setFout(error.message); return }
+    setBronnen(prev => prev.map(b => (b.id === id ? { ...b, gearchiveerd_op: new Date().toISOString() } : b)))
+  }
+
+  async function herstel(id: string) {
+    setFout(null)
+    const { error } = await supabase.rpc('toolbox_bron_herstellen', { p_id: id })
+    if (error) { setFout(error.message); return }
+    setBronnen(prev => prev.map(b => (b.id === id ? { ...b, gearchiveerd_op: null } : b)))
+  }
+
+  return (
+    <section className="mt-10">
+      <h2 className="text-lg font-semibold text-ink">Onderwerpenbibliotheek</h2>
+      <p className="text-sm text-ink/50 mt-0.5 mb-4">
+        Links naar externe toolbox-bronnen. De uitvoerder ziet deze lijst bij het aanmaken
+        van een sessie, als inspiratie voor het onderwerp. Ze openen in een nieuw tabblad.
+      </p>
+
+      <div className="bg-white rounded-lg shadow-sm p-4 mb-4 space-y-2">
+        <p className="text-sm font-medium text-ink">Nieuwe bron</p>
+        <input value={naam} onChange={e => setNaam(e.target.value)} placeholder="Naam (bv. Arboportaal)"
+          aria-label="Naam bron" className="w-full text-sm border border-ink/20 rounded px-3 py-2.5 min-h-[44px] bg-white" />
+        <input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://…" inputMode="url"
+          aria-label="URL bron" className="w-full text-sm border border-ink/20 rounded px-3 py-2.5 min-h-[44px] bg-white" />
+        <input value={omschrijving} onChange={e => setOmschrijving(e.target.value)} placeholder="Korte omschrijving (optioneel)"
+          aria-label="Omschrijving bron" className="w-full text-sm border border-ink/20 rounded px-3 py-2.5 min-h-[44px] bg-white" />
+        <button onClick={voegToe} disabled={!naam.trim() || !url.trim() || bezig}
+          className="text-sm px-5 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium hover:opacity-90 disabled:opacity-40">
+          Bron toevoegen
+        </button>
+        <p className="text-xs text-ink/40">De URL moet met https:// beginnen.</p>
+      </div>
+
+      {actief.length === 0 && <p className="text-center text-ink/40 py-6 text-sm">Nog geen bronnen.</p>}
+
+      <div className="space-y-3">
+        {actief.map(b => (
+          <div key={b.id} className="bg-white rounded-lg shadow-sm p-4 space-y-2">
+            <input defaultValue={b.naam} onBlur={e => { const v = e.target.value.trim(); if (v && v !== b.naam) bewaar(b, { naam: v }) }}
+              aria-label={`Naam van ${b.naam}`} className="w-full text-sm font-medium border border-ink/20 rounded px-3 py-2 bg-white" />
+            <input defaultValue={b.url} onBlur={e => { const v = e.target.value.trim(); if (v && v !== b.url) bewaar(b, { url: v }) }}
+              aria-label={`URL van ${b.naam}`} inputMode="url" className="w-full text-sm border border-ink/20 rounded px-3 py-2 bg-white" />
+            <input defaultValue={b.omschrijving ?? ''} onBlur={e => { const v = e.target.value.trim() || null; if (v !== b.omschrijving) bewaar(b, { omschrijving: v }) }}
+              aria-label={`Omschrijving van ${b.naam}`} placeholder="Korte omschrijving"
+              className="w-full text-sm border border-ink/20 rounded px-3 py-2 bg-white" />
+            <div className="flex flex-wrap items-center gap-2">
+              <a href={b.url} target="_blank" rel="noopener noreferrer"
+                className="text-xs text-accent hover:underline">Openen ↗</a>
+              <span className="ml-auto"><Archiveerknop label="Bron archiveren" onBevestig={() => archiveer(b.id)} /></span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {gearchiveerd.length > 0 && (
+        <details className="mt-4">
+          <summary className="text-xs text-ink/50 cursor-pointer hover:text-ink">
+            Gearchiveerd ({gearchiveerd.length})
+          </summary>
+          <ul className="mt-2 space-y-2">
+            {gearchiveerd.map(b => (
+              <li key={b.id} className="flex items-center justify-between gap-2 text-sm bg-white rounded-lg shadow-sm p-3">
+                <span className="text-ink/40 line-through truncate">{b.naam}</span>
+                <button type="button" onClick={() => herstel(b.id)}
+                  className="shrink-0 text-xs px-3 py-2 min-h-[40px] rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40">
+                  Terugzetten
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </section>
   )
 }

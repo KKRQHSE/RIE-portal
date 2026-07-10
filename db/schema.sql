@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-10T07:43:45.722Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-10T09:32:32.581Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -525,6 +525,16 @@ CREATE TABLE public.rie_versies (
   created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
+CREATE TABLE public.toolbox_bron (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  naam text NOT NULL,
+  url text NOT NULL,
+  omschrijving text,
+  volgorde integer DEFAULT 0 NOT NULL,
+  gearchiveerd_op timestamp with time zone,
+  aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE public.toolbox_deelname (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
@@ -635,6 +645,7 @@ ALTER TABLE public.modules ADD CONSTRAINT modules_pkey PRIMARY KEY (id);
 ALTER TABLE public.personen ADD CONSTRAINT personen_pkey PRIMARY KEY (id);
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_pkey PRIMARY KEY (id);
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_pkey PRIMARY KEY (id);
+ALTER TABLE public.toolbox_bron ADD CONSTRAINT toolbox_bron_pkey PRIMARY KEY (id);
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_pkey PRIMARY KEY (id);
 ALTER TABLE public.toolbox_sessie ADD CONSTRAINT toolbox_sessie_pkey PRIMARY KEY (id);
 ALTER TABLE public.users ADD CONSTRAINT users_pkey PRIMARY KEY (id);
@@ -680,6 +691,8 @@ ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT inspectie_bevinding_result
 ALTER TABLE public.merken ADD CONSTRAINT merken_lettertype_check CHECK ((lettertype = ANY (ARRAY['grotesk'::text, 'modern'::text, 'klassiek'::text, 'zakelijk'::text])));
 ALTER TABLE public.personen ADD CONSTRAINT personen_status_check CHECK ((status = ANY (ARRAY['actief'::text, 'voorgesteld'::text])));
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_status_check CHECK ((status = ANY (ARRAY['Open'::text, 'In behandeling'::text, 'Afgerond'::text])));
+ALTER TABLE public.toolbox_bron ADD CONSTRAINT toolbox_bron_naam_check CHECK ((btrim(naam) <> ''::text));
+ALTER TABLE public.toolbox_bron ADD CONSTRAINT toolbox_bron_url_https CHECK ((url ~~ 'https://%'::text));
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT deelname_bewijssoort_check CHECK ((bewijssoort = ANY (ARRAY['digitaal'::text, 'fysiek_aanwezig'::text])));
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT deelname_digitaal_bewijs CHECK (((bewijssoort <> 'digitaal'::text) OR ((naam_bevestigd = true) AND (handtekening IS NOT NULL) AND (btrim(handtekening) <> ''::text) AND (handtekening_gezet_op IS NOT NULL))));
 ALTER TABLE public.toolbox_sessie ADD CONSTRAINT toolbox_sessie_onderwerp_check CHECK ((btrim(onderwerp) <> ''::text));
@@ -808,6 +821,8 @@ CREATE INDEX modules_company_idx ON public.modules USING btree (company_id);
 CREATE INDEX personen_company_idx ON public.personen USING btree (company_id);
 CREATE INDEX pva_items_company_idx ON public.pva_items USING btree (company_id);
 CREATE INDEX pva_items_persoon_idx ON public.pva_items USING btree (persoon_id);
+CREATE UNIQUE INDEX toolbox_bron_naam_uniek ON public.toolbox_bron USING btree (naam);
+CREATE INDEX toolbox_bron_volgorde_idx ON public.toolbox_bron USING btree (volgorde);
 CREATE INDEX toolbox_deelname_afgerond_idx ON public.toolbox_deelname USING btree (company_id, afgerond_op);
 CREATE INDEX toolbox_deelname_company_idx ON public.toolbox_deelname USING btree (company_id, persoon_id);
 CREATE INDEX toolbox_deelname_sessie_idx ON public.toolbox_deelname USING btree (sessie_id) WHERE (sessie_id IS NOT NULL);
@@ -864,6 +879,7 @@ ALTER TABLE public.modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.personen ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pva_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rie_versies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.toolbox_bron ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.toolbox_deelname ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.toolbox_sessie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
@@ -1029,6 +1045,11 @@ CREATE POLICY pva_update ON public.pva_items AS PERMISSIVE FOR UPDATE TO public
 CREATE POLICY rie_versies_beheer ON public.rie_versies AS PERMISSIVE FOR ALL TO public
   USING (mag_bedrijf_beheren(company_id))
   WITH CHECK (mag_bedrijf_beheren(company_id));
+CREATE POLICY toolbox_bron_adm ON public.toolbox_bron AS PERMISSIVE FOR ALL TO public
+  USING (is_admin())
+  WITH CHECK (is_admin());
+CREATE POLICY toolbox_bron_sel ON public.toolbox_bron AS PERMISSIVE FOR SELECT TO public
+  USING ((auth.uid() IS NOT NULL));
 CREATE POLICY toolbox_deelname_sel ON public.toolbox_deelname AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY toolbox_sessie_sel ON public.toolbox_sessie AS PERMISSIVE FOR SELECT TO public
@@ -4071,6 +4092,60 @@ begin
   return v;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.toolbox_bron_archiveren(p_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  if not is_admin() then raise exception 'Alleen voor beheerders'; end if;
+  if not exists (select 1 from toolbox_bron where id = p_id) then raise exception 'Bron niet gevonden'; end if;
+  update toolbox_bron set gearchiveerd_op = now() where id = p_id and gearchiveerd_op is null;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.toolbox_bron_herstellen(p_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  if not is_admin() then raise exception 'Alleen voor beheerders'; end if;
+  update toolbox_bron set gearchiveerd_op = null where id = p_id;
+  if not found then raise exception 'Bron niet gevonden'; end if;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.toolbox_bron_opslaan(p_id uuid, p_naam text, p_url text, p_omschrijving text, p_volgorde integer DEFAULT 0)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_id uuid;
+begin
+  if not is_admin() then raise exception 'Alleen voor beheerders'; end if;
+  if coalesce(btrim(p_naam), '') = '' then raise exception 'Naam is verplicht'; end if;
+  if coalesce(btrim(p_url), '') = '' then raise exception 'URL is verplicht'; end if;
+  if btrim(p_url) not like 'https://%' then raise exception 'URL moet met https:// beginnen'; end if;
+
+  if p_id is null then
+    insert into toolbox_bron (naam, url, omschrijving, volgorde)
+    values (btrim(p_naam), btrim(p_url), nullif(btrim(coalesce(p_omschrijving, '')), ''), coalesce(p_volgorde, 0))
+    returning id into v_id;
+    return v_id;
+  end if;
+
+  update toolbox_bron set
+    naam         = btrim(p_naam),
+    url          = btrim(p_url),
+    omschrijving = nullif(btrim(coalesce(p_omschrijving, '')), ''),
+    volgorde     = coalesce(p_volgorde, 0)
+  where id = p_id;
+  if not found then raise exception 'Bron niet gevonden'; end if;
+  return p_id;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.toolbox_dashboard(p_company_id uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -4879,6 +4954,18 @@ GRANT EXECUTE ON FUNCTION public.toolbox_bewijs(p_deelname_id uuid) TO service_r
 REVOKE EXECUTE ON FUNCTION public.toolbox_bewijs_overzicht(p_company_id uuid, p_van date, p_tot date) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.toolbox_bewijs_overzicht(p_company_id uuid, p_van date, p_tot date) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_bewijs_overzicht(p_company_id uuid, p_van date, p_tot date) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.toolbox_bron_archiveren(p_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.toolbox_bron_archiveren(p_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.toolbox_bron_archiveren(p_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.toolbox_bron_archiveren(p_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.toolbox_bron_herstellen(p_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.toolbox_bron_herstellen(p_id uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.toolbox_bron_herstellen(p_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.toolbox_bron_herstellen(p_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.toolbox_bron_opslaan(p_id uuid, p_naam text, p_url text, p_omschrijving text, p_volgorde integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.toolbox_bron_opslaan(p_id uuid, p_naam text, p_url text, p_omschrijving text, p_volgorde integer) TO anon;
+GRANT EXECUTE ON FUNCTION public.toolbox_bron_opslaan(p_id uuid, p_naam text, p_url text, p_omschrijving text, p_volgorde integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.toolbox_bron_opslaan(p_id uuid, p_naam text, p_url text, p_omschrijving text, p_volgorde integer) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.toolbox_dashboard(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.toolbox_dashboard(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_dashboard(p_company_id uuid) TO service_role;

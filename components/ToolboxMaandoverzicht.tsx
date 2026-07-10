@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Gauge from './Gauge'
-import type { ToolboxSessiesOverzicht, ToolboxSessieRegel, ToolboxSessiePersoon, ToolboxOverzichtItem } from '@/lib/types'
+import type { ToolboxSessiesOverzicht, ToolboxSessieRegel, ToolboxSessiePersoon, ToolboxOverzichtItem, ToolboxBron } from '@/lib/types'
 
 type Supa = ReturnType<typeof createClient>
 
@@ -21,11 +21,13 @@ function maandVan(iso: string) { return parseInt(iso.slice(5, 7), 10) - 1 }
 
 // Antwoord op de hoofdvraag: wat is er per maand gehouden en zitten we op target?
 export default function ToolboxMaandoverzicht({
-  companyId, initial, gekoppeldeToolboxen,
+  companyId, initial, gekoppeldeToolboxen, bronnen = [],
 }: {
   companyId: string
   initial: ToolboxSessiesOverzicht | null
   gekoppeldeToolboxen: ToolboxOverzichtItem[]
+  // Onderwerpenbibliotheek (0043): alleen-lezen inspiratie bij het aanmaken.
+  bronnen?: ToolboxBron[]
 }) {
   const [supabase] = useState<Supa>(() => createClient())
   const [data, setData] = useState<ToolboxSessiesOverzicht | null>(initial)
@@ -73,7 +75,7 @@ export default function ToolboxMaandoverzicht({
       {nieuwVoor === 'los' ? (
         <NieuweSessie
           companyId={companyId} supabase={supabase} gekoppeldeToolboxen={gekoppeldeToolboxen}
-          setFout={setFout}
+          bronnen={bronnen} setFout={setFout}
           onKlaar={async (id) => { setNieuwVoor(null); await herlaad(); if (id) setOpenSessie(id) }}
           onAnnuleer={() => setNieuwVoor(null)}
         />
@@ -114,7 +116,7 @@ export default function ToolboxMaandoverzicht({
                 <div className="px-5 pb-4">
                   <NieuweSessie
                     companyId={companyId} supabase={supabase} gekoppeldeToolboxen={gekoppeldeToolboxen}
-                    setFout={setFout} startDatum={`${maandKey}-01`}
+                    bronnen={bronnen} setFout={setFout} startDatum={`${maandKey}-01`}
                     onKlaar={async (id) => { setNieuwVoor(null); await herlaad(); if (id) setOpenSessie(id) }}
                     onAnnuleer={() => setNieuwVoor(null)}
                   />
@@ -349,9 +351,10 @@ function SessieRij({
 }
 
 function NieuweSessie({
-  companyId, supabase, gekoppeldeToolboxen, setFout, onKlaar, onAnnuleer, bestaand, startDatum,
+  companyId, supabase, gekoppeldeToolboxen, bronnen = [], setFout, onKlaar, onAnnuleer, bestaand, startDatum,
 }: {
   companyId: string; supabase: Supa; gekoppeldeToolboxen: ToolboxOverzichtItem[]
+  bronnen?: ToolboxBron[]
   setFout: (v: string | null) => void
   onKlaar: (nieuwId?: string) => void | Promise<void>; onAnnuleer: () => void
   bestaand?: ToolboxSessieRegel; startDatum?: string
@@ -375,9 +378,31 @@ function NieuweSessie({
     await onKlaar(typeof data === 'string' ? data : undefined)
   }
 
+  // Een toolbox kiezen vult het onderwerp alleen als het nog leeg is — een zelf
+  // getypt onderwerp wordt nooit overschreven.
+  function kiesToolbox(id: string) {
+    setToolboxId(id)
+    if (!onderwerp.trim() && id) {
+      const t = gekoppeldeToolboxen.find(x => x.toolbox_id === id)
+      if (t) setOnderwerp(t.geldende_titel)
+    }
+  }
+
   return (
     <div className="rounded-lg bg-white shadow-sm border border-accent/30 p-4 space-y-2">
       <p className="text-sm font-medium text-ink">{bestaand ? 'Sessie bewerken' : 'Nieuwe sessie'}</p>
+
+      {/* Het onderwerp is leidend: je mag vrij typen. De toolbox-koppeling eronder
+          is optioneel en vult het onderwerp hooguit voor als het nog leeg is. */}
+      <label className="text-xs text-ink/50 flex flex-col gap-1">
+        Onderwerp
+        <input value={onderwerp} onChange={e => setOnderwerp(e.target.value)}
+          placeholder="Waar ging de toolbox over?" aria-label="Onderwerp"
+          className="w-full text-sm border border-ink/20 rounded px-3 py-2 min-h-[40px] bg-white" />
+      </label>
+
+      <BronnenHint bronnen={bronnen} />
+
       <div className="flex flex-wrap gap-2">
         <label className="text-xs text-ink/50 flex flex-col gap-1">
           Datum
@@ -386,8 +411,8 @@ function NieuweSessie({
         </label>
         {gekoppeldeToolboxen.length > 0 && (
           <label className="text-xs text-ink/50 flex flex-col gap-1 flex-1 min-w-[12rem]">
-            Toolbox (optioneel)
-            <select value={toolboxId} onChange={e => setToolboxId(e.target.value)}
+            Koppel aan een toolbox (optioneel)
+            <select value={toolboxId} onChange={e => kiesToolbox(e.target.value)}
               className="text-sm border border-ink/20 rounded px-3 py-2 min-h-[40px] bg-white">
               <option value="">— geen —</option>
               {gekoppeldeToolboxen.map(t => (
@@ -397,8 +422,6 @@ function NieuweSessie({
           </label>
         )}
       </div>
-      <input value={onderwerp} onChange={e => setOnderwerp(e.target.value)} placeholder="Onderwerp"
-        aria-label="Onderwerp" className="w-full text-sm border border-ink/20 rounded px-3 py-2 bg-white" />
       <textarea value={notitie} onChange={e => setNotitie(e.target.value)} rows={2}
         placeholder="Notitie (optioneel)" aria-label="Notitie"
         className="w-full text-sm border border-ink/20 rounded px-3 py-2 bg-white resize-y" />
@@ -411,5 +434,32 @@ function NieuweSessie({
           className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40">Annuleer</button>
       </div>
     </div>
+  )
+}
+
+// Onderwerpenbibliotheek (0043): inklapbare inspiratielijst bij het aanmaken van
+// een sessie. Puur lezen — de uitvoerder typt zijn onderwerp zelf. Links openen
+// in een nieuw tabblad; rel=noopener voorkomt dat de bron aan window.opener komt.
+function BronnenHint({ bronnen }: { bronnen: ToolboxBron[] }) {
+  const zichtbaar = bronnen.filter(b => !b.gearchiveerd_op)
+  if (zichtbaar.length === 0) return null
+
+  return (
+    <details className="rounded-lg border border-ink/10 bg-surface/40 px-3 py-2">
+      <summary className="text-xs text-ink/60 cursor-pointer hover:text-accent">
+        Inspiratie nodig? Bekijk de onderwerpenbibliotheek ({zichtbaar.length})
+      </summary>
+      <ul className="mt-2 space-y-2">
+        {zichtbaar.map(b => (
+          <li key={b.id} className="text-xs">
+            <a href={b.url} target="_blank" rel="noopener noreferrer"
+              className="font-medium text-accent hover:underline">
+              {b.naam} ↗
+            </a>
+            {b.omschrijving && <p className="text-ink/50 mt-0.5">{b.omschrijving}</p>}
+          </li>
+        ))}
+      </ul>
+    </details>
   )
 }

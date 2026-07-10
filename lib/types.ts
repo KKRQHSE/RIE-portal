@@ -417,6 +417,17 @@ export type CentraleToolbox = {
 
 export type CentraleToolboxMetVragen = CentraleToolbox & { vragen: CentraleToolboxVraag[] }
 
+// Onderwerpenbibliotheek: beheerde links naar externe toolbox-bronnen (0043).
+// Centraal, geen company_id — elke ingelogde gebruiker leest, alleen admin schrijft.
+export type ToolboxBron = {
+  id: string
+  naam: string
+  url: string
+  omschrijving: string | null
+  volgorde: number
+  gearchiveerd_op: string | null
+}
+
 // Eén regel uit bedrijf_toolbox_overzicht (KAM-zijde: koppeling + lokale afwijking).
 export type ToolboxOverzichtItem = {
   toolbox_id: string

@@ -46,7 +46,7 @@ const anon = createClient(URL, ANON, { auth: { persistSession: false, autoRefres
 
 const TS = Date.now()
 const PW = 'Tbtest!' + TS
-const companyIds = [], userIds = [], toolboxIds = []
+const companyIds = [], userIds = [], toolboxIds = [], bronIds = []
 const results = []
 const check = (naam, ok, detail) => { results.push({ ok }); console.log(`${ok ? 'PASS' : 'FAIL'} — ${naam}${detail ? ` (${detail})` : ''}`) }
 
@@ -368,6 +368,68 @@ async function run() {
     check('Werknemer (anon) kan geen overzicht exporteren', !!error)
   }
 
+  // ONDERWERPENBIBLIOTHEEK (0043): centrale bronnen, admin-only schrijfbaar.
+  {
+    const { data: bronId, error } = await adminClient.rpc('toolbox_bron_opslaan', {
+      p_id: null, p_naam: 'TBTEST_bron', p_url: 'https://example.invalid/toolbox',
+      p_omschrijving: 'testbron', p_volgorde: 900,
+    })
+    check('admin maakt een bron aan (positieve controle)', !error && !!bronId, error?.message)
+    if (bronId) bronIds.push(bronId)
+
+    // Elke ingelogde gebruiker leest de lijst — ook een KAM van een ander bedrijf.
+    const { data: gezienA } = await clientA.from('toolbox_bron').select('id').eq('id', bronId)
+    const { data: gezienB } = await clientB.from('toolbox_bron').select('id').eq('id', bronId)
+    check('KAM A leest de bronnenlijst', (gezienA?.length ?? 0) === 1)
+    check('KAM B leest dezelfde centrale bronnenlijst', (gezienB?.length ?? 0) === 1)
+
+    // Maar schrijven mag alleen de admin.
+    {
+      const { error } = await clientA.rpc('toolbox_bron_opslaan', {
+        p_id: null, p_naam: 'TBTEST_hack', p_url: 'https://example.invalid/hack', p_omschrijving: null, p_volgorde: 1,
+      })
+      check('KAM kan geen bron aanmaken (admin-only)', !!error && /beheerders/i.test(error.message || ''), error?.message)
+    }
+    {
+      const { error } = await clientA.rpc('toolbox_bron_archiveren', { p_id: bronId })
+      check('KAM kan geen bron archiveren (admin-only)', !!error && /beheerders/i.test(error.message || ''), error?.message)
+    }
+    {
+      const { error } = await clientA.from('toolbox_bron').update({ naam: 'GEHACKT' }).eq('id', bronId)
+      const { data } = await admin.from('toolbox_bron').select('naam').eq('id', bronId).single()
+      check('KAM kan niet direct in toolbox_bron schrijven (RLS)', !!error || data?.naam === 'TBTEST_bron', data?.naam)
+    }
+    {
+      const { data } = await anon.from('toolbox_bron').select('id')
+      check('anon ziet geen bronnen', (data?.length ?? 0) === 0, `${data?.length ?? '?'} rijen`)
+    }
+    {
+      const { error } = await anon.rpc('toolbox_bron_opslaan', {
+        p_id: null, p_naam: 'TBTEST_anon', p_url: 'https://example.invalid/x', p_omschrijving: null, p_volgorde: 1,
+      })
+      check('anon kan geen bron aanmaken (EXECUTE ingetrokken)', !!error)
+    }
+
+    // De https-constraint houdt een javascript:-URL tegen.
+    {
+      const { error } = await adminClient.rpc('toolbox_bron_opslaan', {
+        // eslint-disable-next-line no-script-url
+        p_id: null, p_naam: 'TBTEST_bad', p_url: 'javascript:alert(1)', p_omschrijving: null, p_volgorde: 1,
+      })
+      check('URL zonder https:// wordt geweigerd', !!error, error ? 'geweigerd' : 'GEEN fout!')
+    }
+
+    // Archiveren is een SOFT delete: de rij blijft bestaan, en is te herstellen.
+    {
+      await adminClient.rpc('toolbox_bron_archiveren', { p_id: bronId })
+      const { data } = await admin.from('toolbox_bron').select('gearchiveerd_op').eq('id', bronId).single()
+      check('archiveren is soft (rij blijft, gearchiveerd_op gezet)', !!data?.gearchiveerd_op)
+      await adminClient.rpc('toolbox_bron_herstellen', { p_id: bronId })
+      const { data: na } = await admin.from('toolbox_bron').select('gearchiveerd_op').eq('id', bronId).single()
+      check('herstellen zet de bron terug', na?.gearchiveerd_op === null)
+    }
+  }
+
   // Snapshot-only: bewijsstuk blijft VOLLEDIG nadat de centrale toolbox is GEARCHIVEERD.
   {
     await adminClient.rpc('centrale_toolbox_archiveren', { p_id: tbId })
@@ -390,6 +452,7 @@ async function cleanup() {
     }
   }
   if (toolboxIds.length) await admin.from('centrale_toolbox').delete().in('id', toolboxIds)
+  if (bronIds.length) await admin.from('toolbox_bron').delete().in('id', bronIds)
   if (userIds.length) {
     await admin.from('users').delete().in('id', userIds)
     for (const id of userIds) { try { await admin.auth.admin.deleteUser(id) } catch { /* */ } }

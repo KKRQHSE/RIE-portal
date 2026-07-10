@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import ToolboxClient from '@/components/ToolboxClient'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
-import type { ToolboxOverzichtItem, ToolboxSessiesOverzicht } from '@/lib/types'
+import type { ToolboxOverzichtItem, ToolboxSessiesOverzicht, ToolboxBron } from '@/lib/types'
 
 export default async function ToolboxPage({
   params,
@@ -21,6 +21,7 @@ export default async function ToolboxPage({
     { data: company },
     { data: overzicht },
     { data: sessies },
+    { data: bronnen },
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
@@ -30,6 +31,10 @@ export default async function ToolboxPage({
     supabase.from('companies').select('id, name, approved_at, approved_by').eq('id', company_id).single(),
     supabase.rpc('bedrijf_toolbox_overzicht', { p_company_id: company_id }),
     supabase.rpc('toolbox_sessies_overzicht', { p_company_id: company_id }),
+    // Onderwerpenbibliotheek: centraal, alleen de niet-gearchiveerde bronnen.
+    supabase.from('toolbox_bron')
+      .select('id, naam, url, omschrijving, volgorde, gearchiveerd_op')
+      .is('gearchiveerd_op', null).order('volgorde', { ascending: true }),
     haalHuisstijl(company_id),
   ])
 
@@ -46,6 +51,7 @@ export default async function ToolboxPage({
       initialOverzicht={(overzicht ?? []) as ToolboxOverzichtItem[]}
       sessies={sessies as ToolboxSessiesOverzicht | null}
       isAdmin={profile.role === 'admin'}
+      bronnen={(bronnen ?? []) as ToolboxBron[]}
     />
   )
 }

@@ -131,6 +131,11 @@ export default function BedrijfsvoeringForm({
                   placeholder="bv. 2.5" value={ifVorigJaar} onChange={e => setIfVorigJaar(e.target.value)} />
               </div>
             </div>
+            {/* Gevolg van 0042: een leeg veld laat de opgeslagen waarde staan i.p.v.
+                hem te wissen. Dat is niet te raden aan het formulier, dus zeg het. */}
+            <p className="text-xs text-ink/40">
+              Een veld leeglaten wist een eerder ingevuld getal niet — de laatste waarde blijft staan.
+            </p>
           </div>
 
           {/* Audits */}

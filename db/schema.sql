@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-10T07:20:22.524Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-10T07:43:45.722Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -1937,8 +1937,9 @@ begin
     audit_status              = excluded.audit_status,
     doelstelling_tekst        = excluded.doelstelling_tekst,
     iso_taken_tekst           = excluded.iso_taken_tekst,
-    if_dit_jaar               = excluded.if_dit_jaar,
-    if_vorig_jaar             = excluded.if_vorig_jaar,
+    -- Niet meegegeven (null) = laat staan wat er stond.
+    if_dit_jaar               = coalesce(excluded.if_dit_jaar,   bedrijf_dashboard_instelling.if_dit_jaar),
+    if_vorig_jaar             = coalesce(excluded.if_vorig_jaar, bedrijf_dashboard_instelling.if_vorig_jaar),
     updated_at                = now();
 end;
 $function$;

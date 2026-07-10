@@ -174,9 +174,30 @@ async function run() {
     delete oud.p_if_vorig_jaar
     const { error } = await clientA.rpc('dashboard_instelling_zetten', oud)
     check('RPC accepteert nog de oude 10 argumenten (default null)', !error, error?.message)
+
+    // 0042: weglaten mag het getal NIET wissen — coalesce naar de huidige waarde.
+    const { data } = await clientA.from('bedrijf_dashboard_instelling')
+      .select('if_dit_jaar, if_vorig_jaar').eq('company_id', aId).single()
+    check('Weglaten van de IF-params laat het getal staan (0042)', Number(data?.if_dit_jaar) === 3.25, `${data?.if_dit_jaar}`)
+    check('Idem voor vorig jaar', Number(data?.if_vorig_jaar) === 5.5, `${data?.if_vorig_jaar}`)
+  }
+  {
+    // Expliciet null meesturen doet hetzelfde: het getal blijft staan. Dit is de
+    // bewuste prijs van 0042 — de RPC ziet geen verschil tussen "niet meegegeven"
+    // en "gewist", dus leegmaken via het formulier werkt niet meer.
+    const { error } = await clientA.rpc('dashboard_instelling_zetten',
+      zetArgs(aId, { p_if_dit_jaar: null, p_if_vorig_jaar: null }))
+    check('Expliciete null wist het IF-getal niet', !error, error?.message)
     const { data } = await clientA.from('bedrijf_dashboard_instelling')
       .select('if_dit_jaar').eq('company_id', aId).single()
-    check('Weglaten van de IF-params wist het getal (expliciet null)', data?.if_dit_jaar === null, `${data?.if_dit_jaar}`)
+    check('IF-getal overleeft een expliciete null', Number(data?.if_dit_jaar) === 3.25, `${data?.if_dit_jaar}`)
+  }
+  {
+    // Een nieuwe waarde overschrijft wél gewoon.
+    await clientA.rpc('dashboard_instelling_zetten', zetArgs(aId, { p_if_dit_jaar: 1.75 }))
+    const { data } = await clientA.from('bedrijf_dashboard_instelling')
+      .select('if_dit_jaar').eq('company_id', aId).single()
+    check('Een nieuwe IF-waarde overschrijft de oude wel', Number(data?.if_dit_jaar) === 1.75, `${data?.if_dit_jaar}`)
   }
 
   // --- Lezen: A mag de velden van B NIET zien (0 rijen via RLS) ---

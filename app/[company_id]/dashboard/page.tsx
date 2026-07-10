@@ -92,7 +92,9 @@ export default async function CompanyDashboardPage({
       ifVorigJaar={(ifRij as { if_vorig_jaar: number | null } | null)?.if_vorig_jaar ?? null}
       pvaRie={pvaRie as PvaRieVoortgang}
       auditsTotaal={(auditRows as { status: string }[] | null)?.length ?? 0}
-      auditsGedaan={(auditRows as { status: string }[] | null)?.filter(a => a.status !== 'gepland').length ?? 0}
+      // "0 van 5" = hoeveel er écht klaar zijn. 'uitgevoerd' telt bewust niet mee:
+      // het rapport is dan geschreven maar nog niet afgerond.
+      auditsGedaan={(auditRows as { status: string }[] | null)?.filter(a => a.status === 'afgerond').length ?? 0}
     />
   )
 }

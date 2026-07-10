@@ -462,10 +462,10 @@ export default function DashboardClient({
           {/* Audits — voortgang interne audits (auditmodule) als gauge, doorklik. */}
           <Tegel titel="Audits" href={`/${cid}/audits`}>
             <div className="flex items-center gap-4">
-              <Gauge value={auditsGedaan} total={auditsTotaal} size={64} label="uitgevoerd" />
+              <Gauge value={auditsGedaan} total={auditsTotaal} size={64} label="afgerond" />
               <div className="min-w-0 space-y-1 text-sm">
                 <p className="text-ink">
-                  <span className="font-semibold tabular-nums">{auditsGedaan} van {auditsTotaal}</span> interne audits dit jaar
+                  <span className="font-semibold tabular-nums">{auditsGedaan} van {auditsTotaal}</span> interne audits afgerond dit jaar
                 </p>
                 <p className="text-ink/70 truncate">Extern: {inst?.audit_extern_omschrijving || '—'}</p>
                 {inst?.audit_status && <p className="text-xs text-ink/50">Status: {inst.audit_status}</p>}

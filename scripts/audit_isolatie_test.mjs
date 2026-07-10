@@ -141,6 +141,59 @@ async function run() {
         pva ? `${pva.bron_type}/${pva.bron_id === aAudit ? 'audit' : 'ander'}` : 'geen rij')
     }
   }
+  // END-TO-END actielijst-koppeling (fase 2). Een bevinding uit een audit moet
+  // via "maak hier een actie van" in de centrale actielijst landen, met een
+  // klikbare herkomst terug naar de bronaudit.
+  {
+    // 1. Een VCA-bevinding met toelichting → de toelichting wordt het onderwerp.
+    const { data: bev } = await clientA.from('audit_vca_bevinding')
+      .select('id').eq('audit_id', aAudit).eq('code', '11.1').single()
+    await clientA.from('audit_vca_bevinding')
+      .update({ status: 'verbeterpunt', toelichting: 'AUDITTEST_melden stimuleren' }).eq('id', bev.id)
+
+    const { data: actieId, error } = await clientA.rpc('audit_bevinding_naar_actie', { p_soort: 'vca', p_bron_id: bev.id })
+    check('A maakt actie van eigen VCA-bevinding', !error && !!actieId, error ? error.message : 'ok')
+
+    // 2. De actie staat in de centrale actielijst van A, met de toelichting als onderwerp.
+    const { data: pva } = await clientA.from('pva_items')
+      .select('id, onderwerp, status, bron_type, bron_id, company_id').eq('id', actieId).single()
+    check('Actie staat in de actielijst van A', !!pva && pva.company_id === aId)
+    check('Onderwerp = de toelichting van de bevinding', pva?.onderwerp === 'AUDITTEST_melden stimuleren', pva?.onderwerp)
+    check('Actie opent als Open', pva?.status === 'Open', pva?.status)
+
+    // 3. De herkomst is klikbaar terug naar de BRONAUDIT. bepaalHerkomst() in
+    //    lib/actie-herkomst.ts bouwt de href uit bron_type + bron_id; die twee
+    //    velden zijn hier het hele contract.
+    check('Herkomst wijst naar de bronaudit (bron_type + bron_id)',
+      pva?.bron_type === 'audit_bevinding' && pva?.bron_id === aAudit,
+      `${pva?.bron_type}/${pva?.bron_id === aAudit ? 'bronaudit' : 'FOUT doel'}`)
+
+    // 4. actie_id is teruggestempeld op de bevinding (UI toont "✓ Actie gekoppeld").
+    const { data: naStempel } = await clientA.from('audit_vca_bevinding').select('actie_id').eq('id', bev.id).single()
+    check('actie_id teruggestempeld op de bevinding', naStempel?.actie_id === actieId)
+
+    // 5. Idempotent: nog een keer klikken maakt GEEN tweede actie.
+    const { data: nogmaals } = await clientA.rpc('audit_bevinding_naar_actie', { p_soort: 'vca', p_bron_id: bev.id })
+    check('Tweede keer koppelen hergebruikt dezelfde actie', nogmaals === actieId, `${nogmaals === actieId ? 'zelfde' : 'NIEUWE actie!'}`)
+
+    const { data: alle } = await clientA.from('pva_items').select('id').eq('bron_id', aAudit)
+    check('Geen dubbele acties voor deze audit (1 vca + 1 verbeterpunt)', (alle?.length ?? 0) === 2, `${alle?.length ?? '?'} acties`)
+  }
+
+  // Kopregels 0041: Aan/Van bestaan en zijn per bedrijf afgeschermd.
+  {
+    const { error } = await clientA.from('audit')
+      .update({ gericht_aan: 'AUDITTEST_directie', auditor: 'AUDITTEST_auditor' }).eq('id', aAudit)
+    check('A kan Aan/Van van eigen audit vullen', !error, error?.message)
+    const { data } = await clientA.from('audit').select('gericht_aan, auditor').eq('id', aAudit).single()
+    check('Aan/Van bewaard', data?.gericht_aan === 'AUDITTEST_directie' && data?.auditor === 'AUDITTEST_auditor')
+  }
+  {
+    await clientA.from('audit').update({ auditor: 'HACK' }).eq('id', bAudit.id)
+    const { data } = await admin.from('audit').select('auditor').eq('id', bAudit.id).single()
+    check('A kan Aan/Van van B niet overschrijven', data?.auditor === null, data?.auditor ?? 'null')
+  }
+
   // Defensief: B's audit ongewijzigd.
   {
     const { data } = await admin.from('audit').select('titel').eq('id', bAudit.id).single()

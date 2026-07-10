@@ -64,6 +64,19 @@ export default function AuditDetailClient({
     else setVerbeterpunten(prev => prev.map(v => (v.id === bronId ? { ...v, actie_id: actieId as string } : v)))
   }
 
+  // Kopregel-tellers. Bewust AFGELEID, niet opgeslagen (0041): een opgeslagen
+  // teller kan uit de pas lopen met de bevindingen eronder. Een VCA-audit heeft
+  // geen verbeterpunt-rijen en een ISO-audit geen bevinding-rijen, dus beide
+  // bronnen optellen werkt voor allebei de sjablonen.
+  const tellers = useMemo(() => ({
+    afwijkingen:
+      bevindingen.filter(b => b.status === 'afwijking').length +
+      verbeterpunten.filter(v => v.soort === 'afwijking').length,
+    verbeterpunten:
+      bevindingen.filter(b => b.status === 'verbeterpunt').length +
+      verbeterpunten.filter(v => v.soort === 'verbeterpunt').length,
+  }), [bevindingen, verbeterpunten])
+
   // VCA: groepeer op hoofdstuk (in volgorde).
   const vcaGroepen = useMemo(() => {
     const groepen: { hoofdstuk: string; titel: string; items: AuditVcaBevinding[] }[] = []
@@ -125,6 +138,20 @@ export default function AuditDetailClient({
             onBlur={() => persist('audit', audit.id, { titel: audit.titel.trim() || 'Naamloze audit' })}
             aria-label="Titel" className={`${veld} font-medium`} placeholder="Titel van de audit"
           />
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-ink/40 mb-1">Aan</label>
+              <input value={audit.gericht_aan ?? ''} placeholder="bv. Directie Dutch Waste Collectors BV"
+                onChange={e => setAudit(p => ({ ...p, gericht_aan: e.target.value }))}
+                onBlur={() => persist('audit', audit.id, { gericht_aan: audit.gericht_aan })} className={veld} />
+            </div>
+            <div>
+              <label className="block text-xs text-ink/40 mb-1">Van</label>
+              <input value={audit.auditor ?? ''} placeholder="Naam van de auditor"
+                onChange={e => setAudit(p => ({ ...p, auditor: e.target.value }))}
+                onBlur={() => persist('audit', audit.id, { auditor: audit.auditor })} className={veld} />
+            </div>
+          </div>
           <div className="grid sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs text-ink/40 mb-1">Status</label>
@@ -141,6 +168,16 @@ export default function AuditDetailClient({
               <input value={audit.gesproken_met ?? ''} onChange={e => setAudit(p => ({ ...p, gesproken_met: e.target.value }))}
                 onBlur={() => persist('audit', audit.id, { gesproken_met: audit.gesproken_met })} className={veld} />
             </div>
+          </div>
+
+          {/* Afgeleide tellers, zoals de kop van beide bronformulieren. */}
+          <div className="flex flex-wrap gap-2 pt-1">
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${tellers.afwijkingen > 0 ? 'bg-red-100 text-red-800' : 'bg-green-50 text-green-700'}`}>
+              Afwijkingen: {tellers.afwijkingen}
+            </span>
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${tellers.verbeterpunten > 0 ? 'bg-amber-100 text-amber-800' : 'bg-green-50 text-green-700'}`}>
+              Verbeterpunten: {tellers.verbeterpunten}
+            </span>
           </div>
         </div>
 

@@ -41,6 +41,8 @@ export type Audit = {
   jaar: number
   datum: string | null
   gesproken_met: string | null
+  gericht_aan: string | null
+  auditor: string | null
   besproken_onderwerpen: string[]
   bewijsdocumenten: string[]
   samenvatting: string | null

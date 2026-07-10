@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-10T07:02:09.494Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-10T07:20:22.524Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -55,7 +55,9 @@ CREATE TABLE public.audit (
   positieve_waarnemingen text[] DEFAULT '{}'::text[] NOT NULL,
   conclusie text,
   aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL,
-  bijgewerkt_op timestamp with time zone DEFAULT now() NOT NULL
+  bijgewerkt_op timestamp with time zone DEFAULT now() NOT NULL,
+  gericht_aan text,
+  auditor text
 );
 
 CREATE TABLE public.audit_iso_observatie (

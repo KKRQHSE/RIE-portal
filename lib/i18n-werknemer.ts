@@ -1,11 +1,20 @@
-// Vaste UI-teksten voor de WERKNEMER-facing flows (NL/TR). Alleen deze twee
-// flows zijn tweetalig: de toolbox-werknemerflow (/tb/[token]) en het
-// incident-meldformulier (/melden/[token]). De KAM/beheer-view blijft NL.
-// Door de KAM ingevoerde inhoud (toolbox-tekst, quizvragen, gevolg-labels)
-// blijft in de taal waarin die is ingevoerd — die staat NIET in dit bestand.
+// Vaste UI-teksten voor de WERKNEMER-facing flows (NL/TR). Drie flows zijn
+// tweetalig: de toolbox-werknemerflow (/tb/[token]), het incident-meldformulier
+// (/melden/[token]) en het invulscherm van de werkplekinspectie (degene die de
+// inspectie op de vloer invult). De KAM/beheer-view blijft NL.
+// Door de KAM ingevoerde inhoud (toolbox-tekst, quizvragen, gevolg-labels,
+// checklistvragen en rubrieknamen) blijft in de taal waarin die is ingevoerd —
+// die staat NIET in dit bestand.
 //
 // Eén centrale plek zodat de Turkse teksten in één oogopslag te reviewen/
 // corrigeren zijn. Placeholders {naam}/{bedrijf} worden in de component ingevuld.
+//
+// ⚠️ DE TURKSE TEKSTEN ZIJN MACHINEVERTALINGEN EN NOG NIET NAGEKEKEN DOOR EEN
+// MOEDERTAALSPREKER. Dit is een compliance-tool: een medewerker tekent en legt
+// bevindingen vast op basis van wat hier staat. Laat een Turkstalige collega de
+// `tr`-waarden nalopen vóór livegang, met bijzondere aandacht voor de
+// resultaatlabels (uygun / uygun değil / geçerli değil) en voor alles wat een
+// verplichting of bevestiging uitdrukt.
 
 export type Taal = 'nl' | 'tr'
 export const TALEN: { code: Taal; label: string }[] = [
@@ -56,6 +65,61 @@ export const TB_TEKST: Woordenboek = {
   bezig:            { nl: 'Bezig…', tr: 'İşleniyor…' },
   klaarBedankt:     { nl: 'Vastgelegd. Bedankt, {naam}.', tr: 'Kaydedildi. Teşekkürler, {naam}.' },
   klaarUitleg:      { nl: 'Je deelname is aantoonbaar opgeslagen en kan niet meer worden gewijzigd.', tr: 'Katılımın kanıtlanabilir şekilde kaydedildi ve artık değiştirilemez.' },
+}
+
+// Werkplekinspectie — INVULSCHERM (InspectieUitvoeren). Alleen de omringende UI.
+// De checklistvragen (punt_tekst_snap), rubrieknamen, de sjabloonnaam en de
+// historieregels komen uit de database in de taal waarin de KAM ze invoerde en
+// worden hier bewust NIET vertaald.
+//
+// ⚠️ Turkse teksten: machinevertaling, nog te laten nakijken (zie kop van dit bestand).
+// Let bij het nakijken vooral op `inOrde`/`nietInOrde`/`nvt`: dat zijn de labels
+// waaronder een bevinding juridisch wordt vastgelegd.
+export const INSP_TEKST: Woordenboek = {
+  terugOverzicht:   { nl: 'Terug naar overzicht', tr: 'Genel görünüme dön' },
+  inspectie:        { nl: 'Inspectie', tr: 'Denetim' },
+  statusOpen:       { nl: 'open', tr: 'açık' },
+  statusAfgerond:   { nl: 'afgerond', tr: 'tamamlandı' },
+  statusGeannuleerd: { nl: 'geannuleerd', tr: 'iptal edildi' },
+  uitgevoerdOp:     { nl: 'Uitgevoerd op {datum}', tr: '{datum} tarihinde yapıldı' },
+  laden:            { nl: 'Laden…', tr: 'Yükleniyor…' },
+  geenPunten:       { nl: 'Dit sjabloon had geen punten. Voeg punten toe en start een nieuwe inspectie.', tr: 'Bu şablonda madde yok. Madde ekle ve yeni bir denetim başlat.' },
+
+  conclusie:        { nl: 'Conclusie', tr: 'Sonuç' },
+  conclusiePlaceholder: { nl: 'Algemene conclusie of opmerking…', tr: 'Genel sonuç veya not…' },
+
+  // NL kent enkelvoud/meervoud, Turks gebruikt na een telwoord het enkelvoud.
+  verplichtOpenEnk: { nl: '{n} verplicht punt nog zonder resultaat.', tr: '{n} zorunlu madde henüz sonuçsuz.' },
+  verplichtOpenMv:  { nl: '{n} verplichte punten nog zonder resultaat.', tr: '{n} zorunlu madde henüz sonuçsuz.' },
+  afronden:         { nl: 'Inspectie afronden', tr: 'Denetimi tamamla' },
+  bezig:            { nl: 'Bezig…', tr: 'İşleniyor…' },
+  afrondenMislukt:  { nl: 'Afronden mislukt: ', tr: 'Tamamlama başarısız: ' },
+  onbekendeFout:    { nl: 'onbekende fout', tr: 'bilinmeyen hata' },
+
+  geschiedenis:     { nl: 'Geschiedenis', tr: 'Geçmiş' },
+  geenGeschiedenis: { nl: 'Nog geen geschiedenis.', tr: 'Henüz geçmiş yok.' },
+
+  inOrde:           { nl: 'In orde', tr: 'Uygun' },
+  nietInOrde:       { nl: 'Niet in orde', tr: 'Uygun değil' },
+  nvt:              { nl: 'N.v.t.', tr: 'Geçerli değil' },
+  verplicht:        { nl: 'Verplicht', tr: 'Zorunlu' },
+
+  hoeAfgehandeld:   { nl: 'Hoe is dit afgehandeld?', tr: 'Bu nasıl giderildi?' },
+  // Om de link midden in de zin te houden: voor- en achterstuk apart. De
+  // woordvolgorde verschilt (NL: "op de actielijst.", TR: "aksiyon listesinde yer alıyor.").
+  actiePrefix:      { nl: '✓ Er staat een actie op de ', tr: '✓ Bir görev ' },
+  actielijst:       { nl: 'actielijst', tr: 'aksiyon listesinde' },
+  actieSuffix:      { nl: '.', tr: ' yer alıyor.' },
+
+  toelichtingPlaceholder: { nl: 'Toelichting (verplicht bij ‘meteen hersteld’)…', tr: 'Açıklama (‘hemen giderildi’ için zorunlu)…' },
+  meteenHersteld:   { nl: 'Meteen hersteld', tr: 'Hemen giderildi' },
+  actieAanmaken:    { nl: 'Actie aanmaken', tr: 'Görev oluştur' },
+  opmerkingPlaceholder: { nl: 'Opmerking (optioneel)…', tr: 'Not (isteğe bağlı)…' },
+  directHersteld:   { nl: 'Direct hersteld — {opmerking}', tr: 'Hemen giderildi — {opmerking}' },
+
+  foutToelichtingVerplicht: { nl: 'Een toelichting is verplicht bij ‘meteen hersteld’.', tr: '‘Hemen giderildi’ için açıklama zorunludur.' },
+  foutOpslaan:      { nl: 'Opslaan mislukt', tr: 'Kaydetme başarısız' },
+  foutActie:        { nl: 'Actie aanmaken mislukt', tr: 'Görev oluşturulamadı' },
 }
 
 // Incident-meldformulier (/melden/[token] → IncidentMeldClient)

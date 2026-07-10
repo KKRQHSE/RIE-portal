@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { INSP_TEKST, vertaal, type Taal } from '@/lib/i18n-werknemer'
+import TaalWissel, { useTaal } from './TaalWissel'
 import type {
   Inspectie,
   InspectieBevinding,
@@ -10,12 +12,20 @@ import type {
   BevindingResultaat,
 } from '@/lib/types'
 
-function formatDatum(iso: string | null): string {
+// Vertaalhulp: dezelfde vorm als in de toolbox- en meldflow.
+type Vertaler = (key: string) => string
+const maakVertaler = (taal: Taal): Vertaler => key => vertaal(INSP_TEKST, key, taal)
+
+function formatDatum(iso: string | null, taal: Taal): string {
   if (!iso) return ''
   const d = new Date(iso)
   return isNaN(d.getTime())
     ? ''
-    : d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleDateString(taal === 'tr' ? 'tr-TR' : 'nl-NL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+const STATUS_SLEUTEL: Record<string, string> = {
+  open: 'statusOpen', afgerond: 'statusAfgerond', geannuleerd: 'statusGeannuleerd',
 }
 
 type Props = {
@@ -28,6 +38,8 @@ type Props = {
 
 export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onStatus }: Props) {
   const supabase = createClient()
+  const [taal, setTaal] = useTaal()
+  const t = maakVertaler(taal)
 
   const [status, setStatus] = useState<Inspectie['status']>(inspectie.status)
   const [bevindingen, setBevindingen] = useState<InspectieBevinding[]>([])
@@ -78,7 +90,7 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
     })
     setAfrondBezig(false)
     if (error) {
-      setFout('Afronden mislukt: ' + (error.message ?? 'onbekende fout'))
+      setFout(t('afrondenMislukt') + (error.message ?? t('onbekendeFout')))
       return
     }
     setStatus('afgerond')
@@ -96,17 +108,22 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
 
   return (
     <div className="space-y-4">
-      <button
-        onClick={onTerug}
-        className="text-sm text-ink/50 hover:text-ink inline-flex items-center gap-1 min-h-[44px]"
-      >
-        ← Terug naar overzicht
-      </button>
+      {/* Terug + taalschakelaar op één regel; op smal scherm wrapt de toggle mee. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <button
+          onClick={onTerug}
+          className="text-sm text-ink/50 hover:text-ink inline-flex items-center gap-1 min-h-[44px]"
+        >
+          ← {t('terugOverzicht')}
+        </button>
+        <TaalWissel taal={taal} onTaal={setTaal} />
+      </div>
 
       <div className="bg-white rounded-lg shadow-sm p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-ink">{inspectie.sjabloon_naam_snap ?? 'Inspectie'}</h2>
+            {/* Sjabloonnaam en controlesoort komen uit de DB: niet vertalen. */}
+            <h2 className="text-lg font-semibold text-ink">{inspectie.sjabloon_naam_snap ?? t('inspectie')}</h2>
             {inspectie.controlesoort_snap && (
               <p className="text-sm text-ink/50 mt-0.5">{inspectie.controlesoort_snap}</p>
             )}
@@ -115,19 +132,21 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
             ${status === 'afgerond' ? 'bg-green-100 text-green-800'
               : status === 'geannuleerd' ? 'bg-gray-100 text-gray-600'
               : 'bg-blue-100 text-blue-800'}`}>
-            {status}
+            {STATUS_SLEUTEL[status] ? t(STATUS_SLEUTEL[status]) : status}
           </span>
         </div>
         {inspectie.uitgevoerd_op && (
-          <p className="text-xs text-ink/40 mt-2">Uitgevoerd op {formatDatum(inspectie.uitgevoerd_op)}</p>
+          <p className="text-xs text-ink/40 mt-2">
+            {t('uitgevoerdOp').replace('{datum}', formatDatum(inspectie.uitgevoerd_op, taal))}
+          </p>
         )}
       </div>
 
-      {laden && <p className="text-sm text-ink/40">Laden…</p>}
+      {laden && <p className="text-sm text-ink/40">{t('laden')}</p>}
 
       {!laden && bevindingen.length === 0 && (
         <p className="text-sm text-ink/40 bg-white rounded-lg shadow-sm p-4">
-          Dit sjabloon had geen punten. Voeg punten toe en start een nieuwe inspectie.
+          {t('geenPunten')}
         </p>
       )}
 
@@ -148,6 +167,7 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
                 nummer={i + 1}
                 bevinding={b}
                 readOnly={readOnly}
+                t={t}
                 onPatch={updates => patchBevinding(b.id, updates)}
                 onHistorieGewijzigd={herlaad}
               />
@@ -159,13 +179,13 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
       {/* Algemene conclusie */}
       {bevindingen.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm p-4">
-          <p className="text-xs font-medium text-ink/40 uppercase tracking-wider mb-1">Conclusie</p>
+          <p className="text-xs font-medium text-ink/40 uppercase tracking-wider mb-1">{t('conclusie')}</p>
           <textarea
             value={conclusie}
             onChange={e => setConclusie(e.target.value)}
             onBlur={bewaarConclusie}
             disabled={readOnly}
-            placeholder="Algemene conclusie of opmerking…"
+            placeholder={t('conclusiePlaceholder')}
             rows={3}
             className="w-full text-sm border border-ink/20 rounded px-3 py-2 resize-none bg-white disabled:bg-surface/50 disabled:text-ink/60"
           />
@@ -177,7 +197,7 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
         <div className="bg-white rounded-lg shadow-sm p-4 space-y-2">
           {verplichtOpen > 0 && (
             <p className="text-xs text-red-600 font-medium">
-              {verplichtOpen} verplicht punt{verplichtOpen === 1 ? '' : 'en'} nog zonder resultaat.
+              {t(verplichtOpen === 1 ? 'verplichtOpenEnk' : 'verplichtOpenMv').replace('{n}', String(verplichtOpen))}
             </p>
           )}
           <button
@@ -185,7 +205,7 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
             disabled={verplichtOpen > 0 || afrondBezig}
             className="text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
           >
-            {afrondBezig ? 'Bezig…' : 'Inspectie afronden'}
+            {afrondBezig ? t('bezig') : t('afronden')}
           </button>
           {fout && <p className="text-xs text-red-600">{fout}</p>}
         </div>
@@ -193,15 +213,16 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
 
       {/* Historie */}
       <div className="bg-white rounded-lg shadow-sm p-4">
-        <p className="text-xs font-medium text-ink/40 uppercase tracking-wider mb-2">Geschiedenis</p>
+        <p className="text-xs font-medium text-ink/40 uppercase tracking-wider mb-2">{t('geschiedenis')}</p>
         {historie.length === 0 ? (
-          <p className="text-xs text-ink/40">Nog geen geschiedenis.</p>
+          <p className="text-xs text-ink/40">{t('geenGeschiedenis')}</p>
         ) : (
           <ul className="space-y-2">
             {historie.map(h => (
               <li key={h.id} className="text-xs text-ink/60 border-l-2 border-ink/10 pl-2">
+                {/* h.wijziging wordt server-side in het NL geschreven: inhoud, niet vertalen. */}
                 {h.wijziging}
-                <span className="text-ink/40"> · {formatDatum(h.wanneer)}</span>
+                <span className="text-ink/40"> · {formatDatum(h.wanneer, taal)}</span>
               </li>
             ))}
           </ul>
@@ -218,11 +239,12 @@ type RowProps = {
   nummer: number
   bevinding: InspectieBevinding
   readOnly: boolean
+  t: Vertaler
   onPatch: (updates: Partial<InspectieBevinding>) => void
   onHistorieGewijzigd: () => void
 }
 
-function BevindingRow({ companyId, nummer, bevinding, readOnly, onPatch, onHistorieGewijzigd }: RowProps) {
+function BevindingRow({ companyId, nummer, bevinding, readOnly, t, onPatch, onHistorieGewijzigd }: RowProps) {
   const supabase = createClient()
   const [opmerking, setOpmerking] = useState(bevinding.opmerking ?? '')
   const [bezig, setBezig] = useState(false)
@@ -244,7 +266,7 @@ function BevindingRow({ companyId, nummer, bevinding, readOnly, onPatch, onHisto
       p_opmerking: opm,
     })
     if (error) {
-      setFout(error.message ?? 'Opslaan mislukt')
+      setFout(error.message ?? t('foutOpslaan'))
       return false
     }
     onPatch({ resultaat, afhandeling, opmerking: opm })
@@ -277,7 +299,7 @@ function BevindingRow({ companyId, nummer, bevinding, readOnly, onPatch, onHisto
   async function kiesMeteenHersteld() {
     if (readOnly || bezig) return
     if (!opmerking.trim()) {
-      setFout('Een toelichting is verplicht bij ‘meteen hersteld’.')
+      setFout(t('foutToelichtingVerplicht'))
       return
     }
     await opslaan('niet_in_orde', 'meteen_hersteld', opmerking.trim())
@@ -293,7 +315,7 @@ function BevindingRow({ companyId, nummer, bevinding, readOnly, onPatch, onHisto
     const { data, error } = await supabase.rpc('bevinding_naar_actie', { p_bevinding_id: bevinding.id })
     setBezig(false)
     if (error) {
-      setFout(error.message ?? 'Actie aanmaken mislukt')
+      setFout(error.message ?? t('foutActie'))
       return
     }
     onPatch({ resultaat: 'niet_in_orde', afhandeling: 'actie', actie_id: (data as string) ?? bevinding.actie_id })
@@ -316,9 +338,9 @@ function BevindingRow({ companyId, nummer, bevinding, readOnly, onPatch, onHisto
   }
 
   const RESULTATEN: { key: BevindingResultaat; label: string; actief: string }[] = [
-    { key: 'in_orde',      label: 'In orde',      actief: 'bg-green-600 text-white border-green-600' },
-    { key: 'niet_in_orde', label: 'Niet in orde', actief: 'bg-red-600 text-white border-red-600' },
-    { key: 'nvt',          label: 'N.v.t.',       actief: 'bg-ink text-white border-ink' },
+    { key: 'in_orde',      label: t('inOrde'),     actief: 'bg-green-600 text-white border-green-600' },
+    { key: 'niet_in_orde', label: t('nietInOrde'), actief: 'bg-red-600 text-white border-red-600' },
+    { key: 'nvt',          label: t('nvt'),        actief: 'bg-ink text-white border-ink' },
   ]
 
   return (
@@ -326,8 +348,9 @@ function BevindingRow({ companyId, nummer, bevinding, readOnly, onPatch, onHisto
       <div className="flex items-start gap-3">
         <span className="font-mono text-xs text-ink/40 mt-0.5 shrink-0">{nummer}</span>
         <p className="text-sm text-ink flex-1">
+          {/* De checklistvraag zelf komt uit de DB en blijft in de taal van de KAM. */}
           {bevinding.punt_tekst_snap}
-          {bevinding.verplicht && <span className="text-accent ml-1" title="Verplicht">*</span>}
+          {bevinding.verplicht && <span className="text-accent ml-1" title={t('verplicht')}>*</span>}
         </p>
       </div>
 
@@ -352,12 +375,13 @@ function BevindingRow({ companyId, nummer, bevinding, readOnly, onPatch, onHisto
       {/* Afhandeling bij 'niet in orde' */}
       {bevinding.resultaat === 'niet_in_orde' && (
         <div className="rounded border border-dashed border-red-200 bg-red-50/40 p-3 space-y-2">
-          <p className="text-xs text-ink/50">Hoe is dit afgehandeld?</p>
+          <p className="text-xs text-ink/50">{t('hoeAfgehandeld')}</p>
 
           {heeftActie ? (
             <p className="text-xs text-ink/70">
-              ✓ Er staat een actie op de{' '}
-              <Link href={`/${companyId}/pva`} className="text-accent hover:underline">actielijst</Link>.
+              {t('actiePrefix')}
+              <Link href={`/${companyId}/pva`} className="text-accent hover:underline">{t('actielijst')}</Link>
+              {t('actieSuffix')}
             </p>
           ) : (
             <>
@@ -366,7 +390,7 @@ function BevindingRow({ companyId, nummer, bevinding, readOnly, onPatch, onHisto
                 onChange={e => setOpmerking(e.target.value)}
                 onBlur={blurOpmerking}
                 disabled={readOnly || bezig}
-                placeholder="Toelichting (verplicht bij ‘meteen hersteld’)…"
+                placeholder={t('toelichtingPlaceholder')}
                 rows={2}
                 className="w-full text-sm border border-ink/20 rounded px-3 py-2 resize-none bg-white disabled:bg-surface/50"
               />
@@ -379,14 +403,14 @@ function BevindingRow({ companyId, nummer, bevinding, readOnly, onPatch, onHisto
                       ? 'bg-green-600 text-white border-green-600'
                       : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}
                 >
-                  {bevinding.afhandeling === 'meteen_hersteld' ? '✓ ' : ''}Meteen hersteld
+                  {bevinding.afhandeling === 'meteen_hersteld' ? '✓ ' : ''}{t('meteenHersteld')}
                 </button>
                 <button
                   onClick={maakActie}
                   disabled={readOnly || bezig}
                   className="text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                  Actie aanmaken
+                  {t('actieAanmaken')}
                 </button>
               </div>
             </>
@@ -401,14 +425,14 @@ function BevindingRow({ companyId, nummer, bevinding, readOnly, onPatch, onHisto
           onChange={e => setOpmerking(e.target.value)}
           onBlur={blurOpmerking}
           disabled={readOnly || bezig}
-          placeholder="Opmerking (optioneel)…"
+          placeholder={t('opmerkingPlaceholder')}
           className="w-full text-sm border border-ink/20 rounded px-3 py-2 bg-white disabled:bg-surface/50"
         />
       )}
 
       {/* Alleen-lezen samenvatting voor afgeronde inspecties */}
       {readOnly && bevinding.resultaat === 'niet_in_orde' && bevinding.afhandeling === 'meteen_hersteld' && bevinding.opmerking && (
-        <p className="text-xs text-ink/60">Direct hersteld — {bevinding.opmerking}</p>
+        <p className="text-xs text-ink/60">{t('directHersteld').replace('{opmerking}', bevinding.opmerking)}</p>
       )}
 
       {fout && <p className="text-xs text-red-600">{fout}</p>}

@@ -335,21 +335,30 @@ export default function DashboardClient({
             </Tegel>
           )}
 
-          {/* Inspectie-doelen per persoon */}
+          {/* Werkplekinspectie-voortgang per PERSOON. Anders dan de toolbox-tegel,
+              die per MAAND telt. De RPC joint vanuit bedrijf_inspectie_doel, dus
+              personen zonder doel staan hier niet — dat is bewust. */}
           {toonInspecties && inspectie_doel.personen.length > 0 && (
-            <Tegel titel="Inspectie-doelen per persoon" href={`/${cid}/inspecties`}>
-              <div className="flex items-center gap-3 mb-3">
+            <Tegel titel="Inspectie-voortgang per persoon" href={`/${cid}/inspecties`}>
+              <div className="flex items-center gap-3 mb-4">
                 <Gauge value={inspectie_doel.totaal_gedaan} total={inspectie_doel.totaal_doel} size={56} />
                 <div>
                   <Ratio gedaan={inspectie_doel.totaal_gedaan} doel={inspectie_doel.totaal_doel} />
                   <p className="text-xs text-ink/50">uitgevoerd dit jaar</p>
                 </div>
               </div>
-              <ul className="space-y-1">
+              <ul className="space-y-3">
                 {inspectie_doel.personen.map(p => (
-                  <li key={p.naam} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="text-ink/70 truncate">{p.naam}</span>
-                    <span className="tabular-nums text-ink/50">{p.gedaan}/{p.doel}</span>
+                  <li key={p.naam} className="flex items-center gap-3">
+                    {/* centerText = het aantal gedane inspecties; de boog toont de fractie. */}
+                    <Gauge value={p.gedaan} total={p.doel} size={44} centerText={String(p.gedaan)} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-ink truncate">{p.naam}</p>
+                      <p className="text-xs text-ink/50 tabular-nums">
+                        {p.gedaan} van {p.doel}
+                        {p.doel > 0 && p.gedaan >= p.doel && <span className="text-green-700 ml-1">· gehaald</span>}
+                      </p>
+                    </div>
                   </li>
                 ))}
               </ul>

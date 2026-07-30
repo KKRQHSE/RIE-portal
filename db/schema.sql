@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-10T09:44:42.965Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-07-30T13:02:22.882Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -497,6 +497,17 @@ CREATE TABLE public.personen (
   datum_uit_dienst date
 );
 
+CREATE TABLE public.persoon_merge_log (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  doel_id uuid,
+  doel_naam text NOT NULL,
+  bron_naam text NOT NULL,
+  verschoven jsonb DEFAULT '{}'::jsonb NOT NULL,
+  wie uuid,
+  wanneer timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE public.pva_items (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
@@ -657,6 +668,7 @@ ALTER TABLE public.merken ADD CONSTRAINT merken_pkey PRIMARY KEY (id);
 ALTER TABLE public.module_historie ADD CONSTRAINT module_historie_pkey PRIMARY KEY (id);
 ALTER TABLE public.modules ADD CONSTRAINT modules_pkey PRIMARY KEY (id);
 ALTER TABLE public.personen ADD CONSTRAINT personen_pkey PRIMARY KEY (id);
+ALTER TABLE public.persoon_merge_log ADD CONSTRAINT persoon_merge_log_pkey PRIMARY KEY (id);
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_pkey PRIMARY KEY (id);
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_pkey PRIMARY KEY (id);
 ALTER TABLE public.toolbox_bron ADD CONSTRAINT toolbox_bron_pkey PRIMARY KEY (id);
@@ -780,6 +792,7 @@ ALTER TABLE public.personen ADD CONSTRAINT personen_company_id_fkey FOREIGN KEY 
 ALTER TABLE public.personen ADD CONSTRAINT personen_functiegroep_id_fkey FOREIGN KEY (functiegroep_id) REFERENCES functiegroep(id) ON DELETE SET NULL;
 ALTER TABLE public.personen ADD CONSTRAINT personen_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE public.personen ADD CONSTRAINT personen_voorgesteld_door_fkey FOREIGN KEY (voorgesteld_door) REFERENCES personen(id) ON DELETE SET NULL;
+ALTER TABLE public.persoon_merge_log ADD CONSTRAINT persoon_merge_log_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE SET NULL;
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_rie_versie_id_fkey FOREIGN KEY (rie_versie_id) REFERENCES rie_versies(id);
@@ -840,6 +853,7 @@ CREATE INDEX isp_punt_sjabloon_idx ON public.inspectie_sjabloon_punt USING btree
 CREATE INDEX module_historie_company_idx ON public.module_historie USING btree (company_id, wanneer DESC);
 CREATE INDEX modules_company_idx ON public.modules USING btree (company_id);
 CREATE INDEX personen_company_idx ON public.personen USING btree (company_id);
+CREATE INDEX persoon_merge_log_company_idx ON public.persoon_merge_log USING btree (company_id, wanneer DESC);
 CREATE INDEX pva_items_company_idx ON public.pva_items USING btree (company_id);
 CREATE INDEX pva_items_persoon_idx ON public.pva_items USING btree (persoon_id);
 CREATE UNIQUE INDEX toolbox_bron_naam_uniek ON public.toolbox_bron USING btree (naam);
@@ -899,6 +913,7 @@ ALTER TABLE public.merken ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.module_historie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.personen ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.persoon_merge_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pva_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rie_versies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.toolbox_bron ENABLE ROW LEVEL SECURITY;
@@ -1062,6 +1077,8 @@ CREATE POLICY personen_select ON public.personen AS PERMISSIVE FOR SELECT TO pub
 CREATE POLICY personen_write ON public.personen AS PERMISSIVE FOR ALL TO public
   USING (((company_id = my_company_id()) OR is_admin()))
   WITH CHECK (((company_id = my_company_id()) OR is_admin()));
+CREATE POLICY persoon_merge_log_sel ON public.persoon_merge_log AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY pva_select ON public.pva_items AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
 CREATE POLICY pva_update ON public.pva_items AS PERMISSIVE FOR UPDATE TO public
@@ -3769,6 +3786,172 @@ CREATE OR REPLACE FUNCTION public.my_company_id()
 AS $function$
   select company_id from public.users where id = auth.uid()
 $function$;
+CREATE OR REPLACE FUNCTION public.personen_merge_voorbeeld(p_doel_id uuid, p_bron_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_company    uuid;
+  v_botsingen  jsonb;
+begin
+  v_company := persoon_merge_context(p_doel_id, p_bron_id);
+
+  -- Botsende bewijsstukken: dezelfde sessie, of dezelfde toolbox in hetzelfde
+  -- jaar. Beide records zijn getekend; die kunnen niet samen op één persoon.
+  select coalesce(jsonb_agg(x order by x->>'omschrijving'), '[]'::jsonb) into v_botsingen
+    from (
+      select jsonb_build_object(
+               'soort', 'sessie',
+               'omschrijving', coalesce(s.onderwerp, 'toolbox-sessie') ||
+                               coalesce(' (' || to_char(s.datum, 'DD-MM-YYYY') || ')', '')
+             ) as x
+        from toolbox_deelname bron
+        join toolbox_deelname doel
+          on doel.persoon_id = p_doel_id and doel.sessie_id = bron.sessie_id
+        left join toolbox_sessie s on s.id = bron.sessie_id
+       where bron.persoon_id = p_bron_id and bron.sessie_id is not null
+
+      union all
+
+      select jsonb_build_object(
+               'soort', 'toolbox',
+               'omschrijving', bron.titel_snap || ' (' || jaar_utc(bron.afgerond_op)::text || ')'
+             )
+        from toolbox_deelname bron
+        join toolbox_deelname doel
+          on doel.persoon_id = p_doel_id
+         and doel.company_id = bron.company_id
+         and doel.toolbox_id = bron.toolbox_id
+         and jaar_utc(doel.afgerond_op) = jaar_utc(bron.afgerond_op)
+       where bron.persoon_id = p_bron_id and bron.toolbox_id is not null
+    ) botsing;
+
+  return jsonb_build_object(
+    'company_id',      v_company,
+    'doel_naam',       (select naam from personen where id = p_doel_id),
+    'bron_naam',       (select naam from personen where id = p_bron_id),
+    'inspecties',      (select count(*) from inspectie        where persoon_id = p_bron_id),
+    'acties',          (select count(*) from pva_items        where persoon_id = p_bron_id),
+    'herinneringen',   (select count(*) from herinnering_log  where persoon_id = p_bron_id),
+    'toolbox',         (select count(*) from toolbox_deelname where persoon_id = p_bron_id),
+    -- Elk toolbox-record is een bewijsstuk dat zijn bevroren naam houdt.
+    'bewijsstukken',   (select count(*) from toolbox_deelname where persoon_id = p_bron_id),
+    'inspectie_doel',  (select count(*) from bedrijf_inspectie_doel where persoon_id = p_bron_id),
+    'deellink',        (select count(*) from deellinks        where persoon_id = p_bron_id),
+    -- Botst het doel/de deellink? Dan vervalt die van de bron i.p.v. te verschuiven.
+    'doel_botst',      exists (select 1 from bedrijf_inspectie_doel where persoon_id = p_doel_id)
+                       and exists (select 1 from bedrijf_inspectie_doel where persoon_id = p_bron_id),
+    'deellink_botst',  exists (select 1 from deellinks where persoon_id = p_doel_id)
+                       and exists (select 1 from deellinks where persoon_id = p_bron_id),
+    'botsingen',       v_botsingen
+  );
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.personen_samenvoegen(p_doel_id uuid, p_bron_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_company     uuid;
+  v_doel_naam   text;
+  v_bron_naam   text;
+  v_bron        record;
+  v_voorbeeld   jsonb;
+  v_verschoven  jsonb;
+  n_inspecties  integer;
+  n_acties      integer;
+  n_herinner    integer;
+  n_toolbox     integer;
+  n_doel        integer;
+  n_deellink    integer;
+begin
+  v_company := persoon_merge_context(p_doel_id, p_bron_id);
+
+  -- Zelfde controle als het bevestigingsscherm zag. Een merge die daar mocht,
+  -- kan hier alsnog weigeren als er intussen iets is bijgekomen.
+  v_voorbeeld := personen_merge_voorbeeld(p_doel_id, p_bron_id);
+  if jsonb_array_length(v_voorbeeld->'botsingen') > 0 then
+    raise exception 'Samenvoegen kan niet: beide personen hebben getekend bij %',
+      (select string_agg(b->>'omschrijving', ', ')
+         from jsonb_array_elements(v_voorbeeld->'botsingen') b);
+  end if;
+
+  select naam into v_doel_naam from personen where id = p_doel_id;
+  -- De gegevens op het bron-record zelf (e-mail, functiegroep, dienstdata,
+  -- logins) alvast bewaren: na de delete zijn ze niet meer op te halen.
+  select naam, email, functiegroep_id, datum_in_dienst, datum_uit_dienst, user_id
+    into v_bron from personen where id = p_bron_id;
+  v_bron_naam := v_bron.naam;
+
+  -- Levende koppelingen zonder unieke sleutel: gewoon verschuiven.
+  update inspectie       set persoon_id = p_doel_id where persoon_id = p_bron_id;
+  get diagnostics n_inspecties = row_count;
+  update pva_items       set persoon_id = p_doel_id where persoon_id = p_bron_id;
+  get diagnostics n_acties = row_count;
+  update herinnering_log set persoon_id = p_doel_id where persoon_id = p_bron_id;
+  get diagnostics n_herinner = row_count;
+
+  -- Bewijsstukken: alleen de koppeling schuift op. bevestigde_naam, handtekening
+  -- en de snapshots blijven ongemoeid — de trigger bewaakt dat.
+  update toolbox_deelname set persoon_id = p_doel_id where persoon_id = p_bron_id;
+  get diagnostics n_toolbox = row_count;
+
+  -- Inspectiedoel: PK (company_id, persoon_id). Heeft de doel-persoon er al een,
+  -- dan houdt hij die; anders schuift het doel van de bron mee.
+  delete from bedrijf_inspectie_doel
+   where persoon_id = p_bron_id
+     and exists (select 1 from bedrijf_inspectie_doel d
+                  where d.company_id = v_company and d.persoon_id = p_doel_id);
+  update bedrijf_inspectie_doel set persoon_id = p_doel_id where persoon_id = p_bron_id;
+  get diagnostics n_doel = row_count;
+
+  -- Deellink: UNIQUE (persoon_id). Zelfde regel; een deellink is een
+  -- deelverwijzing, geen bewijsstuk, dus die van de bron mag vervallen.
+  delete from deellinks
+   where persoon_id = p_bron_id
+     and exists (select 1 from deellinks d where d.persoon_id = p_doel_id);
+  update deellinks set persoon_id = p_doel_id where persoon_id = p_bron_id;
+  get diagnostics n_deellink = row_count;
+
+  -- personen.voorgesteld_door is een self-FK met ON DELETE SET NULL: had de bron
+  -- iemand voorgesteld, dan zou dat spoor bij het verwijderen verdwijnen.
+  update personen set voorgesteld_door = p_doel_id where voorgesteld_door = p_bron_id;
+
+  v_verschoven := jsonb_build_object(
+    'inspecties', n_inspecties, 'acties', n_acties, 'herinneringen', n_herinner,
+    'toolbox', n_toolbox, 'inspectie_doel', n_doel, 'deellink', n_deellink
+  );
+
+  -- Logregel vóór het verwijderen: na de delete is de bron-naam nergens meer te
+  -- halen. doel_id blijft bestaan, dus die mag als verwijzing mee.
+  insert into public.persoon_merge_log (company_id, doel_id, doel_naam, bron_naam, verschoven, wie)
+  values (v_company, p_doel_id, v_doel_naam, v_bron_naam, v_verschoven, auth.uid());
+
+  -- De bron verdwijnt. Alles wat nog naar hem wees is hierboven verschoven; wat
+  -- resteert (niets) zou casceren, en dat willen we juist weten als het misgaat.
+  delete from personen where id = p_bron_id;
+
+  -- Pas NA de delete de lege velden van de doel-persoon aanvullen uit de bron:
+  -- personen heeft UNIQUE (company_id, email), dus het e-mailadres overnemen kan
+  -- niet zolang de bron nog bestaat. coalesce, dus eigen gegevens van de
+  -- doel-persoon worden nooit overschreven — alleen gaten gevuld.
+  update personen
+     set email            = coalesce(email,            v_bron.email),
+         functiegroep_id  = coalesce(functiegroep_id,  v_bron.functiegroep_id),
+         datum_in_dienst  = coalesce(datum_in_dienst,  v_bron.datum_in_dienst),
+         datum_uit_dienst = coalesce(datum_uit_dienst, v_bron.datum_uit_dienst),
+         user_id          = coalesce(user_id,          v_bron.user_id)
+   where id = p_doel_id;
+
+  return jsonb_build_object(
+    'doel_naam', v_doel_naam, 'bron_naam', v_bron_naam, 'verschoven', v_verschoven
+  );
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.persoon_functiegroep_zetten(p_persoon_id uuid, p_functiegroep_id uuid)
  RETURNS void
  LANGUAGE plpgsql
@@ -3798,6 +3981,41 @@ begin
   end if;
 
   update personen set functiegroep_id = p_functiegroep_id where id = p_persoon_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.persoon_merge_context(p_doel_id uuid, p_bron_id uuid)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_doel record;
+  v_bron record;
+begin
+  -- Admin-only: samenvoegen is onomkeerbaar en raakt bewijsstukken, dus dit is
+  -- systeembeheer. Een KAM van het eigen bedrijf mag het bewust niet.
+  if not is_admin() then
+    raise exception 'Alleen een beheerder mag personen samenvoegen';
+  end if;
+  if p_doel_id is null or p_bron_id is null then
+    raise exception 'Doel- en bron-persoon zijn verplicht';
+  end if;
+  if p_doel_id = p_bron_id then
+    raise exception 'Doel- en bron-persoon zijn dezelfde';
+  end if;
+
+  select id, company_id, naam into v_doel from personen where id = p_doel_id;
+  select id, company_id, naam into v_bron from personen where id = p_bron_id;
+  if v_doel.id is null then raise exception 'Doel-persoon niet gevonden'; end if;
+  if v_bron.id is null then raise exception 'Bron-persoon niet gevonden'; end if;
+
+  -- Cross-company-guard: samenvoegen kan alleen binnen één bedrijf.
+  if v_doel.company_id <> v_bron.company_id then
+    raise exception 'Personen horen niet bij hetzelfde bedrijf';
+  end if;
+
+  return v_doel.company_id;
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid, p_tekst text, p_verplicht boolean DEFAULT false, p_volgorde integer DEFAULT NULL::integer)
@@ -4350,9 +4568,32 @@ $function$;
 CREATE OR REPLACE FUNCTION public.toolbox_deelname_immutable()
  RETURNS trigger
  LANGUAGE plpgsql
+ SET search_path TO 'public'
 AS $function$
+declare
+  v_company uuid;
 begin
-  raise exception 'Een afgerond toolbox-record is onveranderlijk';
+  -- Alles behalve persoon_id moet identiek blijven. Kolomlijst-vrij, dus
+  -- toekomstige kolommen zijn automatisch beschermd.
+  if to_jsonb(new) - 'persoon_id' is distinct from to_jsonb(old) - 'persoon_id' then
+    raise exception 'Een afgerond toolbox-record is onveranderlijk';
+  end if;
+
+  -- Alleen de koppeling mag verschuiven, en uitsluitend binnen hetzelfde bedrijf.
+  if new.persoon_id is null then
+    raise exception 'Een afgerond toolbox-record heeft altijd een persoon';
+  end if;
+  if new.persoon_id is distinct from old.persoon_id then
+    select company_id into v_company from personen where id = new.persoon_id;
+    if v_company is null then
+      raise exception 'Persoon niet gevonden';
+    end if;
+    if v_company <> old.company_id then
+      raise exception 'Persoon hoort niet bij dit bedrijf';
+    end if;
+  end if;
+
+  return new;
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.toolbox_koppelen(p_company_id uuid, p_toolbox_id uuid)
@@ -5041,9 +5282,17 @@ GRANT EXECUTE ON FUNCTION public.module_stopzetten(p_company_id uuid, p_module t
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO anon;
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.personen_merge_voorbeeld(p_doel_id uuid, p_bron_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.personen_merge_voorbeeld(p_doel_id uuid, p_bron_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.personen_merge_voorbeeld(p_doel_id uuid, p_bron_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.personen_samenvoegen(p_doel_id uuid, p_bron_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.personen_samenvoegen(p_doel_id uuid, p_bron_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.personen_samenvoegen(p_doel_id uuid, p_bron_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.persoon_functiegroep_zetten(p_persoon_id uuid, p_functiegroep_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.persoon_functiegroep_zetten(p_persoon_id uuid, p_functiegroep_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.persoon_functiegroep_zetten(p_persoon_id uuid, p_functiegroep_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.persoon_merge_context(p_doel_id uuid, p_bron_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.persoon_merge_context(p_doel_id uuid, p_bron_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid, p_tekst text, p_verplicht boolean, p_volgorde integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid, p_tekst text, p_verplicht boolean, p_volgorde integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid, p_tekst text, p_verplicht boolean, p_volgorde integer) TO service_role;

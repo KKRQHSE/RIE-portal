@@ -27,8 +27,10 @@
 begin;
 
 -- 1. Module activeren voor elk bedrijf dat al auditdata heeft.
+-- De casts zijn nodig: een kale `null` in een select krijgt type text, en dat
+-- botst met de timestamptz-kolom.
 insert into public.bedrijf_modules (company_id, module, actief, module_status, geactiveerd_op, gestopt_op)
-select distinct a.company_id, 'audit', true, 'actief', now(), null
+select distinct a.company_id, 'audit'::text, true, 'actief'::text, now(), null::timestamptz
   from public.audit a
 on conflict (company_id, module) do nothing;
 

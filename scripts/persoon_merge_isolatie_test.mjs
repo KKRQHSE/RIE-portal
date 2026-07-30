@@ -116,16 +116,20 @@ async function maakPersoon(companyId, naam) {
 // Een ondertekend toolbox-bewijsstuk: bevestigde_naam is de naam die de persoon
 // zelf bevestigde en moet de merge onveranderd overleven.
 async function maakBewijsstuk(companyId, persoonId, naam, sessieId = null) {
+  const digitaal = sessieId === null
   const { data, error } = await admin.from('toolbox_deelname').insert({
     company_id: companyId,
     persoon_id: persoonId,
     sessie_id: sessieId,
-    bewijssoort: sessieId ? 'fysiek_aanwezig' : 'digitaal',
+    bewijssoort: digitaal ? 'digitaal' : 'fysiek_aanwezig',
     titel_snap: `MERGETEST toolbox ${TS}`,
     tekst_snap: 'Testinhoud',
+    // Constraint deelname_digitaal_bewijs: een digitaal bewijsstuk MOET een
+    // bevestigde naam, een handtekening én een tijdstip hebben.
     naam_bevestigd: true,
     bevestigde_naam: naam,
     handtekening: 'data:image/png;base64,MERGETEST',
+    handtekening_gezet_op: digitaal ? new Date().toISOString() : null,
   }).select('id').single()
   if (error) throw new Error(`toolbox_deelname insert (${naam}): ${error.message}`)
   return data.id

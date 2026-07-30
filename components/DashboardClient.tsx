@@ -122,7 +122,7 @@ export default function DashboardClient({
 
   return (
     <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-10 sm:py-12">
 
         <div className="flex justify-end mb-2">
           <LogoutButton />
@@ -228,7 +228,7 @@ export default function DashboardClient({
             Centrale actielijst →
           </Link>
         </div>
-        <div className="grid sm:grid-cols-2 gap-5">
+        <div className="grid sm:grid-cols-2 gap-6">
 
           {/* Voortgang Plan van Aanpak RI&E — alleen de uit de RI&E voortgekomen
               acties (los van de centrale actielijst, die alle bronnen omvat). */}
@@ -443,7 +443,7 @@ export default function DashboardClient({
           })()}
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-5">
+        <div className="grid sm:grid-cols-2 gap-6">
 
           {/* Klanttevredenheid — score als beoordeling op schaal 1-10. */}
           <Tegel titel="Klanttevredenheid">

@@ -68,6 +68,7 @@ export default async function PersonenPage({
       initialFunctiegroepen={(functiegroepen ?? []) as Functiegroep[]}
       huisstijl={huisstijl}
       toonNaamVragen={isClient && !heeftNaam}
+      isAdmin={profile.role === 'admin'}
     />
   )
 }

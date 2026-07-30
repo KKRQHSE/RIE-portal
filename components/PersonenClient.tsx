@@ -9,6 +9,7 @@ import LogoutButton from './LogoutButton'
 import NaamVragen from './NaamVragen'
 import HuisstijlLogo from './HuisstijlLogo'
 import FunctiegroepBeheer from './FunctiegroepBeheer'
+import PersoonSamenvoegen from './PersoonSamenvoegen'
 
 type Props = {
   company: Company
@@ -17,6 +18,9 @@ type Props = {
   initialFunctiegroepen?: Functiegroep[]
   huisstijl?: HuisstijlView
   toonNaamVragen?: boolean
+  // Samenvoegen is systeembeheer: alleen de admin ziet het blok (de RPC weigert
+  // het ook voor de KAM van het eigen bedrijf).
+  isAdmin?: boolean
 }
 
 const STATUS_STYLE: Record<string, string> = {
@@ -30,7 +34,7 @@ function isActief(link: Deellink | undefined): link is Deellink {
   return true
 }
 
-export default function PersonenClient({ company, initialPersonen, initialDeellinks, initialFunctiegroepen = [], huisstijl = VEILIGE_HUISSTIJL, toonNaamVragen = false }: Props) {
+export default function PersonenClient({ company, initialPersonen, initialDeellinks, initialFunctiegroepen = [], huisstijl = VEILIGE_HUISSTIJL, toonNaamVragen = false, isAdmin = false }: Props) {
   const [personen, setPersonen] = useState<Persoon[]>(initialPersonen)
   const [functiegroepen, setFunctiegroepen] = useState<Functiegroep[]>(initialFunctiegroepen)
   const [links, setLinks] = useState<Record<string, Deellink>>(() =>
@@ -254,6 +258,21 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
             {fout && <span className="text-xs text-red-600">{fout}</span>}
           </div>
         </form>
+
+        {/* Dubbele records van dezelfde medewerker samenvoegen (admin) */}
+        {isAdmin && (
+          <PersoonSamenvoegen
+            personen={personen}
+            onSamengevoegd={bronId => {
+              setPersonen(prev => prev.filter(p => p.id !== bronId))
+              setLinks(prev => {
+                const rest = { ...prev }
+                delete rest[bronId]
+                return rest
+              })
+            }}
+          />
+        )}
 
         {/* Functiegroepen beheren — de rollen die je hierboven aan personen koppelt */}
         <FunctiegroepBeheer

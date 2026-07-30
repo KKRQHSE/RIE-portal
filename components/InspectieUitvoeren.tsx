@@ -493,6 +493,13 @@ function BevindingRow({
   )
 }
 
+// Technische reden achter een vertaalde foutmelding plakken, als die er is.
+// De reden komt van Supabase Storage en is Engels; dat is bewust — hij is bedoeld
+// om een storing te kunnen benoemen ("Bucket not found"), niet om mooi te zijn.
+function metReden(bericht: string, reden?: string | null): string {
+  return reden ? `${bericht} (${reden})` : bericht
+}
+
 // ---- Foto's bij een inspectie of bij één bevinding (migratie 0045) ----
 // bevindingId === null → foto bij de inspectie als geheel.
 //
@@ -536,14 +543,19 @@ function FotoBlok({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ inspectieId, bevindingId, bestandsnaam: naam }),
     })
-    if (!res.ok) throw new Error(t('foutFotoUpload'))
-    const { pad, uploadToken } = (await res.json()) as { pad?: string; uploadToken?: string }
+    // De reden uit de server/storage erbij zetten. Een kale "uploaden mislukt"
+    // is niet te diagnosticeren; bij een storing als "Bucket not found" wil je
+    // dat meteen zien in plaats van in het netwerktabblad te moeten graven.
+    const uitkomst = (await res.json().catch(() => ({}))) as
+      { pad?: string; uploadToken?: string; reden?: string | null }
+    if (!res.ok) throw new Error(metReden(t('foutFotoUpload'), uitkomst.reden))
+    const { pad, uploadToken } = uitkomst
     if (!pad || !uploadToken) throw new Error(t('foutFotoUpload'))
 
     const { error: upErr } = await supabase.storage
       .from(INSPECTIE_FOTO_BUCKET)
       .uploadToSignedUrl(pad, uploadToken, blob, { contentType: type })
-    if (upErr) throw new Error(t('foutFotoUpload'))
+    if (upErr) throw new Error(metReden(t('foutFotoUpload'), upErr.message))
 
     const { error: regErr } = await supabase.rpc('inspectie_foto_registreren', {
       p_inspectie_id: inspectieId, p_bevinding_id: bevindingId, p_pad: pad,

@@ -53,7 +53,17 @@ export async function POST(request: Request) {
   const { data: signed, error: signErr } = await service.storage
     .from(INSPECTIE_FOTO_BUCKET)
     .createSignedUploadUrl(pad)
-  if (signErr || !signed) return fout('Upload voorbereiden mislukt.', 500)
+  if (signErr || !signed) {
+    // De echte reden hoort in de serverlogs: bij een storingsbeeld als
+    // "Bucket not found" is een generieke melding niet te diagnosticeren.
+    // Geen padgegevens of sleutels loggen, alleen bucket + reden.
+    console.error('[inspectie/foto-upload] signed upload mislukt',
+      { bucket: INSPECTIE_FOTO_BUCKET, reden: signErr?.message ?? 'onbekend' })
+    return NextResponse.json(
+      { fout: 'Upload voorbereiden mislukt.', reden: signErr?.message ?? null },
+      { status: 500 },
+    )
+  }
 
   return NextResponse.json({ signedUrl: signed.signedUrl, uploadToken: signed.token, pad })
 }

@@ -27,13 +27,34 @@ type Voorbeeld = {
   botsingen: { soort: string; omschrijving: string }[]
 }
 
+// Eén regel uit persoon_merge_log: het spoor van een eerdere samenvoeging.
+export type MergeLogRegel = {
+  id: string
+  doel_naam: string
+  bron_naam: string
+  wanneer: string
+}
+
 type Props = {
   personen: Persoon[]
   // Na een geslaagde merge: de bron uit de lijst halen zonder herladen.
   onSamengevoegd: (bronId: string) => void
+  eerdereMerges?: MergeLogRegel[]
 }
 
-export default function PersoonSamenvoegen({ personen, onSamengevoegd }: Props) {
+// Naam + e-mail in de keuzelijst: bij twee bijna gelijke namen is de naam alleen
+// niet genoeg om te zien welke je pakt, en de merge is onomkeerbaar.
+function label(p: Persoon): string {
+  return p.email ? `${p.naam} — ${p.email}` : p.naam
+}
+
+function datumTijdNL(iso: string): string {
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+export default function PersoonSamenvoegen({ personen, onSamengevoegd, eerdereMerges = [] }: Props) {
   const supabase = createClient()
   const [doelId, setDoelId] = useState('')
   const [bronId, setBronId] = useState('')
@@ -41,6 +62,7 @@ export default function PersoonSamenvoegen({ personen, onSamengevoegd }: Props) 
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
   const [klaar, setKlaar] = useState<string | null>(null)
+  const [merges, setMerges] = useState<MergeLogRegel[]>(eerdereMerges)
 
   const doel = personen.find(p => p.id === doelId)
   const bron = personen.find(p => p.id === bronId)
@@ -76,6 +98,15 @@ export default function PersoonSamenvoegen({ personen, onSamengevoegd }: Props) 
     setVoorbeeld(null)
     setBronId('')
     setKlaar(`"${verdwenen}" is samengevoegd met "${behouden}".`)
+
+    // Het logboek opnieuw ophalen i.p.v. een regel verzinnen: het tijdstip komt
+    // van de database, niet van deze browser.
+    const { data: log } = await supabase
+      .from('persoon_merge_log')
+      .select('id, doel_naam, bron_naam, wanneer')
+      .order('wanneer', { ascending: false })
+      .limit(5)
+    if (log) setMerges(log as MergeLogRegel[])
   }
 
   function omdraaien() {
@@ -110,7 +141,7 @@ export default function PersoonSamenvoegen({ personen, onSamengevoegd }: Props) 
           >
             <option value="">— kies een persoon —</option>
             {personen.map(p => (
-              <option key={p.id} value={p.id} disabled={p.id === bronId}>{p.naam}</option>
+              <option key={p.id} value={p.id} disabled={p.id === bronId}>{label(p)}</option>
             ))}
           </select>
         </div>
@@ -126,7 +157,7 @@ export default function PersoonSamenvoegen({ personen, onSamengevoegd }: Props) 
           >
             <option value="">— kies een persoon —</option>
             {personen.map(p => (
-              <option key={p.id} value={p.id} disabled={p.id === doelId}>{p.naam}</option>
+              <option key={p.id} value={p.id} disabled={p.id === doelId}>{label(p)}</option>
             ))}
           </select>
         </div>
@@ -161,6 +192,27 @@ export default function PersoonSamenvoegen({ personen, onSamengevoegd }: Props) 
 
       {fout && <p className="text-sm text-red-600 mt-3">{fout}</p>}
       {klaar && <p className="text-sm text-green-700 mt-3">{klaar}</p>}
+
+      {/* Het spoor van eerdere samenvoegingen. De handeling is onomkeerbaar en de
+          bron-persoon bestaat daarna niet meer, dus dit logboek is de enige plek
+          waar nog te zien is welke naam is verdwenen. */}
+      {merges.length > 0 && (
+        <div className="mt-5 pt-4 border-t border-ink/10">
+          <p className="text-xs font-medium uppercase tracking-wide text-ink/40 mb-2">
+            Eerder samengevoegd
+          </p>
+          <ul className="space-y-1">
+            {merges.map(m => (
+              <li key={m.id} className="text-sm text-ink/60">
+                <span className="text-ink/40 line-through">{m.bron_naam}</span>
+                {' → '}
+                <span className="text-ink">{m.doel_naam}</span>
+                <span className="text-ink/40"> · {datumTijdNL(m.wanneer)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <Bevestig
         open={voorbeeld !== null}

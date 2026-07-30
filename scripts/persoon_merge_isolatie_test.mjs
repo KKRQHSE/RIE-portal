@@ -150,6 +150,7 @@ async function run() {
   const compB = await maakBedrijf('B')
   const adminClient = await maakGebruiker('admin', compA, 'admin')
   const kamA = await maakGebruiker('kamA', compA, 'client')
+  const kamB = await maakGebruiker('kamB', compB, 'client')
 
   // --- Opzet bedrijf A: "Jeroen" (bron) en "Jeroen Schweig" (doel) ---
   const bron = await maakPersoon(compA, `MERGETEST Jeroen ${TS}`)
@@ -251,6 +252,29 @@ async function run() {
       .select('bron_naam, doel_id').eq('company_id', compA)
     check('Merge is gelogd met de bron-naam als tekst',
       (log?.length ?? 0) === 1 && log[0].bron_naam === bronNaam)
+  }
+
+  // --- Het logboek is zichtbaar gemaakt op de personenpagina: dus ook de
+  //     leesisolatie ervan moet houden. ---
+  {
+    const { data, error } = await kamA.from('persoon_merge_log')
+      .select('id').eq('company_id', compA)
+    check('KAM van A ziet het merge-logboek van A (positieve controle)',
+      !error && (data?.length ?? 0) === 1, `${data?.length ?? '?'} rijen`)
+  }
+  {
+    const { data, error } = await kamB.from('persoon_merge_log')
+      .select('id').eq('company_id', compA)
+    check('KAM van B ziet het merge-logboek van A NIET',
+      !error && (data?.length ?? 0) === 0, `${data?.length ?? '?'} rijen`)
+  }
+  {
+    // Schrijven kan alleen via de RPC: er is bewust geen insert-policy.
+    const { error } = await kamA.from('persoon_merge_log').insert({
+      company_id: compA, doel_naam: 'vervalst', bron_naam: 'vervalst',
+    })
+    check('Niemand kan zelf een logregel schrijven', !!error,
+      error ? 'geweigerd' : 'GEEN fout!')
   }
 }
 

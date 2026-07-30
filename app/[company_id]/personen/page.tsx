@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import PersonenClient from '@/components/PersonenClient'
+import type { MergeLogRegel } from '@/components/PersoonSamenvoegen'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
 import { haalPersonen } from '@/lib/personen-data'
 import type { Functiegroep } from '@/lib/types'
@@ -36,7 +37,14 @@ export default async function PersonenPage({
 
   // Onafhankelijke leesacties tegelijk. haalPersonen koppelt de ingelogde KAM
   // alleen als hij nog ontbreekt (geen schrijfactie bij elke lading meer).
-  const [{ data: company }, personen, { data: deellinks }, { data: functiegroepen }, huisstijl] =
+  const [
+    { data: company },
+    personen,
+    { data: deellinks },
+    { data: functiegroepen },
+    { data: mergeLog },
+    huisstijl,
+  ] =
     await Promise.all([
       supabase
         .from('companies')
@@ -55,6 +63,15 @@ export default async function PersonenPage({
         .eq('company_id', company_id)
         .is('gearchiveerd_op', null)
         .order('volgorde', { ascending: true }),
+      // Spoor van eerdere samenvoegingen. Een merge is onomkeerbaar en de
+      // bron-persoon bestaat daarna niet meer, dus dit is de enige plek waar nog
+      // te zien is welke naam is verdwenen. RLS beperkt tot het eigen bedrijf.
+      supabase
+        .from('persoon_merge_log')
+        .select('id, doel_naam, bron_naam, wanneer')
+        .eq('company_id', company_id)
+        .order('wanneer', { ascending: false })
+        .limit(5),
       haalHuisstijl(company_id),
     ])
 
@@ -69,6 +86,7 @@ export default async function PersonenPage({
       huisstijl={huisstijl}
       toonNaamVragen={isClient && !heeftNaam}
       isAdmin={profile.role === 'admin'}
+      mergeLog={(mergeLog ?? []) as MergeLogRegel[]}
     />
   )
 }

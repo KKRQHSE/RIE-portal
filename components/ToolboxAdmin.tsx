@@ -84,6 +84,21 @@ export default function ToolboxAdmin({
             Onderwerpen met tekst, een ingesloten video-link en een optionele quiz. Klanten
             koppelen hieraan en kunnen lokaal afwijken. De video is een link (YouTube/Vimeo), geen upload.
           </p>
+
+          {/* Deze pagina beheert twee losse dingen, en de onderwerpenbibliotheek
+              staat onder de toolboxkaarten — die elk lang zijn, dus hij viel
+              buiten beeld en leek te ontbreken. Deze sprongen maken meteen
+              zichtbaar dát hij er is en brengen je er in één klik. */}
+          <nav className="flex flex-wrap gap-2 mt-3" aria-label="Onderdelen van deze pagina">
+            <a href="#toolboxen"
+              className="text-xs px-3 py-1.5 rounded-full border border-ink/15 bg-white text-ink/60 hover:border-accent hover:text-accent transition-colors">
+              Toolboxen ({toolboxen.length})
+            </a>
+            <a href="#bibliotheek"
+              className="text-xs px-3 py-1.5 rounded-full border border-ink/15 bg-white text-ink/60 hover:border-accent hover:text-accent transition-colors">
+              Onderwerpenbibliotheek ({initialBronnen.filter(b => !b.gearchiveerd_op).length})
+            </a>
+          </nav>
         </div>
 
         {fout && <p className="text-sm text-red-600 mb-3">{fout}</p>}
@@ -104,7 +119,7 @@ export default function ToolboxAdmin({
 
         {toolboxen.length === 0 && <p className="text-center text-ink/40 py-8 text-sm">Nog geen toolboxen.</p>}
 
-        <div className="space-y-3">
+        <div id="toolboxen" className="space-y-3 scroll-mt-4">
           {toolboxen.map(t => (
             <ToolboxKaart key={t.id} toolbox={t} supabase={supabase}
               onPatch={u => patch(t.id, u)} onArchiveer={() => archiveer(t.id)} setFout={setFout} />
@@ -381,7 +396,7 @@ function BronnenBeheer({
   }
 
   return (
-    <section className="mt-10">
+    <section id="bibliotheek" className="mt-10 pt-8 border-t border-ink/10 scroll-mt-4">
       <h2 className="text-lg font-semibold text-ink">Onderwerpenbibliotheek</h2>
       <p className="text-sm text-ink/50 mt-0.5 mb-4">
         Links naar externe toolbox-bronnen. De uitvoerder ziet deze lijst bij het aanmaken

@@ -37,7 +37,7 @@ export default async function CompanySectionLayout({
     const maak = (key: string, label: string, seg: string): NavItem =>
       ({ key, label, seg, href: `/${company_id}/${seg}` })
 
-    // Kernmodules altijd; toolbox/inspecties/incidenten alleen bij actieve module.
+    // Kernmodules altijd; toolbox/inspecties/incidenten/audits alleen bij actieve module.
     const items: NavItem[] = [
       maak('dashboard', 'Dashboard', 'dashboard'),
       maak('rie', 'RI&E', 'rie'),
@@ -45,6 +45,7 @@ export default async function CompanySectionLayout({
       ...(actief.has('toolbox') ? [maak('toolbox', 'Toolbox', 'toolbox')] : []),
       ...(actief.has('inspectie') ? [maak('inspecties', 'Inspecties', 'inspecties')] : []),
       ...(actief.has('incidenten') ? [maak('incidenten', 'Incidenten', 'incidenten')] : []),
+      ...(actief.has('audit') ? [maak('audits', 'Audits', 'audits')] : []),
       maak('personen', 'Personen', 'personen'),
       maak('modules', 'Modules', 'modules'),
     ]

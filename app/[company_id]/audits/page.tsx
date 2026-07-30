@@ -15,15 +15,27 @@ export default async function AuditsPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: company }, { data: audits }, huisstijl] = await Promise.all([
-    supabase.from('users').select('role, company_id').eq('id', user.id).single(),
-    supabase.from('companies').select('id, name, approved_at, approved_by').eq('id', company_id).single(),
-    supabase.from('audit').select('*').eq('company_id', company_id).order('jaar', { ascending: false }).order('titel'),
-    haalHuisstijl(company_id),
-  ])
+  const [{ data: profile }, { data: moduleRij }, { data: company }, { data: audits }, huisstijl] =
+    await Promise.all([
+      supabase.from('users').select('role, company_id').eq('id', user.id).single(),
+      // De module moet actief zijn én op 'aan' staan voor dit bedrijf.
+      supabase
+        .from('bedrijf_modules')
+        .select('actief')
+        .eq('company_id', company_id)
+        .eq('module', 'audit')
+        .eq('module_status', 'actief')
+        .eq('actief', true)
+        .maybeSingle(),
+      supabase.from('companies').select('id, name, approved_at, approved_by').eq('id', company_id).single(),
+      supabase.from('audit').select('*').eq('company_id', company_id).order('jaar', { ascending: false }).order('titel'),
+      haalHuisstijl(company_id),
+    ])
 
   if (!profile) redirect('/login')
   if (profile.role !== 'admin' && profile.company_id !== company_id) notFound()
+  // Module uit of gestopt: de audits bestaan nog, maar zijn niet bereikbaar.
+  if (!moduleRij) notFound()
   if (!company) notFound()
 
   return (

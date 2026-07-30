@@ -15,14 +15,24 @@ export default async function AuditDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: audit }, huisstijl] = await Promise.all([
+  const [{ data: profile }, { data: moduleRij }, { data: audit }, huisstijl] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
+    // Zelfde modulegate als het overzicht: een losse deeplink mag er niet omheen.
+    supabase
+      .from('bedrijf_modules')
+      .select('actief')
+      .eq('company_id', company_id)
+      .eq('module', 'audit')
+      .eq('module_status', 'actief')
+      .eq('actief', true)
+      .maybeSingle(),
     supabase.from('audit').select('*').eq('id', audit_id).eq('company_id', company_id).maybeSingle(),
     haalHuisstijl(company_id),
   ])
 
   if (!profile) redirect('/login')
   if (profile.role !== 'admin' && profile.company_id !== company_id) notFound()
+  if (!moduleRij) notFound()
   if (!audit) notFound()
 
   const a = audit as Audit

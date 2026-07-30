@@ -21,6 +21,7 @@ type Props = {
   toonInspecties?: boolean
   toonToolbox?: boolean
   toonIncidenten?: boolean
+  toonAudits?: boolean
   toolbox?: ToolboxNaarRato | null
   magBewerken?: boolean
   ifDitJaar?: number | null
@@ -107,7 +108,7 @@ function Ratio({ gedaan, doel, kleur }: { gedaan: number; doel: number; kleur?: 
 
 export default function DashboardClient({
   company, overzicht, huisstijl = VEILIGE_HUISSTIJL,
-  toonInspecties = false, toonToolbox = false, toonIncidenten = false,
+  toonInspecties = false, toonToolbox = false, toonIncidenten = false, toonAudits = false,
   toolbox = null, magBewerken = false, ifDitJaar = null, ifVorigJaar = null,
   pvaRie = null, auditsTotaal = 0, auditsGedaan = 0,
 }: Props) {
@@ -468,19 +469,22 @@ export default function DashboardClient({
             )}
           </Tegel>
 
-          {/* Audits — voortgang interne audits (auditmodule) als gauge, doorklik. */}
-          <Tegel titel="Audits" href={`/${cid}/audits`}>
-            <div className="flex items-center gap-4">
-              <Gauge value={auditsGedaan} total={auditsTotaal} size={64} label="afgerond" />
-              <div className="min-w-0 space-y-1 text-sm">
-                <p className="text-ink">
-                  <span className="font-semibold tabular-nums">{auditsGedaan} van {auditsTotaal}</span> interne audits afgerond dit jaar
-                </p>
-                <p className="text-ink/70 truncate">Extern: {inst?.audit_extern_omschrijving || '—'}</p>
-                {inst?.audit_status && <p className="text-xs text-ink/50">Status: {inst.audit_status}</p>}
+          {/* Audits — voortgang interne audits als gauge, doorklik. Alleen bij een
+              actieve auditmodule; anders is /audits ook niet bereikbaar. */}
+          {toonAudits && (
+            <Tegel titel="Audits" href={`/${cid}/audits`}>
+              <div className="flex items-center gap-4">
+                <Gauge value={auditsGedaan} total={auditsTotaal} size={64} label="afgerond" />
+                <div className="min-w-0 space-y-1 text-sm">
+                  <p className="text-ink">
+                    <span className="font-semibold tabular-nums">{auditsGedaan} van {auditsTotaal}</span> interne audits afgerond dit jaar
+                  </p>
+                  <p className="text-ink/70 truncate">Extern: {inst?.audit_extern_omschrijving || '—'}</p>
+                  {inst?.audit_status && <p className="text-xs text-ink/50">Status: {inst.audit_status}</p>}
+                </div>
               </div>
-            </div>
-          </Tegel>
+            </Tegel>
+          )}
 
           {/* Openstaande ISO-taken (vrije tekst) */}
           <Tegel titel="Openstaande ISO-taken">

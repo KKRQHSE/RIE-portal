@@ -8,6 +8,7 @@ import type { Company, BedrijfModule, ModuleStatus } from '@/lib/types'
 import { MODULE_CATALOGUS } from '@/lib/modules-catalogus'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
+import Bevestig from './Bevestig'
 
 type Props = {
   company: Company
@@ -47,6 +48,8 @@ export default function ModuleBeheer({
   )
   const [bezig, setBezig] = useState<string | null>(null)
   const [fout, setFout] = useState<string | null>(null)
+  // Welke handeling om bevestiging vraagt; null = geen venster open.
+  const [vraag, setVraag] = useState<{ soort: 'activeren' | 'stopzetten'; module: string; titel: string } | null>(null)
 
   function patch(module: string, updates: Partial<BedrijfModule>) {
     setModules(prev => ({
@@ -65,12 +68,7 @@ export default function ModuleBeheer({
     }))
   }
 
-  async function activeren(module: string, titel: string) {
-    if (!confirm(
-      `Module "${titel}" activeren voor ${company.name}?\n\n` +
-      `De module wordt meteen bruikbaar. Met Aan/Uit pauzeert u later alleen het ` +
-      `gebruik; Stopzetten beëindigt de module helemaal.`
-    )) return
+  async function activeren(module: string) {
     setFout(null)
     setBezig(module)
     const { error } = await supabase.rpc('module_activeren', {
@@ -78,6 +76,7 @@ export default function ModuleBeheer({
       p_module: module,
     })
     setBezig(null)
+    setVraag(null)
     if (error) { setFout(error.message); return }
     patch(module, {
       module_status: 'actief',
@@ -100,11 +99,7 @@ export default function ModuleBeheer({
     patch(module, { actief: aan })
   }
 
-  async function stopzetten(module: string, titel: string) {
-    if (!confirm(
-      `Module "${titel}" stopzetten?\n\nDe module is daarna niet meer bruikbaar. ` +
-      `U kunt 'm later opnieuw activeren.`
-    )) return
+  async function stopzetten(module: string) {
     setFout(null)
     setBezig(module)
     const { error } = await supabase.rpc('module_stopzetten', {
@@ -112,6 +107,7 @@ export default function ModuleBeheer({
       p_module: module,
     })
     setBezig(null)
+    setVraag(null)
     if (error) { setFout(error.message); return }
     patch(module, { module_status: 'gestopt', actief: false, gestopt_op: new Date().toISOString() })
   }
@@ -196,7 +192,7 @@ export default function ModuleBeheer({
                       )}
                       <button
                         type="button"
-                        onClick={() => stopzetten(item.module, item.titel)}
+                        onClick={() => setVraag({ soort: 'stopzetten', module: item.module, titel: item.titel })}
                         disabled={bezigHier}
                         className={`${knop} bg-white text-red-700 border-red-200 hover:border-red-400`}
                       >
@@ -206,7 +202,7 @@ export default function ModuleBeheer({
                   ) : (
                     <button
                       type="button"
-                      onClick={() => activeren(item.module, item.titel)}
+                      onClick={() => setVraag({ soort: 'activeren', module: item.module, titel: item.titel })}
                       disabled={bezigHier}
                       className={`${knop} bg-accent text-white border-accent hover:opacity-90`}
                     >
@@ -219,6 +215,34 @@ export default function ModuleBeheer({
           })}
         </div>
       </div>
+
+      {/* Bevestiging in de app zelf (geen native confirm): toont per handeling
+          precies wat er gebeurt. Stopzetten is de zwaarste van de twee, maar niet
+          onomkeerbaar — je kunt altijd opnieuw activeren — dus niet als 'gevaar'. */}
+      <Bevestig
+        open={vraag !== null}
+        titel={vraag?.soort === 'stopzetten' ? `${vraag.titel} stopzetten?` : `${vraag?.titel ?? ''} activeren?`}
+        bevestigLabel={vraag?.soort === 'stopzetten' ? 'Stopzetten' : 'Activeren'}
+        bezig={bezig !== null}
+        onAnnuleer={() => setVraag(null)}
+        onBevestig={() => {
+          if (!vraag) return
+          if (vraag.soort === 'stopzetten') stopzetten(vraag.module)
+          else activeren(vraag.module)
+        }}
+      >
+        {vraag?.soort === 'stopzetten' ? (
+          <>
+            <p>De module is daarna niet meer bruikbaar voor {company.name} en verdwijnt uit het menu.</p>
+            <p>Bestaande gegevens blijven bewaard. U kunt de module later opnieuw activeren.</p>
+          </>
+        ) : (
+          <>
+            <p>De module wordt meteen bruikbaar voor {company.name} en verschijnt in het menu.</p>
+            <p>Met Aan/Uit pauzeert u later alleen het gebruik; Stopzetten beëindigt de module helemaal.</p>
+          </>
+        )}
+      </Bevestig>
     </main>
   )
 }

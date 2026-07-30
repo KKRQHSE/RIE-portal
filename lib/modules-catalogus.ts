@@ -32,4 +32,11 @@ export const MODULE_CATALOGUS: ModuleCatalogusItem[] = [
       'Laagdrempelig incidenten en bijna-incidenten melden via een vaste bedrijfseigen meldlink/QR (geen login), en als KAM afhandelen: oorzaakclassificatie, maatregelen en een doorklikbaar dashboard.',
     pad: 'incidenten',
   },
+  {
+    module: 'audit',
+    titel: 'Interne audits',
+    omschrijving:
+      'Interne audits plannen en uitvoeren op een VCA-checklist of als ISO-verslag, met een centrale vraagcatalogus; van een bevinding maakt u met één klik een actie in de actielijst.',
+    pad: 'audits',
+  },
 ]

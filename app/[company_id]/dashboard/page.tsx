@@ -35,6 +35,7 @@ export default async function CompanyDashboardPage({
     { data: inspectieModule },
     { data: toolboxModule },
     { data: incidentenModule },
+    { data: auditModule },
     { data: toolboxDash },
     { data: ifRij },
     { data: pvaRie },
@@ -52,6 +53,7 @@ export default async function CompanyDashboardPage({
     moduleActief('inspectie'),
     moduleActief('toolbox'),
     moduleActief('incidenten'),
+    moduleActief('audit'),
     // Toolbox naar-rato (doel-per-persoon) hergebruikt de al-geteste toolbox_dashboard-RPC.
     supabase.rpc('toolbox_dashboard', { p_company_id: company_id }),
     // IF-getal (Incident Frequency) — RLS geeft alleen de eigen-bedrijf-rij.
@@ -86,6 +88,7 @@ export default async function CompanyDashboardPage({
       toonInspecties={!!inspectieModule}
       toonToolbox={!!toolboxModule}
       toonIncidenten={!!incidentenModule}
+      toonAudits={!!auditModule}
       toolbox={toolboxBedrijf}
       magBewerken={magBeheren}
       ifDitJaar={(ifRij as { if_dit_jaar: number | null } | null)?.if_dit_jaar ?? null}

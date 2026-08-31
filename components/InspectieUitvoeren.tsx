@@ -7,7 +7,9 @@ import { INSP_TEKST, vertaal, type Taal } from '@/lib/i18n-werknemer'
 import { MAX_BYTES, isAfbeelding, isToegestaanType } from '@/lib/bewijs'
 import { verkleinAfbeelding } from '@/lib/afbeelding'
 import { INSPECTIE_FOTO_BUCKET, type InspectieFotoItem } from '@/lib/inspectie-foto'
+import type { AiLeverancierStatus, AiSuggestie } from '@/lib/ai-analyse'
 import TaalWissel, { useTaal } from './TaalWissel'
+import InspectieFotoAi from './InspectieFotoAi'
 import type {
   Inspectie,
   InspectieBevinding,
@@ -58,6 +60,10 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
   const [fout, setFout] = useState<string | null>(null)
   const [afrondBezig, setAfrondBezig] = useState(false)
   const [fotos, setFotos] = useState<InspectieFotoItem[]>([])
+  // Null = nog aan het laden. De AI-knop wacht daarop, zodat hij niet even
+  // klikbaar is voordat we weten of er überhaupt een leverancier is ingesteld.
+  const [aiStatus, setAiStatus] = useState<AiLeverancierStatus | null>(null)
+  const [suggesties, setSuggesties] = useState<AiSuggestie[]>([])
 
   const readOnly = status === 'afgerond' || status === 'geannuleerd'
 
@@ -73,6 +79,28 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
     const { fotos: f } = (await res.json()) as { fotos?: InspectieFotoItem[] }
     setFotos(f ?? [])
   }, [inspectie.id])
+
+  // AI-suggesties bij deze inspectie. Rechtstreeks uit de tabel: de
+  // select-policy (mag_bedrijf_beheren) doet het afschermen, net als bij de
+  // bevindingen en de historie hieronder. Schrijven kan hier niet — dat gaat
+  // uitsluitend via de twee RPC's (migratie 0050).
+  const herlaadSuggesties = useCallback(async () => {
+    const { data } = await supabase
+      .from('inspectie_ai_suggestie')
+      .select('id, bevinding_id, foto_id, ai_beschrijving, ai_concept, leverancier, model, status')
+      .eq('inspectie_id', inspectie.id)
+      .order('aangemaakt_op', { ascending: false })
+    setSuggesties((data ?? []).map(r => ({
+      id: String(r.id),
+      bevinding_id: String(r.bevinding_id),
+      foto_id: (r.foto_id as string | null) ?? null,
+      beschrijving: (r.ai_beschrijving as string | null) ?? null,
+      concept: (r.ai_concept as string | null) ?? null,
+      leverancier: String(r.leverancier ?? ''),
+      model: String(r.model ?? ''),
+      status: r.status as AiSuggestie['status'],
+    })))
+  }, [inspectie.id, supabase])
 
   const herlaad = useCallback(async () => {
     const [bev, hist] = await Promise.all([
@@ -98,6 +126,20 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
   useEffect(() => { herlaad() }, [herlaad])
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { herlaadFotos() }, [herlaadFotos])
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { herlaadSuggesties() }, [herlaadSuggesties])
+
+  // Wie de AI-leverancier is en of hij is ingesteld. Server-side opgehaald: er
+  // komt alleen naam/model/regio terug, nooit de sleutel. Mislukt dit, dan
+  // blijft aiStatus null en blijft de AI-knop uit — nooit een crash.
+  useEffect(() => {
+    let actueel = true
+    fetch('/api/inspectie/ai-analyse')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (actueel && d) setAiStatus(d as AiLeverancierStatus) })
+      .catch(() => { /* geen status: knop blijft uit */ })
+    return () => { actueel = false }
+  }, [])
 
   function patchBevinding(id: string, updates: Partial<InspectieBevinding>) {
     setBevindingen(prev => prev.map(b => (b.id === id ? { ...b, ...updates } : b)))
@@ -196,6 +238,9 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
                 inspectieId={inspectie.id}
                 fotos={fotos.filter(f => f.bevinding_id === b.id)}
                 onFotosGewijzigd={herlaadFotos}
+                aiStatus={aiStatus}
+                suggesties={suggesties.filter(s => s.bevinding_id === b.id)}
+                onSuggestiesGewijzigd={herlaadSuggesties}
                 onPatch={updates => patchBevinding(b.id, updates)}
                 onHistorieGewijzigd={herlaad}
               />
@@ -282,12 +327,16 @@ type RowProps = {
   inspectieId: string
   fotos: InspectieFotoItem[]
   onFotosGewijzigd: () => void
+  aiStatus: AiLeverancierStatus | null
+  suggesties: AiSuggestie[]
+  onSuggestiesGewijzigd: () => void
   onPatch: (updates: Partial<InspectieBevinding>) => void
   onHistorieGewijzigd: () => void
 }
 
 function BevindingRow({
-  companyId, nummer, bevinding, readOnly, t, inspectieId, fotos, onFotosGewijzigd, onPatch, onHistorieGewijzigd,
+  companyId, nummer, bevinding, readOnly, t, inspectieId, fotos, onFotosGewijzigd,
+  aiStatus, suggesties, onSuggestiesGewijzigd, onPatch, onHistorieGewijzigd,
 }: RowProps) {
   const supabase = createClient()
   const [opmerking, setOpmerking] = useState(bevinding.opmerking ?? '')
@@ -299,6 +348,19 @@ function BevindingRow({
   const autosaveRef = useRef<Promise<boolean> | null>(null)
 
   const heeftActie = bevinding.afhandeling === 'actie' && !!bevinding.actie_id
+
+  // Is er ooit AI-voorwerk overgenomen bij dit punt? Dan blijft dat zichtbaar,
+  // ook na herladen: wie het rapport later leest, hoort te weten dat een machine
+  // aan de eerste versie van deze toelichting heeft meegeschreven.
+  const heeftAiVoorwerk = suggesties.some(s => s.status === 'overgenomen')
+
+  // De RPC heeft de toelichting al weggeschreven; hier alleen het scherm
+  // bijtrekken, zodat het tekstveld en de bevinding weer gelijk lopen en de
+  // blur-autosave niet dezelfde tekst nóg eens opslaat.
+  function neemAiConceptOver(tekst: string) {
+    setOpmerking(tekst)
+    onPatch({ opmerking: tekst })
+  }
 
   // Kale schrijfactie naar de DB. Zet de knop-busy NIET zelf; de aanroeper bepaalt
   // of dit een blokkerende handeling (knop) of een achtergrond-autosave is.
@@ -485,7 +547,16 @@ function BevindingRow({
         <FotoBlok
           inspectieId={inspectieId} bevindingId={bevinding.id} readOnly={readOnly} t={t}
           fotos={fotos} onGewijzigd={onFotosGewijzigd} compact
+          aiStatus={aiStatus} suggesties={suggesties}
+          onSuggestiesGewijzigd={onSuggestiesGewijzigd}
+          onAiOvergenomen={neemAiConceptOver}
+          heeftToelichting={!!opmerking.trim()}
         />
+      )}
+
+      {/* Transparantie-labeltje: deze toelichting begon als AI-voorstel. */}
+      {heeftAiVoorwerk && (
+        <p className="text-[11px] text-ink/40">✦ {t('aiOvergenomen')}</p>
       )}
 
       {fout && <p className="text-xs text-red-600">{fout}</p>}
@@ -510,6 +581,8 @@ function metReden(bericht: string, reden?: string | null): string {
 
 function FotoBlok({
   inspectieId, bevindingId, fotos, readOnly, t, onGewijzigd, compact = false,
+  aiStatus = null, suggesties = [], onSuggestiesGewijzigd, onAiOvergenomen,
+  heeftToelichting = false,
 }: {
   inspectieId: string
   bevindingId: string | null
@@ -518,6 +591,14 @@ function FotoBlok({
   t: Vertaler
   onGewijzigd: () => void
   compact?: boolean
+  // AI-voorwerk hoort bij een INSPECTIEPUNT, niet bij de inspectie als geheel:
+  // een concept moet ergens in kunnen landen. Bij het losse fotoblok onderaan
+  // (bevindingId === null) blijven deze props leeg en verschijnt er niets.
+  aiStatus?: AiLeverancierStatus | null
+  suggesties?: AiSuggestie[]
+  onSuggestiesGewijzigd?: () => void
+  onAiOvergenomen?: (tekst: string) => void
+  heeftToelichting?: boolean
 }) {
   const supabase = createClient()
   const [bezig, setBezig] = useState(false)
@@ -633,6 +714,23 @@ function FotoBlok({
           </label>
         </>
       )}
+
+      {/* AI-voorwerk per foto. Alleen bij een inspectiepunt, alleen zolang de
+          inspectie loopt, en alleen bij een echte afbeelding — een pdf valt
+          niets te beschrijven. */}
+      {!readOnly && bevindingId && onSuggestiesGewijzigd && onAiOvergenomen &&
+        fotos.filter(f => isAfbeelding(f.type)).map(f => (
+          <InspectieFotoAi
+            key={f.id}
+            foto={f}
+            aiStatus={aiStatus}
+            openConcept={suggesties.find(s => s.foto_id === f.id && s.status === 'concept') ?? null}
+            heeftToelichting={heeftToelichting}
+            t={t}
+            onOvergenomen={onAiOvergenomen}
+            onGewijzigd={onSuggestiesGewijzigd}
+          />
+        ))}
 
       {fout && <p className="text-xs text-red-600 mt-1">{fout}</p>}
     </div>

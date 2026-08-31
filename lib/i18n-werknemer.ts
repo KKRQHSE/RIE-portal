@@ -136,6 +136,35 @@ export const INSP_TEKST: Woordenboek = {
   foutFotoType:     { nl: 'Dit bestandstype is niet toegestaan.', tr: 'Bu dosya türüne izin verilmiyor.' },
   foutFotoUpload:   { nl: 'Foto uploaden mislukt.', tr: 'Fotoğraf yüklenemedi.' },
   foutFotoVerwijder: { nl: 'Foto verwijderen mislukt.', tr: 'Fotoğraf silinemedi.' },
+
+  // AI-foto-analyse (0050). ⚠️ Ook machinevertaling — laten nakijken, en hier met
+  // extra aandacht: aiWaarschuwingBuitenEu is de tekst waarop de inspecteur zijn
+  // toestemming baseert. Een slechte vertaling maakt die toestemming waardeloos.
+  aiKop:            { nl: 'AI-voorwerk', tr: 'AI ön çalışması' },
+  aiToestemming:    { nl: 'Deze foto naar de AI sturen', tr: 'Bu fotoğrafı AI’ya gönder' },
+  aiWaarschuwingBuitenEu: {
+    nl: 'Let op: de foto verlaat dan het portaal en gaat naar {dienst}, een externe AI-dienst BUITEN de EU. Stuur geen foto’s waarop personen herkenbaar zijn.',
+    tr: 'Dikkat: fotoğraf portaldan çıkar ve AB DIŞINDAKİ harici bir AI hizmeti olan {dienst} adlı hizmete gönderilir. İnsanların tanınabildiği fotoğrafları göndermeyin.',
+  },
+  aiWaarschuwingEu: {
+    nl: 'Let op: de foto verlaat dan het portaal en gaat naar {dienst}, een externe AI-dienst binnen de EU. Stuur geen foto’s waarop personen herkenbaar zijn.',
+    tr: 'Dikkat: fotoğraf portaldan çıkar ve AB İÇİNDEKİ harici bir AI hizmeti olan {dienst} adlı hizmete gönderilir. İnsanların tanınabildiği fotoğrafları göndermeyin.',
+  },
+  aiKnop:           { nl: 'Laat AI dit beschrijven', tr: 'AI bunu açıklasın' },
+  aiBezig:          { nl: 'AI kijkt naar de foto…', tr: 'AI fotoğrafa bakıyor…' },
+  aiZetVinkjeAan:   { nl: 'Zet eerst het vinkje aan.', tr: 'Önce onay kutusunu işaretleyin.' },
+  aiSuggestieLabel: { nl: 'AI-suggestie — concept', tr: 'AI önerisi — taslak' },
+  aiDoetVoorstel:   { nl: 'De AI doet alleen een voorstel. Jij bepaalt wat er komt te staan.', tr: 'AI yalnızca bir öneri sunar. Ne yazılacağına siz karar verirsiniz.' },
+  aiWatAiZiet:      { nl: 'Wat de AI op de foto ziet', tr: 'AI’nın fotoğrafta gördüğü' },
+  aiConceptLabel:   { nl: 'Concept-bevinding — pas aan wat je wilt', tr: 'Taslak bulgu — istediğiniz gibi değiştirin' },
+  aiOvernemen:      { nl: 'Overnemen in toelichting', tr: 'Açıklamaya aktar' },
+  aiWeggooien:      { nl: 'Weggooien', tr: 'At' },
+  aiVervangtTekst:  { nl: 'Overnemen vervangt de toelichting die er nu staat.', tr: 'Aktarmak, şu anki açıklamanın yerine geçer.' },
+  aiOvergenomen:    { nl: 'Toelichting met AI-voorwerk', tr: 'AI ön çalışmasıyla hazırlanan açıklama' },
+  aiNietGeconfigureerd: { nl: 'AI-analyse is nog niet geconfigureerd.', tr: 'AI analizi henüz yapılandırılmadı.' },
+  aiLeegOvernemen:  { nl: 'Er staat geen tekst om over te nemen.', tr: 'Aktarılacak bir metin yok.' },
+  foutAi:           { nl: 'De AI-analyse is niet gelukt.', tr: 'AI analizi başarısız oldu.' },
+  foutAiBesluit:    { nl: 'Dit lukte niet. Probeer het nog eens.', tr: 'Bu işlem başarısız oldu. Tekrar deneyin.' },
 }
 
 // Incident-meldformulier (/melden/[token] → IncidentMeldClient)

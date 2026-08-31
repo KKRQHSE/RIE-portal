@@ -18,16 +18,16 @@
 // zonder die vlag faalt de TLS-verbinding naar api.groq.com (zie Projectstand).
 //
 // Er gaat GEEN echte inspectiefoto naar buiten: DEEL 2 stuurt een 32x32-blokje
-// dat dit script zelf tekent.
+// uit scripts/_testafbeelding.ts.
 // ============================================================================
 
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { deflateSync, crc32 } from 'node:zlib'
 
 import { leesAntwoord, SYSTEEM_PROMPT, gebruikersPrompt } from '../lib/ai/prompt.ts'
 import { GROQ_ENDPOINT, GROQ_STANDAARD_MODEL, bouwGroqBody } from '../lib/ai/groq-bericht.ts'
+import { maakTestPng } from './_testafbeelding.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..')
@@ -124,36 +124,6 @@ console.log('DEEL 1 — antwoord-parser (geen netwerk)\n')
 const env = loadEnv()
 const SLEUTEL = (env.GROQ_API_KEY || '').trim()
 const MODEL = (env.GROQ_MODEL || '').trim() || GROQ_STANDAARD_MODEL
-
-// Een klein PNG dat dit script zelf tekent: bovenhelft rood, onderhelft blauw.
-// Genoeg om te zien of het model daadwerkelijk naar het beeld kijkt.
-function maakTestPng(): Buffer {
-  const W = 32, H = 32
-  const rauw: number[] = []
-  for (let y = 0; y < H; y++) {
-    rauw.push(0) // filter-byte per rij
-    for (let x = 0; x < W; x++) {
-      const boven = y < H / 2
-      rauw.push(boven ? 220 : 20, boven ? 30 : 40, boven ? 30 : 200)
-    }
-  }
-  const blok = (type: string, data: Buffer) => {
-    const lengte = Buffer.alloc(4); lengte.writeUInt32BE(data.length)
-    const typeData = Buffer.concat([Buffer.from(type, 'ascii'), data])
-    const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(typeData) >>> 0)
-    return Buffer.concat([lengte, typeData, crc])
-  }
-  const ihdr = Buffer.alloc(13)
-  ihdr.writeUInt32BE(W, 0); ihdr.writeUInt32BE(H, 4)
-  ihdr[8] = 8   // bitdiepte
-  ihdr[9] = 2   // kleurtype 2 = truecolour
-  return Buffer.concat([
-    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-    blok('IHDR', ihdr),
-    blok('IDAT', deflateSync(Buffer.from(rauw))),
-    blok('IEND', Buffer.alloc(0)),
-  ])
-}
 
 if (!SLEUTEL) {
   console.log('\nDEEL 2 — echte Groq-aanroep: OVERGESLAGEN (geen GROQ_API_KEY in .env.local).')

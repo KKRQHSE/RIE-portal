@@ -59,6 +59,10 @@ next-env.d.ts
 !/import/extract_docx.py
 !/import/import_run.mjs
 !/import/build_dataset.py
+!/import/test_build_dataset_aantoonbaar.py
+
+# Lokale basislijn van de migratiecontrole (bevat bedrijfsnamen + checksums).
+/scripts/.rie_aantoonbaar_basislijn.json
 
 # Bron-RI&E's en gegenereerde klantdata, waar dan ook (defensief).
 *.docx

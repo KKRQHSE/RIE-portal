@@ -336,3 +336,73 @@ tenzij Kees het expliciet wijzigt:
 **Reikwijdte.** Geldt voor samenvattingen, commit-teksten, uitleg en overige communicatie.
 Staat los van de inhoudelijke werkwijze-afspraken (veilige standaard, Beslissing 62, browsertest);
 die blijven onverkort gelden.
+
+---
+
+## Beslissing 65 — AI-foto-analyse bij de werkplekinspectie: voorstel van de machine, besluit van de mens (31 augustus 2026)
+
+**Aanleiding.** Een inspecteur op de vloer maakt foto's en moet er daarna nog een
+bevinding bij typen. Een vision-model kan dat voorwerk doen. Dat raakt twee dingen
+die dit project niet vrijblijvend behandelt: de foto zou naar een derde partij gaan
+(en de eerste keer zelfs buiten de EU), en een machine zou meeschrijven aan een
+document met juridische waarde.
+
+**Besluit.** Gebouwd, met vier harde grenzen.
+
+1. **De mens beslist, en dat zit in het datamodel — niet alleen in het scherm.**
+   Migratie 0050 zet een aparte tabel `inspectie_ai_suggestie` neer die twee dingen
+   uit elkaar houdt: wat de AI teruggaf (`ai_beschrijving`/`ai_concept`, onveranderd
+   bewaard als herkomstbewijs) en wat de mens ermee deed (`status`, `besluit_tekst`,
+   `besloten_op`, `besloten_door`). Zolang de status `concept` is, staat er niets in
+   de bevinding. Alleen `inspectie_ai_suggestie_besluit` met besluit `overgenomen`
+   schrijft de door de mens vastgestelde — mogelijk bewerkte — tekst naar
+   `inspectie_bevinding.opmerking`, met een regel in de inspectiehistorie. Een
+   geslaagde AI-aanroep laat de bevinding aantoonbaar leeg (bewezen in de route-test).
+
+2. **Opt-in per foto, standaard uit, en drie keer afgedwongen.** Het vinkje in het
+   scherm staat uit en zonder vinkje is de knop dood; de server-route weigert bij
+   `toestemming !== true` (geen truthy-truc: `"ja"` wordt ook geweigerd); de RPC
+   weigert bij `p_toestemming` die niet `true` is. Bij het vinkje staat leesbaar
+   wélke dienst het is, dát die buiten de EU draait en dat er geen herkenbare
+   personen op horen te staan. De toestemming wordt per doorgifte vastgelegd.
+
+3. **De sleutel komt de browser nooit in.** De aanroep loopt uitsluitend server-side
+   via `app/api/inspectie/ai-analyse`; de sleutel staat in een omgevingsvariabele en
+   wordt alleen in `lib/ai/*` gelezen (`server-only`, dus de build breekt als het
+   ooit in een clientbundel belandt). De repo is publiek — geen sleutel in git. De
+   browser krijgt via GET alleen naam, model en regio terug.
+   De **volgorde** in de route is bewust: ingelogd → toestemming → is er wel een
+   leverancier → pas dán de foto opzoeken en de bytes ophalen. Zonder toestemming of
+   zonder sleutel verlaat er geen byte de privé bucket. Dat is ook waarom een
+   cross-company-poging zonder sleutel een 503 geeft in plaats van een 403: de
+   configuratiecheck komt eerder dan de fotolookup, en dat is de veilige volgorde.
+   De foto gaat als **inhoud** naar de leverancier, niet als signed URL, zodat er
+   geen werkende verwijzing naar de privé bucket in diens logs achterblijft.
+
+4. **De leverancier is één omzetbare instelling.** `lib/ai/leverancier.ts` is de
+   poort; `lib/ai/groq.ts` de eerste implementatie. Wisselen naar Anthropic of een
+   EU-model = een adapter erbij, een regel in de `KIES`-tabel en `AI_LEVERANCIER`
+   omzetten. Route, RPC's, datamodel en scherm blijven ongemoeid. Het `regio`-veld
+   van de adapter stuurt de waarschuwingstekst: zet hem op `'eu'` en het scherm
+   past zich vanzelf aan. Instructie in de README en onderaan `leverancier.ts`.
+
+**Zonder sleutel netjes uit.** Ontbreekt `GROQ_API_KEY` (of staat `AI_LEVERANCIER` op
+iets onbekends), dan geeft de route een 503 met code `niet_geconfigureerd` en de tekst
+"AI-analyse is nog niet geconfigureerd" — geen crash, en geen technisch detail naar de
+browser. Storingen bij de leverancier geven een Nederlands bericht; het ruwe antwoord
+gaat alleen naar het serverlog.
+
+**Alleen bij een inspectiepunt.** AI-voorwerk kan uitsluitend bij een foto met een
+`bevinding_id`, niet bij de losse foto's onder de inspectie als geheel. Reden: een
+concept moet ergens in kunnen landen, en zo heeft elke doorgifte een aanwijsbaar doel
+en doelveld. Afgedwongen in de RPC, niet alleen in de UI.
+
+**Wat dit oplevert aan bewijs.** Isolatietest 24/24 (o.a.: anon kan de RPC's niet
+aanroepen, A kan niets op de foto van B, een vers concept laat de toelichting leeg,
+overnemen schrijft de mens-tekst en niet de AI-tekst, een afgeronde inspectie is
+bevroren). Zelftest 15/15 inclusief een echte Groq-aanroep. Route-test tegen een
+draaiende app met een echte sessie: 21/21 mét sleutel, 17/17 zónder.
+
+**Openstaand.** Herkenbare personen op een foto zijn nu een gedragsafspraak, geen
+technische blokkade. Bewaartermijn van de suggesties is nog niet bepaald. Beide staan
+bij de AVG-punten in `Projectstand.md`. En de browsertest moet nog.

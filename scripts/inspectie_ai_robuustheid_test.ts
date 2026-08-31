@@ -62,7 +62,6 @@ const URL_SB = env.NEXT_PUBLIC_SUPABASE_URL
 const ANON = env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const SERVICE = env.SUPABASE_SERVICE_ROLE_KEY
 const BASIS = (env.AI_TEST_BASIS || 'http://localhost:3000').replace(/\/$/, '')
-const SLEUTEL = (env.GROQ_API_KEY || '').trim()
 
 if (!URL_SB || !ANON || !SERVICE) {
   console.error('NEXT_PUBLIC_SUPABASE_URL / _ANON_KEY / SUPABASE_SERVICE_ROLE_KEY ontbreken in .env.local.')

@@ -11,8 +11,7 @@ bestaande data, geen productie-/klantdata (Dutch Waste, Geissler) aangeraakt, al
 eigen testdata achteraf opgeruimd, en riskante of grote wijzigingen alleen
 gedocumenteerd — niet gebouwd.
 
-> **Status:** loopt nog. Dit bestand wordt gaandeweg bijgewerkt en gepusht, zodat de
-> stand ook zichtbaar is als de run halverwege stilvalt.
+> **Status: afgerond.** Alle onderdelen uit de opdracht zijn gedraaid.
 
 ---
 
@@ -375,3 +374,70 @@ Nieuw: **`scripts/onveranderlijkheid_test.mjs`**.
   binnen zijn eigen bedrijf mag (integriteit), niet in *wiens* data hij ziet.
 - **Anon:** zie Deel 2. Na migratie 0053 nog 21 functies aanroepbaar door anon,
   allemaal verklaarbaar (13 tokenflows, 8 helpers).
+
+---
+
+## Deel 6 — Regressie en opruimen
+
+- **`tsc --noEmit` groen**, **`next build` groen**.
+- **Lint terug op de bestaande basislijn** (12 problemen / 7 fouten — allemaal van
+  vóór vanavond, o.a. `YouTubeSpeler.tsx` en `PersonenClient.tsx`). Eén nieuwe
+  waarschuwing die ik zelf introduceerde is meteen opgeruimd.
+- **Volledige testsuite na elke wijziging opnieuw gedraaid**, met exact dezelfde
+  uitkomst als de basislijn. Migratie 0053 heeft niets gebroken: toolbox 64/64,
+  inspectie 51/51, audit 24/24, dashboard 17/17, bibliotheek 34/34, incidenten
+  20/20, modules 8/8, merge 20/20, e2e 18/18.
+- **Testdata opgeruimd en gecontroleerd:** 0 testbedrijven en 0 test-accounts over
+  (gecontroleerd op alle prefixen: ANONTEST_, AIROB_, ONVTEST_, AIROUTE_,
+  BROWSERTEST_, INSPTEST_, SECTEST_, AITEST_, FOTOTEST_, DIAG_). Eén
+  `ANONTEST_`-bedrijf bleef eerst staan doordat ik de uitvoer door `head` pipete
+  en het opruimblok daardoor niet meer draaide; alsnog verwijderd.
+- **Klantdata niet aangeraakt.** Ter controle achteraf: Dutch Waste 11 inspecties
+  / 12 acties, Geissler 20 acties, Alpha 7/15, Bravo 0/2 — allemaal onveranderd.
+  Alle verwijderacties waren gescope't op de id's van mijn eigen wegwerpbedrijven.
+
+---
+
+## Kop van de lijst — wat als eerste te bekijken
+
+**1. De `bewijs`-bucket schermt niet per bedrijf af.** Cross-tenant: een ingelogde
+gebruiker van bedrijf A kan de bewijsmap van bedrijf B opsommen, bestanden lezen
+én erin schrijven. Dit is de enige bevinding met een echte
+vertrouwelijkheidsimpact. Klaar voorstel in dit rapport; ik heb het niet zelf
+uitgevoerd omdat het bestaande policies op klantbewijs vervangt. **Let op de
+padindex: `[2]`, niet `[1]`.**
+
+**2. Een afgeronde inspectie is alleen in de RPC's bevroren.** Een ingelogde KAM
+kan langs de RPC's om de toelichting en het resultaat van een afgeronde bevinding
+wijzigen, de inspectie heropenen, een bevinding verwijderen, en historieregels
+herschrijven, verwijderen of verzinnen. Geen datalek, wel een
+integriteitsprobleem in precies de module die als bewijs moet dienen. Voorstel
+klaar; niet uitgevoerd omdat het de kerntabellen van een module raakt.
+
+**3. Gefikst en gepusht: 12 RPC's hadden onbedoeld anon-EXECUTE** (migratie 0053).
+Geen lek geweest — de guard hield — maar het was één slot in plaats van twee. Het
+echte probleem was dat de hardening-test een handgeschreven lijst bewaakte;
+`scripts/anon_execute_audit_test.mjs` leest die set nu live uit de database en
+betrapt de volgende naloper vanzelf.
+
+**4. Goed nieuws waar het het zwaarst telt.** Het toolbox-bewijsrecord is écht
+onveranderlijk — elke kolom geweigerd, ook met de service role. Alle 51 tabellen
+hebben RLS aan. Geen enkele policy laat cross-tenant schrijven toe. En de
+AI-foto-analyse hield stand tegen alles wat ik erop losliet: 53/53 op opt-in
+omzeilen, sleutellekken, bedrijfsgrens-omwegen, kapotte bestanden en een
+leverancier die stukgaat.
+
+### Wat ik zelf heb gefikst
+| | |
+| --- | --- |
+| `0053_anon_execute_nalopers.sql` | anon-EXECUTE ingetrokken op 12 RPC's |
+| `scripts/anon_execute_audit_test.mjs` | live audit, betrapt toekomstige nalopers (18/18) |
+| `scripts/inspectie_ai_robuustheid_test.ts` | AI-randgevallen en misbruik (53/53) |
+| `scripts/onveranderlijkheid_test.mjs` | onveranderlijkheid van bewijs (16/24, 8 = bevinding 2) |
+
+### Wat ik alleen heb gedocumenteerd
+| | |
+| --- | --- |
+| bewijs-bucket per bedrijf afschermen | vervangt policies op klantbewijs — jouw akkoord nodig |
+| ALL-policies op inspectie/historie | raakt de kerntabellen van een module — jouw akkoord nodig |
+| append-only trigger op de historietabellen | aparte afweging: maakt ook opschonen onmogelijk |

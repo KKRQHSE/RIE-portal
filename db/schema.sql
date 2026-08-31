@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-08-31T15:34:33.568Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-08-31T18:53:34.581Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -395,6 +395,25 @@ CREATE TABLE public.inspectie (
   aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL
 );
 
+CREATE TABLE public.inspectie_ai_suggestie (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  inspectie_id uuid NOT NULL,
+  bevinding_id uuid NOT NULL,
+  foto_id uuid,
+  company_id uuid NOT NULL,
+  ai_beschrijving text,
+  ai_concept text,
+  leverancier text NOT NULL,
+  model text NOT NULL,
+  toestemming_bevestigd boolean DEFAULT false NOT NULL,
+  status text DEFAULT 'concept'::text NOT NULL,
+  besluit_tekst text,
+  besloten_op timestamp with time zone,
+  besloten_door uuid,
+  aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL,
+  aangemaakt_door uuid
+);
+
 CREATE TABLE public.inspectie_bevinding (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
@@ -661,6 +680,7 @@ ALTER TABLE public.incident_foto ADD CONSTRAINT incident_foto_pkey PRIMARY KEY (
 ALTER TABLE public.incident_gevolg_soort ADD CONSTRAINT incident_gevolg_soort_pkey PRIMARY KEY (code);
 ALTER TABLE public.incident_meldlink ADD CONSTRAINT incident_meldlink_pkey PRIMARY KEY (company_id);
 ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_pkey PRIMARY KEY (id);
+ALTER TABLE public.inspectie_ai_suggestie ADD CONSTRAINT inspectie_ai_suggestie_pkey PRIMARY KEY (id);
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT inspectie_bevinding_pkey PRIMARY KEY (id);
 ALTER TABLE public.inspectie_foto ADD CONSTRAINT inspectie_foto_pkey PRIMARY KEY (id);
 ALTER TABLE public.inspectie_historie ADD CONSTRAINT inspectie_historie_pkey PRIMARY KEY (id);
@@ -711,6 +731,7 @@ ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_bron_check CHE
 ALTER TABLE public.incident ADD CONSTRAINT incident_medische_dienst_check CHECK (((medische_dienst_bezocht IS NULL) OR (medische_dienst_bezocht = ANY (ARRAY['ja'::text, 'nee'::text, 'onbekend'::text]))));
 ALTER TABLE public.incident ADD CONSTRAINT incident_status_check CHECK ((status = ANY (ARRAY['open'::text, 'in_onderzoek'::text, 'afgehandeld'::text])));
 ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_status_check CHECK ((status = ANY (ARRAY['concept'::text, 'ingediend'::text, 'afgerond'::text, 'geannuleerd'::text])));
+ALTER TABLE public.inspectie_ai_suggestie ADD CONSTRAINT inspectie_ai_suggestie_status_check CHECK ((status = ANY (ARRAY['concept'::text, 'overgenomen'::text, 'verworpen'::text])));
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT bevinding_actie_id_klopt CHECK ((((afhandeling = 'actie'::text) AND (actie_id IS NOT NULL)) OR ((afhandeling <> 'actie'::text) AND (actie_id IS NULL))));
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT bevinding_afhandeling_klopt CHECK ((((resultaat IS NULL) AND (afhandeling = 'geen'::text)) OR ((resultaat = 'in_orde'::text) AND (afhandeling = 'geen'::text)) OR ((resultaat = 'nvt'::text) AND (afhandeling = 'geen'::text)) OR ((resultaat = 'niet_in_orde'::text) AND (afhandeling = ANY (ARRAY['geen'::text, 'meteen_hersteld'::text, 'actie'::text])))));
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT bevinding_hersteld_bewijs CHECK (((afhandeling <> 'meteen_hersteld'::text) OR ((opmerking IS NOT NULL) AND (btrim(opmerking) <> ''::text))));
@@ -774,6 +795,12 @@ ALTER TABLE public.incident_meldlink ADD CONSTRAINT incident_meldlink_company_id
 ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE SET NULL;
 ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_sjabloon_id_fkey FOREIGN KEY (sjabloon_id) REFERENCES inspectie_sjabloon(id) ON DELETE SET NULL;
+ALTER TABLE public.inspectie_ai_suggestie ADD CONSTRAINT inspectie_ai_suggestie_aangemaakt_door_fkey FOREIGN KEY (aangemaakt_door) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.inspectie_ai_suggestie ADD CONSTRAINT inspectie_ai_suggestie_besloten_door_fkey FOREIGN KEY (besloten_door) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.inspectie_ai_suggestie ADD CONSTRAINT inspectie_ai_suggestie_bevinding_id_fkey FOREIGN KEY (bevinding_id) REFERENCES inspectie_bevinding(id) ON DELETE CASCADE;
+ALTER TABLE public.inspectie_ai_suggestie ADD CONSTRAINT inspectie_ai_suggestie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.inspectie_ai_suggestie ADD CONSTRAINT inspectie_ai_suggestie_foto_id_fkey FOREIGN KEY (foto_id) REFERENCES inspectie_foto(id) ON DELETE SET NULL;
+ALTER TABLE public.inspectie_ai_suggestie ADD CONSTRAINT inspectie_ai_suggestie_inspectie_id_fkey FOREIGN KEY (inspectie_id) REFERENCES inspectie(id) ON DELETE CASCADE;
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT inspectie_bevinding_actie_id_fkey FOREIGN KEY (actie_id) REFERENCES pva_items(id) ON DELETE SET NULL;
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT inspectie_bevinding_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT inspectie_bevinding_inspectie_id_fkey FOREIGN KEY (inspectie_id) REFERENCES inspectie(id) ON DELETE CASCADE;
@@ -847,6 +874,9 @@ CREATE INDEX incident_company_datum_idx ON public.incident USING btree (company_
 CREATE INDEX incident_company_status_idx ON public.incident USING btree (company_id, status);
 CREATE INDEX incident_foto_company_idx ON public.incident_foto USING btree (company_id);
 CREATE INDEX incident_foto_incident_idx ON public.incident_foto USING btree (incident_id);
+CREATE INDEX inspectie_ai_suggestie_bevinding_idx ON public.inspectie_ai_suggestie USING btree (bevinding_id);
+CREATE INDEX inspectie_ai_suggestie_company_idx ON public.inspectie_ai_suggestie USING btree (company_id);
+CREATE INDEX inspectie_ai_suggestie_inspectie_idx ON public.inspectie_ai_suggestie USING btree (inspectie_id);
 CREATE INDEX inspectie_company_idx ON public.inspectie USING btree (company_id, status);
 CREATE INDEX inspectie_foto_bevinding_idx ON public.inspectie_foto USING btree (bevinding_id);
 CREATE INDEX inspectie_foto_company_idx ON public.inspectie_foto USING btree (company_id);
@@ -907,6 +937,7 @@ ALTER TABLE public.incident_foto ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.incident_gevolg_soort ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.incident_meldlink ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.inspectie_ai_suggestie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie_bevinding ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie_foto ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie_historie ENABLE ROW LEVEL SECURITY;
@@ -1041,6 +1072,8 @@ CREATE POLICY inspectie_sel ON public.inspectie AS PERMISSIVE FOR SELECT TO publ
 CREATE POLICY inspectie_wr ON public.inspectie AS PERMISSIVE FOR ALL TO public
   USING (mag_bedrijf_beheren(company_id))
   WITH CHECK (mag_bedrijf_beheren(company_id));
+CREATE POLICY inspectie_ai_suggestie_sel ON public.inspectie_ai_suggestie AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY inspectie_bevinding_sel ON public.inspectie_bevinding AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY inspectie_bevinding_wr ON public.inspectie_bevinding AS PERMISSIVE FOR ALL TO public
@@ -3200,6 +3233,97 @@ begin
   values (v_company, p_inspectie_id, auth.uid(), now(), 'Inspectie afgerond');
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.inspectie_ai_suggestie_besluit(p_suggestie_id uuid, p_besluit text, p_tekst text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_inspectie uuid; v_bevinding uuid; v_status text;
+  v_company uuid; v_punt text; v_tekst text;
+begin
+  if p_besluit is null or p_besluit not in ('overgenomen', 'verworpen') then
+    raise exception 'Ongeldig besluit';
+  end if;
+
+  select inspectie_id, bevinding_id, status
+    into v_inspectie, v_bevinding, v_status
+    from inspectie_ai_suggestie where id = p_suggestie_id;
+  if v_inspectie is null then raise exception 'Suggestie niet gevonden'; end if;
+
+  -- Een beslissing per suggestie: een al beoordeeld concept ligt vast.
+  if v_status <> 'concept' then
+    raise exception 'Deze suggestie is al beoordeeld';
+  end if;
+
+  v_company := inspectie_foto_context(v_inspectie, v_bevinding, true);
+
+  if p_besluit = 'overgenomen' then
+    v_tekst := nullif(btrim(coalesce(p_tekst, '')), '');
+    if v_tekst is null then
+      raise exception 'Overnemen kan niet met een lege tekst';
+    end if;
+
+    -- Alleen de toelichting; resultaat/afhandeling blijven onaangeroerd, die
+    -- kiest de inspecteur zelf via bevinding_opslaan.
+    update inspectie_bevinding set opmerking = v_tekst
+     where id = v_bevinding;
+
+    select punt_tekst_snap into v_punt from inspectie_bevinding where id = v_bevinding;
+    insert into inspectie_historie (company_id, inspectie_id, wie, wanneer, wijziging)
+    values (v_company, v_inspectie, auth.uid(), now(),
+            'AI-suggestie overgenomen (door mens vastgesteld) bij: ' || coalesce(v_punt, ''));
+  end if;
+
+  update inspectie_ai_suggestie
+     set status        = p_besluit,
+         besluit_tekst = case when p_besluit = 'overgenomen' then v_tekst else null end,
+         besloten_op   = now(),
+         besloten_door = auth.uid()
+   where id = p_suggestie_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.inspectie_ai_suggestie_opslaan(p_foto_id uuid, p_beschrijving text, p_concept text, p_leverancier text, p_model text, p_toestemming boolean)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare v_inspectie uuid; v_bevinding uuid; v_company uuid; v_id uuid;
+begin
+  -- Zonder bewuste opt-in had de foto de bucket niet mogen verlaten. De route
+  -- controleert dit al voor de doorgifte; dit is de tweede slot op dezelfde deur.
+  if coalesce(p_toestemming, false) is not true then
+    raise exception 'Zonder toestemming mag deze foto niet naar een AI-dienst';
+  end if;
+
+  select inspectie_id, bevinding_id into v_inspectie, v_bevinding
+    from inspectie_foto where id = p_foto_id;
+  if v_inspectie is null then raise exception 'Foto niet gevonden'; end if;
+  if v_bevinding is null then
+    raise exception 'AI-voorwerk kan alleen bij een foto die aan een inspectiepunt hangt';
+  end if;
+
+  -- Guard (mag_bedrijf_beheren) + weigert een afgeronde/geannuleerde inspectie.
+  v_company := inspectie_foto_context(v_inspectie, v_bevinding, true);
+
+  insert into inspectie_ai_suggestie
+    (inspectie_id, bevinding_id, foto_id, company_id,
+     ai_beschrijving, ai_concept, leverancier, model,
+     toestemming_bevestigd, status, aangemaakt_door)
+  values
+    (v_inspectie, v_bevinding, p_foto_id, v_company,
+     nullif(btrim(coalesce(p_beschrijving, '')), ''),
+     nullif(btrim(coalesce(p_concept, '')), ''),
+     coalesce(nullif(btrim(coalesce(p_leverancier, '')), ''), 'onbekend'),
+     coalesce(nullif(btrim(coalesce(p_model, '')), ''), 'onbekend'),
+     true, 'concept', auth.uid())
+  returning id into v_id;
+
+  return v_id;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.inspectie_bibliotheek(p_company_id uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -5233,6 +5357,12 @@ GRANT EXECUTE ON FUNCTION public.incident_meldlink_zorg(p_company_id uuid) TO se
 REVOKE EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.inspectie_ai_suggestie_besluit(p_suggestie_id uuid, p_besluit text, p_tekst text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.inspectie_ai_suggestie_besluit(p_suggestie_id uuid, p_besluit text, p_tekst text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_ai_suggestie_besluit(p_suggestie_id uuid, p_besluit text, p_tekst text) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.inspectie_ai_suggestie_opslaan(p_foto_id uuid, p_beschrijving text, p_concept text, p_leverancier text, p_model text, p_toestemming boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.inspectie_ai_suggestie_opslaan(p_foto_id uuid, p_beschrijving text, p_concept text, p_leverancier text, p_model text, p_toestemming boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_ai_suggestie_opslaan(p_foto_id uuid, p_beschrijving text, p_concept text, p_leverancier text, p_model text, p_toestemming boolean) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.inspectie_bibliotheek(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_bibliotheek(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_bibliotheek(p_company_id uuid) TO service_role;

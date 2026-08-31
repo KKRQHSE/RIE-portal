@@ -328,6 +328,59 @@ async function run() {
       !!error && /al beoordeeld/i.test(error.message || ''), error?.message?.slice(0, 60))
   }
 
+  // --- 8b. Overnemen kan niet zonder gekozen resultaat (migratie 0051) ---
+  // Gevonden in de browsertest: zonder resultaat rendert het invulscherm geen
+  // toelichtingveld, dus zou de tekst onzichtbaar worden opgeslagen.
+  {
+    const { data: bevZonder } = await admin.from('inspectie_bevinding').insert({
+      company_id: A.companyId, inspectie_id: A.inspectieId,
+      punt_tekst_snap: 'AITEST punt zonder resultaat',
+      resultaat: null, afhandeling: 'geen',
+    }).select('id').single()
+    const { data: fotoZonder } = await admin.from('inspectie_foto').insert({
+      inspectie_id: A.inspectieId, bevinding_id: bevZonder.id, company_id: A.companyId,
+      storage_pad: `${A.companyId}/${A.inspectieId}/aitest_zonder.jpg`,
+      bestandsnaam: 'aitest_zonder.jpg', type: 'image/jpeg', grootte: 1234,
+    }).select('id').single()
+
+    const { data: sugId } = await clientA.rpc('inspectie_ai_suggestie_opslaan', {
+      p_foto_id: fotoZonder.id, p_beschrijving: 'AITEST', p_concept: 'AITEST concept',
+      p_leverancier: 'groq', p_model: 'aitest-model', p_toestemming: true,
+    })
+    check('een concept opslaan mag wél zonder gekozen resultaat', !!sugId)
+
+    const { error } = await clientA.rpc('inspectie_ai_suggestie_besluit', {
+      p_suggestie_id: sugId, p_besluit: 'overgenomen', p_tekst: 'mag hier niet landen',
+    })
+    check('overnemen zonder gekozen resultaat wordt geweigerd',
+      !!error && /kies eerst een resultaat/i.test(error.message || ''), error?.message?.slice(0, 60))
+    {
+      const opm = await leesOpmerking(bevZonder.id)
+      check('er is niets stils naar de bevinding geschreven', opm === null, `opmerking=${JSON.stringify(opm)}`)
+    }
+    {
+      // Verwerpen mag wél altijd — een concept weggooien vraagt geen oordeel.
+      const { error: eV } = await clientA.rpc('inspectie_ai_suggestie_besluit', {
+        p_suggestie_id: sugId, p_besluit: 'verworpen', p_tekst: null,
+      })
+      check('verwerpen mag wél zonder gekozen resultaat', !eV, eV?.message?.slice(0, 60))
+    }
+    {
+      // En zodra er een resultaat staat, lukt overnemen gewoon.
+      await admin.from('inspectie_bevinding').update({ resultaat: 'in_orde' }).eq('id', bevZonder.id)
+      const { data: sug2 } = await clientA.rpc('inspectie_ai_suggestie_opslaan', {
+        p_foto_id: fotoZonder.id, p_beschrijving: 'AITEST', p_concept: 'AITEST concept 2',
+        p_leverancier: 'groq', p_model: 'aitest-model', p_toestemming: true,
+      })
+      const { error: eO } = await clientA.rpc('inspectie_ai_suggestie_besluit', {
+        p_suggestie_id: sug2, p_besluit: 'overgenomen', p_tekst: 'AITEST nu mag het wel',
+      })
+      const opm = await leesOpmerking(bevZonder.id)
+      check('met een resultaat lukt overnemen wél', !eO && opm === 'AITEST nu mag het wel',
+        eO?.message?.slice(0, 60) ?? `opmerking=${JSON.stringify(opm)}`)
+    }
+  }
+
   // --- 9. Verwerpen laat de bevinding ongemoeid ---
   {
     const { data: id2 } = await clientA.rpc('inspectie_ai_suggestie_opslaan', {

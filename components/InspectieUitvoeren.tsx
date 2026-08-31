@@ -551,6 +551,7 @@ function BevindingRow({
           onSuggestiesGewijzigd={onSuggestiesGewijzigd}
           onAiOvergenomen={neemAiConceptOver}
           heeftToelichting={!!opmerking.trim()}
+          heeftResultaat={!!bevinding.resultaat}
         />
       )}
 
@@ -582,7 +583,7 @@ function metReden(bericht: string, reden?: string | null): string {
 function FotoBlok({
   inspectieId, bevindingId, fotos, readOnly, t, onGewijzigd, compact = false,
   aiStatus = null, suggesties = [], onSuggestiesGewijzigd, onAiOvergenomen,
-  heeftToelichting = false,
+  heeftToelichting = false, heeftResultaat = false,
 }: {
   inspectieId: string
   bevindingId: string | null
@@ -599,6 +600,7 @@ function FotoBlok({
   onSuggestiesGewijzigd?: () => void
   onAiOvergenomen?: (tekst: string) => void
   heeftToelichting?: boolean
+  heeftResultaat?: boolean
 }) {
   const supabase = createClient()
   const [bezig, setBezig] = useState(false)
@@ -726,6 +728,7 @@ function FotoBlok({
             aiStatus={aiStatus}
             openConcept={suggesties.find(s => s.foto_id === f.id && s.status === 'concept') ?? null}
             heeftToelichting={heeftToelichting}
+            heeftResultaat={heeftResultaat}
             t={t}
             onOvergenomen={onAiOvergenomen}
             onGewijzigd={onSuggestiesGewijzigd}

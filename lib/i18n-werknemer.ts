@@ -160,6 +160,7 @@ export const INSP_TEKST: Woordenboek = {
   aiOvernemen:      { nl: 'Overnemen in toelichting', tr: 'Açıklamaya aktar' },
   aiWeggooien:      { nl: 'Weggooien', tr: 'At' },
   aiVervangtTekst:  { nl: 'Overnemen vervangt de toelichting die er nu staat.', tr: 'Aktarmak, şu anki açıklamanın yerine geçer.' },
+  aiEerstResultaat: { nl: 'Kies eerst hierboven een resultaat; daarna kun je deze tekst overnemen als toelichting.', tr: 'Önce yukarıdan bir sonuç seçin; daha sonra bu metni açıklama olarak aktarabilirsiniz.' },
   aiOvergenomen:    { nl: 'Toelichting met AI-voorwerk', tr: 'AI ön çalışmasıyla hazırlanan açıklama' },
   aiNietGeconfigureerd: { nl: 'AI-analyse is nog niet geconfigureerd.', tr: 'AI analizi henüz yapılandırılmadı.' },
   aiLeegOvernemen:  { nl: 'Er staat geen tekst om over te nemen.', tr: 'Aktarılacak bir metin yok.' },

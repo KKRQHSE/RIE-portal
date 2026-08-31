@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-08-31T18:53:34.581Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-08-31T20:16:37.273Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -3241,7 +3241,7 @@ CREATE OR REPLACE FUNCTION public.inspectie_ai_suggestie_besluit(p_suggestie_id 
 AS $function$
 declare
   v_inspectie uuid; v_bevinding uuid; v_status text;
-  v_company uuid; v_punt text; v_tekst text;
+  v_company uuid; v_punt text; v_tekst text; v_resultaat text;
 begin
   if p_besluit is null or p_besluit not in ('overgenomen', 'verworpen') then
     raise exception 'Ongeldig besluit';
@@ -3265,12 +3265,19 @@ begin
       raise exception 'Overnemen kan niet met een lege tekst';
     end if;
 
+    -- NIEUW (0051): zonder resultaat heeft de toelichting geen plek op het
+    -- scherm, en zou de tekst onzichtbaar worden opgeslagen.
+    select resultaat, punt_tekst_snap into v_resultaat, v_punt
+      from inspectie_bevinding where id = v_bevinding;
+    if v_resultaat is null then
+      raise exception 'Kies eerst een resultaat bij dit inspectiepunt';
+    end if;
+
     -- Alleen de toelichting; resultaat/afhandeling blijven onaangeroerd, die
     -- kiest de inspecteur zelf via bevinding_opslaan.
     update inspectie_bevinding set opmerking = v_tekst
      where id = v_bevinding;
 
-    select punt_tekst_snap into v_punt from inspectie_bevinding where id = v_bevinding;
     insert into inspectie_historie (company_id, inspectie_id, wie, wanneer, wijziging)
     values (v_company, v_inspectie, auth.uid(), now(),
             'AI-suggestie overgenomen (door mens vastgesteld) bij: ' || coalesce(v_punt, ''));

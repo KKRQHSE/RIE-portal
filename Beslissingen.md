@@ -401,8 +401,25 @@ en doelveld. Afgedwongen in de RPC, niet alleen in de UI.
 aanroepen, A kan niets op de foto van B, een vers concept laat de toelichting leeg,
 overnemen schrijft de mens-tekst en niet de AI-tekst, een afgeronde inspectie is
 bevroren). Zelftest 15/15 inclusief een echte Groq-aanroep. Route-test tegen een
-draaiende app met een echte sessie: 21/21 mét sleutel, 17/17 zónder.
+draaiende app met een echte sessie: 21/21 mét sleutel, 17/17 zónder. Browsertest
+in Chrome met een wegwerpbedrijf en wegwerp-KAM: 47/47, geen console-fouten.
+
+**Wat de browsertest boven water haalde (migratie 0051).** Bij een punt zonder
+gekozen resultaat schreef 'overnemen' de tekst netjes weg, maar rendert het
+invulscherm daar geen toelichtingveld — de inspecteur klikte en zag niets
+gebeuren terwijl er wél iets was opgeslagen. Een opmerking zonder resultaat is
+een toestand die de rest van de app nooit maakt (`bevinding_opslaan` weigert een
+null resultaat); 0050 kon hem als enige veroorzaken. Overnemen vereist nu een
+resultaat, in de RPC én in de knop, met uitleg op het scherm. Verwerpen blijft
+altijd mogelijk: een concept weggooien vraagt geen oordeel. Dit is meteen de
+juiste volgorde — eerst oordeelt de mens over het punt, daarna gebruikt hij de
+AI-tekst als toelichting bij dat oordeel.
 
 **Openstaand.** Herkenbare personen op een foto zijn nu een gedragsafspraak, geen
 technische blokkade. Bewaartermijn van de suggesties is nog niet bepaald. Beide staan
-bij de AVG-punten in `Projectstand.md`. En de browsertest moet nog.
+bij de AVG-punten in `Projectstand.md`.
+
+Uit de browsertest: in de **rapportweergave** staat de AI-herkomst alleen in de
+geschiedenisregel, niet als markering naast de toelichting zelf. Het invulscherm
+toont daar wél een labeltje. Te beslissen of het rapport — het document dat later
+gelezen en als PDF gedeeld wordt — die markering ook bij de bevinding moet tonen.

@@ -39,13 +39,17 @@ type Props = {
   openConcept: AiSuggestie | null
   // Staat er al een toelichting? Dan waarschuwen we dat overnemen die vervangt.
   heeftToelichting: boolean
+  // Is er al een resultaat gekozen bij dit punt? Zonder resultaat rendert het
+  // invulscherm geen toelichtingveld, dus zou een overgenomen tekst onzichtbaar
+  // worden opgeslagen. Overnemen is dan uit — de RPC weigert het ook (0051).
+  heeftResultaat: boolean
   t: Vertaler
   onOvergenomen: (tekst: string) => void
   onGewijzigd: () => void
 }
 
 export default function InspectieFotoAi({
-  foto, aiStatus, openConcept, heeftToelichting, t, onOvergenomen, onGewijzigd,
+  foto, aiStatus, openConcept, heeftToelichting, heeftResultaat, t, onOvergenomen, onGewijzigd,
 }: Props) {
   const supabase = createClient()
 
@@ -111,7 +115,7 @@ export default function InspectieFotoAi({
   // met de tekst zoals die nú in het bewerkbare veld staat, niet met de
   // oorspronkelijke AI-tekst.
   async function overnemen() {
-    if (!suggestie || besluitBezig) return
+    if (!suggestie || besluitBezig || !heeftResultaat) return
     const tekst = conceptTekst.trim()
     if (!tekst) {
       setMelding({ soort: 'fout', tekst: t('aiLeegOvernemen') })
@@ -255,15 +259,22 @@ export default function InspectieFotoAi({
             />
           </div>
 
-          {heeftToelichting && (
+          {heeftToelichting && heeftResultaat && (
             <p className="text-[11px] text-amber-800">{t('aiVervangtTekst')}</p>
+          )}
+
+          {/* Zonder gekozen resultaat is er geen toelichtingveld om in te landen.
+              Overnemen zou de tekst dan onzichtbaar opslaan — dus uit, mét uitleg. */}
+          {!heeftResultaat && (
+            <p className="text-[11px] text-amber-800">{t('aiEerstResultaat')}</p>
           )}
 
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={overnemen}
-              disabled={besluitBezig}
+              disabled={besluitBezig || !heeftResultaat}
+              title={!heeftResultaat ? t('aiEerstResultaat') : undefined}
               className="text-xs px-4 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
             >
               {t('aiOvernemen')}

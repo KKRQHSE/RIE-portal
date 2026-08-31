@@ -131,4 +131,13 @@
     color: #000 !important;
     border: 1px solid #000;
   }
+
+  /* De AI-herkomstregel is op papier geen bijzaak: wie de PDF later leest moet
+     kunnen zien dat het voorwerk van een machine kwam en wie het vaststelde.
+     Dus niet laten wegvallen in lichtgrijs, en bij zijn bevinding houden. */
+  .rapport-herkomst {
+    color: #000 !important;
+    border-left: 2px solid #000 !important;
+    break-inside: avoid;
+  }
 }

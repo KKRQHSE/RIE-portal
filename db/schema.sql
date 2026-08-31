@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-08-31T20:16:37.273Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-08-31T21:05:30.348Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -3564,7 +3564,22 @@ begin
         'afhandeling',      b.afhandeling,
         'opmerking',        b.opmerking,
         'actie_id',         b.actie_id,
-        'actie_nr',         pa.nr
+        'actie_nr',         pa.nr,
+        -- NIEUW (0052): null als er geen AI-suggestie is overgenomen.
+        'ai_voorwerk', (
+          select jsonb_build_object(
+            'leverancier',        s.leverancier,
+            'model',              s.model,
+            'besloten_op',        s.besloten_op,
+            'besloten_door_naam', au.naam
+          )
+          from inspectie_ai_suggestie s
+          left join users au on au.id = s.besloten_door
+          where s.bevinding_id = b.id
+            and s.status = 'overgenomen'
+          order by s.besloten_op desc nulls last
+          limit 1
+        )
       ) order by b.volgorde, b.id), '[]'::jsonb)
       from inspectie_bevinding b
       left join pva_items pa on pa.id = b.actie_id

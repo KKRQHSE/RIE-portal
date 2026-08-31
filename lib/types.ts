@@ -290,6 +290,16 @@ export type BibliotheekRegel = Inspectie & {
   aantal_acties: number
 }
 
+// Herkomst van een toelichting die als AI-voorstel begon (migratie 0052).
+// Null op de bevinding = gewoon door een mens getypt. De twee helften staan er
+// bewust allebei in: wie het voorstel deed, en wie het heeft vastgesteld.
+export type RapportAiVoorwerk = {
+  leverancier: string | null
+  model: string | null
+  besloten_op: string | null
+  besloten_door_naam: string | null
+}
+
 // Eén bevinding zoals de rapportpagina hem toont (uit inspectie_rapport).
 export type RapportBevinding = {
   id: string
@@ -302,6 +312,7 @@ export type RapportBevinding = {
   opmerking: string | null
   actie_id: string | null
   actie_nr: string | null
+  ai_voorwerk: RapportAiVoorwerk | null
 }
 
 // Een uit de inspectie voortgekomen PvA-actie (gekoppeld via bron_type/bron_id).

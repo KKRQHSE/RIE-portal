@@ -5,6 +5,7 @@ import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/hui
 import type {
   InspectieRapport as InspectieRapportData,
   BevindingResultaat,
+  RapportAiVoorwerk,
 } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 
@@ -22,6 +23,28 @@ function formatDatumTijd(iso: string | null): string {
   return isNaN(d.getTime())
     ? ''
     : d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+// De herkomstregel onder een toelichting die als AI-voorstel begon.
+// Twee dingen moeten er altijd in staan, ook als de rest ontbreekt: dat het
+// voorwerk van AI kwam, én dat een mens het heeft beoordeeld en vastgesteld.
+// Geen van beide helften mag wegvallen — anders leest het als "de AI schreef dit"
+// of juist als een gewone, zelfgetypte toelichting.
+function aiHerkomstTekst(ai: RapportAiVoorwerk): string {
+  const bron = [ai.leverancier, ai.model].filter(Boolean).join(' · ')
+  const wanneer = formatDatum(ai.besloten_op)
+  const wie = ai.besloten_door_naam?.trim()
+
+  const voorstel = bron
+    ? `Voorwerk door AI (${bron})`
+    : 'Voorwerk door AI'
+  const vaststelling = [
+    'beoordeeld en vastgesteld',
+    wie ? `door ${wie}` : null,
+    wanneer ? `op ${wanneer}` : null,
+  ].filter(Boolean).join(' ')
+
+  return `✦ ${voorstel}, ${vaststelling}.`
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -164,6 +187,16 @@ export default function InspectieRapport({ companyId, rapport, huisstijl = VEILI
 
                     {b.opmerking && (
                       <p className="text-sm text-ink/70 mt-2 whitespace-pre-wrap">{b.opmerking}</p>
+                    )}
+
+                    {/* Herkomst van de toelichting (migratie 0052). Staat hier,
+                        vlak onder de tekst waar het over gaat, en niet alleen in
+                        de tijdlijn onderaan: dit rapport wordt gelezen en als PDF
+                        gedeeld door mensen die er niet bij waren. */}
+                    {b.ai_voorwerk && (
+                      <p className="text-xs text-ink/55 mt-2 pl-2 border-l-2 border-ink/20 rapport-herkomst">
+                        {aiHerkomstTekst(b.ai_voorwerk)}
+                      </p>
                     )}
 
                     {/* Ruimte voor toekomstige bijlagen (foto/document) — nu nog niets. */}

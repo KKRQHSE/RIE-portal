@@ -158,6 +158,11 @@ export type Vraag = {
   klasse: string | null
   pva: string | null
   volgorde: number | null
+  // Losstaand van het antwoord (migratie 0049): is het bevestigende antwoord
+  // ook aantoonbaar? 'Ja' | 'Nee' | null, alleen gevuld bij antwoord 'Ja'.
+  // Optioneel getypeerd omdat oudere RI&E-inhoud de velden niet heeft.
+  aantoonbaar?: string | null
+  aantoonbaar_toelichting?: string | null
 }
 
 export type Foto = {

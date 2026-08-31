@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import type { Module, Vraag, Foto } from '@/lib/types'
+import { isNietAantoonbaar, type RieFilter } from '@/lib/rie-aantoonbaar'
 
 const ANTWOORD_STYLE: Record<string, string> = {
   'Ja':                   'bg-green-100 text-green-800',
@@ -17,12 +18,18 @@ const KLASSE_STYLE: Record<string, string> = {
   Hoog:   'bg-red-100 text-red-800',
 }
 
+// Bewust een omlijnde badge i.p.v. een gevulde: alle antwoord- en klasse-
+// badges zijn gevuld, dus de omlijning maakt in één oogopslag duidelijk dat
+// dit een andere soort oordeel is en geen vierde antwoordwaarde.
+const AANTOONBAAR_BADGE =
+  'text-xs font-medium px-2 py-0.5 rounded border border-amber-500 text-amber-700 bg-amber-50'
+
 type Props = {
   companyId: string
   module: Module
   vragen: Vraag[]
   fotos: Foto[]
-  filter: 'Alle' | 'Nee'
+  filter: RieFilter
   highlightVraag: string | null
 }
 
@@ -52,10 +59,14 @@ export default function ModuleCard({ companyId, module, vragen, fotos, filter, h
     return () => clearTimeout(t)
   }, [open, hasTarget, highlightVraag])
 
-  const shown = filter === 'Nee' ? vragen.filter(v => v.antwoord === 'Nee') : vragen
+  const shown =
+    filter === 'Nee'             ? vragen.filter(v => v.antwoord === 'Nee')
+    : filter === 'NietAantoonbaar' ? vragen.filter(isNietAantoonbaar)
+    : vragen
   const neeInModule = vragen.filter(v => v.antwoord === 'Nee').length
+  const nietAantoonbaarInModule = vragen.filter(isNietAantoonbaar).length
 
-  if (filter === 'Nee' && shown.length === 0) return null
+  if (filter !== 'Alle' && shown.length === 0) return null
 
   return (
     <div className="glass-tile rounded-2xl overflow-hidden">
@@ -71,6 +82,9 @@ export default function ModuleCard({ companyId, module, vragen, fotos, filter, h
           <span className="font-medium text-ink">{module.titel}</span>
           {neeInModule > 0 && (
             <span className="ml-2 text-xs text-red-600">{neeInModule} aandachtspunt{neeInModule > 1 ? 'en' : ''}</span>
+          )}
+          {nietAantoonbaarInModule > 0 && (
+            <span className="ml-2 text-xs text-amber-700">{nietAantoonbaarInModule}× niet aantoonbaar</span>
           )}
         </div>
         <span className="text-ink/30 text-xs shrink-0">{open ? '▲' : '▼'}</span>
@@ -100,6 +114,9 @@ export default function ModuleCard({ companyId, module, vragen, fotos, filter, h
                             {v.antwoord}
                           </span>
                         )}
+                        {isNietAantoonbaar(v) && (
+                          <span className={AANTOONBAAR_BADGE}>niet aantoonbaar</span>
+                        )}
                         {v.klasse && (
                           <span className={`text-xs font-medium px-2 py-0.5 rounded ${KLASSE_STYLE[v.klasse] ?? ''}`}>
                             {v.klasse}
@@ -117,6 +134,12 @@ export default function ModuleCard({ companyId, module, vragen, fotos, filter, h
 
                       {v.bevinding && (
                         <p className="text-sm text-ink/60 leading-relaxed mt-2">{v.bevinding}</p>
+                      )}
+
+                      {isNietAantoonbaar(v) && v.aantoonbaar_toelichting && (
+                        <p className="text-sm text-amber-700 leading-relaxed mt-1">
+                          Niet aantoonbaar: {v.aantoonbaar_toelichting}
+                        </p>
                       )}
 
                       {vraagFotos.length > 0 && (

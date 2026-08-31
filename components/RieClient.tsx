@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from 'react'
 import type { Company, Module, Vraag, Foto } from '@/lib/types'
+import { isNietAantoonbaar, type RieFilter } from '@/lib/rie-aantoonbaar'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import LogoutButton from './LogoutButton'
 import ModuleCard from './ModuleCard'
@@ -16,7 +17,7 @@ type Props = {
 }
 
 export default function RieClient({ company, modules, vragen, fotos, huisstijl = VEILIGE_HUISSTIJL }: Props) {
-  const [filter, setFilter] = useState<'Alle' | 'Nee'>('Alle')
+  const [filter, setFilter] = useState<RieFilter>('Alle')
 
   // Lees de URL-hash client-side uit zonder hydration-mismatch of setState in
   // een effect: server-snapshot is leeg, na hydratie volgt de echte hash.
@@ -29,6 +30,13 @@ export default function RieClient({ company, modules, vragen, fotos, huisstijl =
   const highlightVraag = m ? decodeURIComponent(m[1]) : null
 
   const neeCount = vragen.filter(v => v.antwoord === 'Nee').length
+  const nietAantoonbaarCount = vragen.filter(isNietAantoonbaar).length
+
+  // Eén knopstijl voor de drie filterstanden; alleen de actieve is gevuld.
+  const knop = (actief: boolean) =>
+    `text-xs px-3 py-2 min-h-[44px] inline-flex items-center rounded-full border transition-colors ${
+      actief ? 'bg-ink text-white border-ink' : 'bg-white text-ink/60 border-ink/20'
+    }`
 
   return (
     <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
@@ -44,22 +52,19 @@ export default function RieClient({ company, modules, vragen, fotos, huisstijl =
           <p className="text-sm text-ink/50 mt-0.5">Risico-inventarisatie &amp; -evaluatie</p>
         </div>
 
-        <div className="flex items-center gap-3 mb-4">
-          <button
-            onClick={() => setFilter('Alle')}
-            className={`text-xs px-3 py-2 min-h-[44px] inline-flex items-center rounded-full border transition-colors ${
-              filter === 'Alle' ? 'bg-ink text-white border-ink' : 'bg-white text-ink/60 border-ink/20'
-            }`}
-          >
+        <div className="flex items-center gap-3 mb-4 flex-wrap">
+          <button onClick={() => setFilter('Alle')} className={knop(filter === 'Alle')}>
             Alle vragen
           </button>
-          <button
-            onClick={() => setFilter('Nee')}
-            className={`text-xs px-3 py-2 min-h-[44px] inline-flex items-center rounded-full border transition-colors ${
-              filter === 'Nee' ? 'bg-ink text-white border-ink' : 'bg-white text-ink/60 border-ink/20'
-            }`}
-          >
+          <button onClick={() => setFilter('Nee')} className={knop(filter === 'Nee')}>
             Alleen aandachtspunten ({neeCount})
+          </button>
+          <button
+            onClick={() => setFilter('NietAantoonbaar')}
+            className={knop(filter === 'NietAantoonbaar')}
+            title="Vragen met antwoord Ja die niet aantoonbaar zijn"
+          >
+            Niet aantoonbaar ({nietAantoonbaarCount})
           </button>
         </div>
 

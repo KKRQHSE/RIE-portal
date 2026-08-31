@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-07-30T13:02:22.882Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-08-31T15:34:33.568Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -619,7 +619,9 @@ CREATE TABLE public.vragen (
   created_at timestamp with time zone DEFAULT now() NOT NULL,
   updated_at timestamp with time zone DEFAULT now() NOT NULL,
   updated_by text,
-  rie_versie_id uuid
+  rie_versie_id uuid,
+  aantoonbaar text,
+  aantoonbaar_toelichting text
 );
 
 -- ============================================================
@@ -723,6 +725,7 @@ ALTER TABLE public.toolbox_deelname ADD CONSTRAINT deelname_bewijssoort_check CH
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT deelname_digitaal_bewijs CHECK (((bewijssoort <> 'digitaal'::text) OR ((naam_bevestigd = true) AND (handtekening IS NOT NULL) AND (btrim(handtekening) <> ''::text) AND (handtekening_gezet_op IS NOT NULL))));
 ALTER TABLE public.toolbox_sessie ADD CONSTRAINT toolbox_sessie_onderwerp_check CHECK ((btrim(onderwerp) <> ''::text));
 ALTER TABLE public.users ADD CONSTRAINT users_role_check CHECK ((role = ANY (ARRAY['client'::text, 'admin'::text])));
+ALTER TABLE public.vragen ADD CONSTRAINT vragen_aantoonbaar_check CHECK (((aantoonbaar IS NULL) OR (aantoonbaar = ANY (ARRAY['Ja'::text, 'Nee'::text]))));
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_pva_item_id_fkey FOREIGN KEY (pva_item_id) REFERENCES pva_items(id) ON DELETE CASCADE;
 ALTER TABLE public.audit ADD CONSTRAINT audit_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
@@ -2858,11 +2861,18 @@ begin
     returning id into v_module_id;
 
     insert into public.vragen
-      (company_id, module_id, nr, vraag, antwoord, bevinding, brf, klasse, pva, volgorde)
+      (company_id, module_id, nr, vraag, antwoord, bevinding, brf, klasse, pva, volgorde,
+       aantoonbaar, aantoonbaar_toelichting)
     select
       p_company_id, v_module_id,
       q.elem->>'nr', q.elem->>'vraag', q.elem->>'antwoord', q.elem->>'bevinding',
-      q.elem->>'brf', nullif(q.elem->>'klasse',''), nullif(q.elem->>'pva',''), q.ord
+      q.elem->>'brf', nullif(q.elem->>'klasse',''), nullif(q.elem->>'pva',''), q.ord,
+      -- Alleen een geldige waarde bij een 'Ja'-antwoord telt; al het andere
+      -- (ontbrekend, leeg, onverwacht) wordt stil NULL.
+      case when q.elem->>'antwoord' = 'Ja' and q.elem->>'aantoonbaar' in ('Ja','Nee')
+           then q.elem->>'aantoonbaar' end,
+      case when q.elem->>'antwoord' = 'Ja' and q.elem->>'aantoonbaar' in ('Ja','Nee')
+           then nullif(btrim(coalesce(q.elem->>'aantoonbaar_toelichting','')), '') end
     from jsonb_array_elements(coalesce(v_mod->'vragen','[]'::jsonb))
          with ordinality as q(elem, ord);
   end loop;

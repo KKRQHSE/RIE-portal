@@ -64,6 +64,9 @@ next-env.d.ts
 # Lokale basislijn van de migratiecontrole (bevat bedrijfsnamen + checksums).
 /scripts/.rie_aantoonbaar_basislijn.json
 
+# Werkbestanden van de Supabase CLI (versiecache e.d.).
+/supabase/.temp/
+
 # Bron-RI&E's en gegenereerde klantdata, waar dan ook (defensief).
 *.docx
 *.doc

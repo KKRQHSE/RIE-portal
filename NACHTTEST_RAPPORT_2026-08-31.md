@@ -204,3 +204,55 @@ middleware-login. Zou het tóch ergens anoniem worden aangeroepen, dan valt
 opnieuw gedraaid: identiek aan de basislijn, geen enkele regressie** — de
 ingelogde flows (toolbox 64/64, audit 24/24, dashboard 17/17) merken er niets van.
 `tsc` + `next build` groen, schema gedumpt.
+
+---
+
+## Deel 3 — AI-foto-analyse: randgevallen en misbruik (PASS, 53/53)
+
+Nieuw: **`scripts/inspectie_ai_robuustheid_test.ts`**. De bestaande route-test
+bewijst de gelukkige gang; deze duwt tegen de randen. Draait tegen de echte
+dev-server met een echte sessie, op wegwerpbedrijven.
+
+**Opt-in is hard.** Negen varianten van "bijna true" geprobeerd — ontbrekend,
+`null`, `false`, de tekst `"true"`, `"TRUE"`, `"ja"`, het getal `1`, `[]`, `{}` —
+plus `{waarde:true}` als object en kapotte JSON. **Allemaal HTTP 400**, en achteraf
+0 rijen in `inspectie_ai_suggestie`. De route eist letterlijk `toestemming === true`.
+
+**De sleutel lekt nergens.** Elk antwoord van de route (ook elke foutmelding) gaat
+door één centrale scan op `gsk_`, `api.groq.com`, `Bearer …`, JWT-vormen,
+`SUPABASE_SERVICE_ROLE`, `GROQ_API_KEY`, signed storage-URL's en
+stacktrace-regels. Op geen enkel pad een treffer.
+
+**Bedrijfsgrens houdt via elke omweg die ik kon bedenken.** A op de foto van B →
+403. Onbekende uuid → 403. Een `fotoId` die geen uuid is → 403. En de omweg die
+er het meest toe doet: meesturen van `companyId`, `company_id`, `bevindingId` en
+`inspectieId` van het eigen bedrijf bij de foto van B → nog steeds 403. De route
+leidt alles af uit de foto zelf en gelooft niets wat de client meestuurt.
+
+**Kapotte invoer landt niet half:**
+
+| Geval | Resultaat |
+| --- | --- |
+| leeg bestand (0 bytes) | 400, nette melding |
+| foto > 4 MB | 413 |
+| pdf geregistreerd als bijlage | 400 "alleen een foto" |
+| rij zonder storage-object | 502, geen crash |
+| rommelbytes met `image/png` als type | 502, **en 0 rijen opgeslagen** |
+| foto zonder inspectiepunt | 400 |
+
+**Leverancier die stukgaat.** Server gestart met `GROQ_MODEL=bestaat/niet-echt`:
+502, de Nederlandse tekst "De AI-analyse is niet gelukt.", geen woord van Groq's
+eigen foutmelding, geen sleutel, en niets opgeslagen. Het technische detail
+(`Groq HTTP 404: …`) staat alleen in het serverlog. Eerder op de avond deed de
+echte tokenlimiet (429) hetzelfde: "de dienst is nu druk bezet".
+
+**Overnemen zonder resultaat blijft dicht — ook langs het scherm om.** Rechtstreeks
+op `inspectie_ai_suggestie_besluit` met een geldig concept-id: geweigerd met "Kies
+eerst een resultaat bij dit inspectiepunt", toelichting bleef leeg, suggestie bleef
+op `concept` zonder besluittekst. Dat is de bug van migratie 0051, nu ook op
+RPC-niveau bewezen.
+
+**Niets wordt vanzelf definitief.** Afsluitende controle over alle suggesties van
+het testbedrijf: geen enkele met een andere status dan `concept` zonder
+`besloten_door`, en geen enkele bevinding met een toelichting zonder resultaat
+(de "stille opslag" uit 0051).

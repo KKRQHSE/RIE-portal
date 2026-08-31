@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-08-31T21:05:30.348Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-08-31T21:19:44.056Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -5227,11 +5227,9 @@ REVOKE EXECUTE ON FUNCTION public.actie_los_toevoegen(p_company_id uuid, p_onder
 GRANT EXECUTE ON FUNCTION public.actie_los_toevoegen(p_company_id uuid, p_onderwerp text, p_persoon_id uuid, p_termijn_datum date, p_prio text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.actie_los_toevoegen(p_company_id uuid, p_onderwerp text, p_persoon_id uuid, p_termijn_datum date, p_prio text) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.audit_aanmaken(p_company_id uuid, p_sjabloon text, p_titel text, p_jaar integer, p_status text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.audit_aanmaken(p_company_id uuid, p_sjabloon text, p_titel text, p_jaar integer, p_status text) TO anon;
 GRANT EXECUTE ON FUNCTION public.audit_aanmaken(p_company_id uuid, p_sjabloon text, p_titel text, p_jaar integer, p_status text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.audit_aanmaken(p_company_id uuid, p_sjabloon text, p_titel text, p_jaar integer, p_status text) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.audit_bevinding_naar_actie(p_soort text, p_bron_id uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.audit_bevinding_naar_actie(p_soort text, p_bron_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.audit_bevinding_naar_actie(p_soort text, p_bron_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.audit_bevinding_naar_actie(p_soort text, p_bron_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.bedrijf_norm_overzicht(p_company_id uuid) FROM PUBLIC;
@@ -5286,14 +5284,12 @@ REVOKE EXECUTE ON FUNCTION public.dashboard_admin_overzicht() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dashboard_admin_overzicht() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.dashboard_admin_overzicht() TO service_role;
 REVOKE EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text, p_if_dit_jaar numeric, p_if_vorig_jaar numeric) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text, p_if_dit_jaar numeric, p_if_vorig_jaar numeric) TO anon;
 GRANT EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text, p_if_dit_jaar numeric, p_if_vorig_jaar numeric) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text, p_if_dit_jaar numeric, p_if_vorig_jaar numeric) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.dashboard_overzicht(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dashboard_overzicht(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.dashboard_overzicht(p_company_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.dashboard_pva_rie(p_company_id uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.dashboard_pva_rie(p_company_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.dashboard_pva_rie(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.dashboard_pva_rie(p_company_id uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.deellink_actie_doorgeven(p_token text, p_actie_id uuid, p_naam text, p_email text) TO anon;
@@ -5341,7 +5337,7 @@ GRANT EXECUTE ON FUNCTION public.herinner_kandidaten(p_company_id uuid, p_alleen
 REVOKE EXECUTE ON FUNCTION public.herinnering_loggen(p_persoon_id uuid, p_bron text, p_acties jsonb, p_email text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.herinnering_loggen(p_persoon_id uuid, p_bron text, p_acties jsonb, p_email text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.herinnering_loggen(p_persoon_id uuid, p_bron text, p_acties jsonb, p_email text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.huisstijl_van_bedrijf(p_company_id uuid) TO anon;
+REVOKE EXECUTE ON FUNCTION public.huisstijl_van_bedrijf(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.huisstijl_van_bedrijf(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.huisstijl_van_bedrijf(p_company_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.import_company(p_dataset jsonb) FROM PUBLIC;
@@ -5391,7 +5387,7 @@ GRANT EXECUTE ON FUNCTION public.inspectie_bibliotheek(p_company_id uuid) TO ser
 REVOKE EXECUTE ON FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid, p_conclusie text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid, p_conclusie text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid, p_conclusie text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer) TO anon;
+REVOKE EXECUTE ON FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.inspectie_foto_context(p_inspectie_id uuid, p_bevinding_id uuid, p_moet_lopen boolean) FROM PUBLIC;
@@ -5512,20 +5508,19 @@ GRANT EXECUTE ON FUNCTION public.toolbox_lokaal_aanpassen(p_company_id uuid, p_t
 REVOKE EXECUTE ON FUNCTION public.toolbox_ontkoppelen(p_company_id uuid, p_toolbox_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.toolbox_ontkoppelen(p_company_id uuid, p_toolbox_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_ontkoppelen(p_company_id uuid, p_toolbox_id uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.toolbox_sessie_aanwezigheid_zetten(p_sessie_id uuid, p_persoon_id uuid, p_aanwezig boolean) TO anon;
+REVOKE EXECUTE ON FUNCTION public.toolbox_sessie_aanwezigheid_zetten(p_sessie_id uuid, p_persoon_id uuid, p_aanwezig boolean) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_aanwezigheid_zetten(p_sessie_id uuid, p_persoon_id uuid, p_aanwezig boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_aanwezigheid_zetten(p_sessie_id uuid, p_persoon_id uuid, p_aanwezig boolean) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.toolbox_sessie_doel_zetten(p_company_id uuid, p_doel integer) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.toolbox_sessie_doel_zetten(p_company_id uuid, p_doel integer) TO anon;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_doel_zetten(p_company_id uuid, p_doel integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_doel_zetten(p_company_id uuid, p_doel integer) TO service_role;
-GRANT EXECUTE ON FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_sessie_id uuid, p_datum date, p_onderwerp text, p_notitie text, p_toolbox_id uuid) TO anon;
+REVOKE EXECUTE ON FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_sessie_id uuid, p_datum date, p_onderwerp text, p_notitie text, p_toolbox_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_sessie_id uuid, p_datum date, p_onderwerp text, p_notitie text, p_toolbox_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_sessie_id uuid, p_datum date, p_onderwerp text, p_notitie text, p_toolbox_id uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.toolbox_sessie_verwijderen(p_sessie_id uuid) TO anon;
+REVOKE EXECUTE ON FUNCTION public.toolbox_sessie_verwijderen(p_sessie_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_verwijderen(p_sessie_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_verwijderen(p_sessie_id uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.toolbox_sessies_overzicht(p_company_id uuid) TO anon;
+REVOKE EXECUTE ON FUNCTION public.toolbox_sessies_overzicht(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessies_overzicht(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessies_overzicht(p_company_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.toolbox_terug_naar_centraal(p_company_id uuid, p_toolbox_id uuid) FROM PUBLIC;
@@ -5554,7 +5549,7 @@ GRANT EXECUTE ON FUNCTION public.zet_concept_beheerder(p_actie_id uuid, p_status
 REVOKE EXECUTE ON FUNCTION public.zet_herinner_ritme(p_company_id uuid, p_ritme text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.zet_herinner_ritme(p_company_id uuid, p_ritme text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.zet_herinner_ritme(p_company_id uuid, p_ritme text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.zet_mijn_naam(p_naam text) TO anon;
+REVOKE EXECUTE ON FUNCTION public.zet_mijn_naam(p_naam text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.zet_mijn_naam(p_naam text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.zet_mijn_naam(p_naam text) TO service_role;
 

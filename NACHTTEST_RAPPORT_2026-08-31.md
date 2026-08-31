@@ -145,3 +145,62 @@ overgeslagen: die maken of wijzigen data.
 
 **16 van de 17 echte tests groen.** De enige echte FAIL is de bewijs-bucket.
 
+
+---
+
+## Deel 2 — Anon-EXECUTE audit: 12 RPC's stonden onbedoeld open (GEFIXT)
+
+**Wat ik vond.** 33 public-functies waren aanroepbaar door de `anon`-rol. Daarvan
+horen er 21 open te staan: 13 token-flows (deellink, toolbox, incident-meldflow)
+en 8 RLS-helpers/triggerfuncties. De overige **12 waren per-bedrijf-RPC's die daar
+niet horen**:
+
+`audit_aanmaken`, `audit_bevinding_naar_actie`, `dashboard_instelling_zetten`,
+`dashboard_pva_rie`, `huisstijl_van_bedrijf`, `inspectie_doel_zetten`,
+`toolbox_sessie_aanwezigheid_zetten`, `toolbox_sessie_doel_zetten`,
+`toolbox_sessie_opslaan`, `toolbox_sessie_verwijderen`,
+`toolbox_sessies_overzicht`, `zet_mijn_naam`.
+
+**Waarom dit kon gebeuren — dit is de eigenlijke bevinding.** Migratie 0023 trok
+anon-EXECUTE in op de toen bestaande 57 RPC's. Maar `security_hardening_test.mjs`
+bewaakt sindsdien een **handgeschreven lijst** uit die tijd, terwijl Supabase bij
+elke nieuwe functie standaard EXECUTE aan `anon` toekent. Alles wat daarna is
+gebouwd — auditmodule, dashboard-instelling, toolboxsessies, inspectiedoel — viel
+dus buiten élke controle. Bij `audit_bevinding_naar_actie` stond zelfs een
+expliciete `grant ... to anon` in de migratie.
+
+**Was het een lek?** Nee, en dat heb ik niet aangenomen maar getest. Tegen een
+echt bestaand (wegwerp-)bedrijf weigerde elke RPC de anon-caller met "Geen toegang
+tot dit bedrijf" — de null-veilige `mag_bedrijf_beheren` uit migratie 0022 doet
+zijn werk. Ook met een **echte** auditbevinding als doelwit (met een willekeurige
+uuid struikel je al over "Bron niet gevonden" en test je niets). Achteraf
+gecontroleerd in de database: geen audit aangemaakt, geen sessie aangemaakt of
+verwijderd, geen instelling gezet.
+
+Dus: **één slot in plaats van twee**, niet een open deur.
+
+**Wat ik heb gefixt** — dit viel onder "klein, veilig, additief met een test erbij":
+
+- **`supabase/migrations/0053_anon_execute_nalopers.sql`** — trekt anon-EXECUTE in
+  op die 12, met `authenticated` + `service_role` expliciet terug (exact het
+  patroon van migratie 0023). Er wordt niets weggehaald wat werkt: alleen `anon`
+  verliest een deur die al op slot zat.
+- **`scripts/anon_execute_audit_test.mjs`** (nieuw) — leest de anon-EXECUTE-set
+  **live uit de database** in plaats van uit een handgeschreven lijst, en faalt
+  zodra er iets opduikt dat niet verklaard is. Dat sluit het procesgat: een
+  volgende vergeten revoke valt meteen op in plaats van over een half jaar.
+
+**Vooraf gecontroleerd dat geen login-loze flow hierop leunt:** `/a/[token]`
+gebruikt `deellink_data`, `/melden/[token]` gebruikt `incident_meldcontext_token`
+en `/tb/[token]` gebruikt `toolbox_voor_token` — en die token-RPC's leveren de
+huisstijl in hun eigen payload mee. `huisstijl_van_bedrijf` heeft maar één caller
+(`haalHuisstijl`), en die zit uitsluitend in `/[company_id]/*`-pagina's achter de
+middleware-login. Zou het tóch ergens anoniem worden aangeroepen, dan valt
+`haalHuisstijl` netjes terug op de standaard huisstijl.
+
+**Bewijs.** Anon-EXECUTE 33 → 21 (precies de 13 tokenflows + 8 helpers).
+`anon_execute_audit_test.mjs` 18/18 — de weigering komt nu van de permissielaag
+("permission denied for function …") in plaats van van de guard. **Volledige suite
+opnieuw gedraaid: identiek aan de basislijn, geen enkele regressie** — de
+ingelogde flows (toolbox 64/64, audit 24/24, dashboard 17/17) merken er niets van.
+`tsc` + `next build` groen, schema gedumpt.

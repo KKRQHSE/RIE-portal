@@ -116,6 +116,92 @@ worden, en `scripts/inspectie_foto_selftest.mjs` + de bewijs-flows in de browser
 
 ---
 
+## ⚠️ TWEEDE BELANGRIJKE BEVINDING — de inspectiehistorie is vervalsbaar
+
+### Een afgeronde inspectie is alleen in de RPC's bevroren, niet in de database
+
+`scripts/onveranderlijkheid_test.mjs` (nieuw). Een **gewone ingelogde KAM van het
+eigen bedrijf** kan de RPC's volledig overslaan en rechtstreeks via PostgREST:
+
+| poging op een AFGERONDE inspectie | uitkomst |
+| --- | --- |
+| toelichting van een bevinding wijzigen | **gelukt** |
+| resultaat van een bevinding wijzigen (in orde → niet in orde) | **gelukt** |
+| de inspectie heropenen (`status` → `concept`) | **gelukt** |
+| de conclusie vervangen | **gelukt** |
+| een bevinding verwijderen | **gelukt** |
+| een historieregel herschrijven | **gelukt** |
+| een historieregel verwijderen | **gelukt** |
+| een historieregel **verzinnen** | **gelukt** |
+
+Dit is géén cross-tenant lek — `mag_bedrijf_beheren` scope't netjes op het eigen
+bedrijf. Het is een **integriteits- en onweerlegbaarheidsprobleem**: het spoor dat
+zou moeten laten zien dát er iets is gewijzigd, is zelf te herschrijven en te
+verwijderen. In een module die als bewijs dient en waarvan het rapport als PDF
+wordt gedeeld, is dat het verkeerde uitgangspunt.
+
+**Oorzaak.** `inspectie`, `inspectie_bevinding` en `inspectie_historie` hebben elk
+één **`ALL`-policy** (`mag_bedrijf_beheren(company_id)` als USING én WITH CHECK).
+De regel "afgerond = bevroren" bestaat alleen ín `bevinding_opslaan`,
+`inspectie_afronden` en `inspectie_conclusie_opslaan` — en die zijn niet de enige
+weg naar binnen.
+
+**Het project doet het elders wél goed**, en dat maakt dit een uitschieter:
+
+| tabel | policies | gevolg |
+| --- | --- | --- |
+| `toolbox_deelname` | select + **BEFORE UPDATE-trigger** | echt bevroren, ook voor service_role |
+| `persoon_merge_log` | alleen SELECT | logregels niet te vervalsen |
+| `herinnering_log` | alleen SELECT | idem |
+| `inspectie_foto` | alleen SELECT | muteren alleen via RPC |
+| `inspectie_ai_suggestie` | alleen SELECT | muteren alleen via RPC |
+| `inspectie_historie` | **ALL** | herschrijfbaar, verwijderbaar, verzinbaar |
+| `module_historie` | **ALL** | zelfde vorm, zelfde risico |
+
+Ter vergelijking: `toolbox_deelname` weigerde in dezelfde test **elke** kolom, ook
+met de service role — bevestigde_naam, handtekening, afgerond_op, bewijssoort,
+titel/tekst-snapshot, persoon_id, company_id (11/11 PASS). Zo hoort het.
+
+**Niet gebouwd** — dit vervangt policies op de kerntabellen van een hele module en
+valt daarmee onder "riskant/groot". Het uitzoekwerk is wel gedaan:
+
+**Voorstel (migratie 0054, na jouw akkoord).** Elke schrijfactie in de app loopt al
+via een SECURITY DEFINER-RPC; die draaien als de owner en trekken zich niets van
+RLS aan. Ik heb de hele codebase nagelopen op directe schrijfacties naar deze drie
+tabellen — er zijn er **geen**, alleen selects (`InspectieUitvoeren.tsx:108/113`,
+`app/api/inspectie/ai-analyse/route.ts:121`). De ALL-policy kan dus vervangen
+worden door een select-policy, precies zoals bij `inspectie_foto`:
+
+```sql
+begin;
+
+-- Lezen blijft; schrijven gaat uitsluitend via de RPC's (die als owner draaien).
+drop policy if exists inspectie_wr            on public.inspectie;
+drop policy if exists inspectie_bevinding_wr  on public.inspectie_bevinding;
+drop policy if exists inspectie_historie_wr   on public.inspectie_historie;
+
+-- module_historie heeft dezelfde vorm en hetzelfde risico.
+drop policy if exists module_historie_wr      on public.module_historie;
+
+commit;
+```
+
+De bestaande `*_sel`-policies blijven staan, dus lezen verandert niet.
+
+**Overweeg daarnaast een append-only-trigger op `inspectie_historie` en
+`module_historie`** (in de geest van `toolbox_deelname_immutable`): UPDATE en
+DELETE weigeren voor iedereen, ook service_role. Dan is het spoor pas echt een
+spoor. Dat is een aparte afweging — het maakt ook opschonen onmogelijk.
+
+**Achteraf te draaien:** `node --use-system-ca scripts/onveranderlijkheid_test.mjs`
+moet 24/24 groen worden, plus `inspectie_isolatie_test.mjs` (51),
+`inspectie_e2e_test.mjs` (18), `inspectie_ai_isolatie_test.mjs` (29) en
+`module_isolatie_test.mjs` (8) om te bewijzen dat de RPC-weg intact is. En de
+inspectieflow één keer door de browser halen.
+
+
+---
+
 ## Deel 1 — Alle bestaande test-/zelftestscripts opnieuw gedraaid
 
 Alle scripts uit `scripts/` die een test of zelftest zijn. Seed-scripts
@@ -256,3 +342,36 @@ RPC-niveau bewezen.
 het testbedrijf: geen enkele met een andere status dan `concept` zonder
 `besloten_door`, en geen enkele bevinding met een toelichting zonder resultaat
 (de "stille opslag" uit 0051).
+
+---
+
+## Deel 4 — Onveranderlijkheid (16/24; 8 FAILs zijn de bevinding hierboven)
+
+Nieuw: **`scripts/onveranderlijkheid_test.mjs`**.
+
+- **Toolbox-bewijsrecord — 11/11 PASS.** Elke kolom apart geprobeerd met de
+  **service role**: allemaal geweigerd door de trigger ("Een afgerond
+  toolbox-record is onveranderlijk"). Ook `persoon_id` en `company_id`. Een
+  ingelogde KAM kan het record niet wijzigen én niet verwijderen. Dit is de
+  maatstaf waaraan de rest zou moeten voldoen.
+- **Afgeronde inspectie via de RPC's — 4/4 PASS.** `bevinding_opslaan`,
+  een tweede `inspectie_afronden` en `inspectie_conclusie_opslaan` weigeren
+  allemaal met een duidelijke reden.
+- **Afgeronde inspectie + historie langs de RPC's om — 8 FAILs.** Zie de tweede
+  bevinding bovenaan. De falende controles blijven bewust staan tot het voorstel
+  is doorgevoerd; het script zegt dat er ook bij.
+
+## Deel 5 — Tenant-isolatie breed
+
+- **Alle 51 tabellen hebben RLS aan.** Geen enkele uitzondering.
+- Voor de recent toegevoegde onderdelen is A-vs-B-isolatie aangetoond door de
+  bestaande tests, allemaal groen: audit (24/24), inspectie-foto (in
+  inspectie 51/51 + foto-selftest 16/16), toolbox-bron (in toolbox 64/64),
+  dashboard-instelling (17/17), merge-log (20/20, inclusief "KAM van B ziet het
+  logboek van A niet") en AI-analyse (29/29 + 53/53 robuustheid).
+- **Alle policies die schrijven toestaan zijn per bedrijf of admin-only
+  gescope't** — nagelopen op `qual`. Geen enkele policy laat cross-tenant
+  schrijven toe. De gevonden problemen zitten dus in *wat* een bevoegde gebruiker
+  binnen zijn eigen bedrijf mag (integriteit), niet in *wiens* data hij ziet.
+- **Anon:** zie Deel 2. Na migratie 0053 nog 21 functies aanroepbaar door anon,
+  allemaal verklaarbaar (13 tokenflows, 8 helpers).

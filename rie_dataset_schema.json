@@ -147,9 +147,26 @@
         "pva": {
           "type": "string",
           "description": "Verwijzing naar actienummer in planVanAanpak."
+        },
+        "aantoonbaar": {
+          "enum": ["Ja", "Nee"],
+          "description": "Oordeel adviseur: is het bevestigende antwoord ook aantoonbaar? Optioneel, en alleen zinvol bij antwoord 'Ja'. Ontbreekt = niet beoordeeld."
+        },
+        "aantoonbaar_toelichting": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Toelichting bij de aantoonbaarheid, letterlijk uit de docx-kolom."
         }
       },
       "allOf": [
+        {
+          "if":   { "required": ["aantoonbaar"] },
+          "then": { "required": ["antwoord"], "properties": { "antwoord": { "const": "Ja" } } }
+        },
+        {
+          "if":   { "required": ["aantoonbaar_toelichting"] },
+          "then": { "required": ["aantoonbaar"] }
+        },
         {
           "if":   { "properties": { "antwoord": { "const": "Nee" } }, "required": ["antwoord"] },
           "then": {

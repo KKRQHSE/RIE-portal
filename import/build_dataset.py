@@ -50,6 +50,39 @@ def antwoord_van(finding, flagged):
     if f.startswith("komt niet voor"):return "NVT"
     return "Ja"
 
+# --- optionele docx-kolom "Aantoonbaar" ---------------------------------------
+# Losstaand van het antwoord: iets kan op orde zijn (Ja) zonder aantoonbaar te
+# zijn. De kolom mag ontbreken — dan blijft aantoonbaar leeg en is de rest van
+# de import letterlijk ongewijzigd.
+AANTOONBAAR_RE = re.compile(r"^(ja|nee)\b[\s,.:;–-]*", re.IGNORECASE)
+
+def kolom_index(header, naam):
+    """Index van een kolom op koptekst (genormaliseerd), of None als hij ontbreekt."""
+    doel = norm(naam)
+    for i, kop in enumerate(header):
+        if norm(kop) == doel:
+            return i
+    return None
+
+def aantoonbaar_van(cel, antwoord):
+    """-> ('Ja'|'Nee'|None, toelichting|None).
+
+    Conventie in de docx, gelijk aan de 'In orde?'-kolom: de cel begint met
+    Ja/Nee, de rest is toelichting ("Nee, geen registratie beschikbaar").
+    Aantoonbaarheid is alleen betekenisvol bij antwoord 'Ja'; bij Nee/NVT/
+    Gericht uit te vragen blijft hij leeg. Alles wat niet met Ja of Nee begint
+    (leeg, streepje, vraagteken, typefout) wordt stil None — een handmatig
+    ingevulde cel mag de import nooit laten klappen.
+    """
+    if antwoord != "Ja":
+        return None, None
+    tekst = re.sub(r"^[\-•\s]+", "", (cel or "")).strip()
+    m = AANTOONBAAR_RE.match(tekst)
+    if not m:
+        return None, None
+    rest = tekst[m.end():].strip()
+    return m.group(1).capitalize(), (rest or None)
+
 # --- bouw modules + vragen ---------------------------------------------------
 mods = {c: {"code": c, "titel": TITELS[c], "intro": "", "vragen": []} for c in MODULE_ORDER}
 vraag_index = []  # (code, onderwerp_raw, nr, vraag_dict)
@@ -62,13 +95,22 @@ for idx, code, _ in H3:
         continue
     header = rows[0]
     ncol = len(header)
+    # Bevinding en aandachtspunt blijven de laatste twee kolommen — geteld
+    # zonder de optionele Aantoonbaar-kolom, zodat het niet uitmaakt waar die
+    # in de docx is ingevoegd. Ontbreekt hij, dan is dit exact de oude telling.
+    aantoonbaar_idx = kolom_index(header, "Aantoonbaar")
+    overig = [i for i in range(ncol) if i != aantoonbaar_idx]
+    if len(overig) < 4:
+        raise SystemExit(f"Tabel {idx}: onverwachte kolomindeling {header!r}")
+    finding_idx, aandacht_idx = overig[-2], overig[-1]
     subgroup = ""
     for row in rows[1:]:
         row = list(row) + [""] * (ncol - len(row))
         hoofdstuk = (row[0] or "").strip()
         onderwerp = (row[1] or "").strip()
-        finding   = (row[ncol - 2] or "").strip()
-        aandacht  = (row[ncol - 1] or "").strip()
+        finding   = (row[finding_idx] or "").strip()
+        aandacht  = (row[aandacht_idx] or "").strip()
+        aantoonbaar_cel = (row[aantoonbaar_idx] or "").strip() if aantoonbaar_idx is not None else ""
         if hoofdstuk:
             subgroup = hoofdstuk
         if not onderwerp:
@@ -81,8 +123,16 @@ for idx, code, _ in H3:
             vraagtekst = onderwerp
         counters[code] += 1
         nr = f"{code}-{counters[code]}"
+        antwoord = antwoord_van(finding, flagged)
         v = {"nr": nr, "vraag": vraagtekst,
-             "antwoord": antwoord_van(finding, flagged), "bevinding": finding}
+             "antwoord": antwoord, "bevinding": finding}
+        # Sleutels alleen toevoegen als de docx ze echt levert: zonder de
+        # kolom is dataset.json identiek aan de vorige generatie.
+        aantoonbaar, aantoonbaar_toelichting = aantoonbaar_van(aantoonbaar_cel, antwoord)
+        if aantoonbaar is not None:
+            v["aantoonbaar"] = aantoonbaar
+            if aantoonbaar_toelichting:
+                v["aantoonbaar_toelichting"] = aantoonbaar_toelichting
         mods[code]["vragen"].append(v)
         vraag_index.append((code, onderwerp, nr, v))
         if flagged:
@@ -192,3 +242,9 @@ for nr, t in flagged_list:
     print(f"  {nr}: {t[:70]}")
 from collections import Counter
 print("Antwoord-verdeling:", dict(Counter(v["antwoord"] for m in modules for v in m["vragen"])))
+aantoonbaar_telling = Counter(v.get("aantoonbaar") for m in modules for v in m["vragen"])
+if any(k is not None for k in aantoonbaar_telling):
+    print("Aantoonbaar-verdeling:",
+          {k or "(leeg)": n for k, n in aantoonbaar_telling.items()})
+else:
+    print("Aantoonbaar: kolom niet aangetroffen in de docx — alle vragen leeg.")

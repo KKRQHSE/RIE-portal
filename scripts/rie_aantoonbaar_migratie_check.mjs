@@ -42,8 +42,16 @@ const modus = args.includes('--basislijn') ? 'basislijn'
             : args.includes('--vergelijk') ? 'vergelijk'
             : null
 if (!modus) {
-  console.error('Geef --basislijn (voor de migratie) of --vergelijk (erna).')
-  process.exit(2)
+  // Bewust exitcode 0 en geen 2: dit is geen test maar een migratiehulp, en hij
+  // hoort niet als FAIL op te duiken in een testronde die alle scripts langsgaat.
+  // Zonder vlag is er simpelweg niets te doen.
+  console.log('Migratiehulp bij 0049 (aantoonbaar op vragen) — geen test.')
+  console.log('')
+  console.log('  --basislijn   vastleggen VOOR de migratie')
+  console.log('  --vergelijk   controleren NA de migratie')
+  console.log('')
+  console.log('Zonder vlag valt er niets te doen; dit is geen fout.')
+  process.exit(0)
 }
 
 const env = loadEnv()

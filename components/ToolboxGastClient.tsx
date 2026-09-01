@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import type { WerknemerToolbox } from '@/lib/types'
@@ -31,6 +32,22 @@ export default function ToolboxGastClient({
   const [stap, setStap] = useState<Stap>('inhoud')
   const [videoBekeken, setVideoBekeken] = useState(false)
   const [videoFout, setVideoFout] = useState(false)
+  // Een privé-Storage-video krijgt server-side een signed URL van 4 uur
+  // (app/tb/[token]/page.tsx). Blijft dit scherm langer openstaan, dan is die
+  // URL verlopen en weigert de speler. Eén keer router.refresh() laat de
+  // serverpagina opnieuw tekenen — met hetzelfde, al gevalideerde token in de
+  // URL — en die tekent een verse signed URL. Lukt het daarna nog niet, dan
+  // valt hij door naar de bestaande handmatige bevestiging.
+  const router = useRouter()
+  const videoHerstelGeprobeerd = useRef(false)
+  function opVideoFout() {
+    if (!videoHerstelGeprobeerd.current) {
+      videoHerstelGeprobeerd.current = true
+      router.refresh()
+      return
+    }
+    setVideoFout(true)
+  }
   const [antwoorden, setAntwoorden] = useState<Record<string, number>>({})
   const [nagekeken, setNagekeken] = useState(false)
   const [handtekening, setHandtekening] = useState('')
@@ -120,10 +137,10 @@ export default function ToolboxGastClient({
                 {open.video_url && bron && (
                   <div className="space-y-2">
                     {bron.type === 'youtube' && !videoFout && (
-                      <YouTubeSpeler videoId={bron.id} onBekeken={() => setVideoBekeken(true)} onFout={() => setVideoFout(true)} />
+                      <YouTubeSpeler videoId={bron.id} onBekeken={() => setVideoBekeken(true)} onFout={opVideoFout} />
                     )}
                     {bron.type === 'bestand' && !videoFout && (
-                      <BestandSpeler src={bron.src} onBekeken={() => setVideoBekeken(true)} onFout={() => setVideoFout(true)} />
+                      <BestandSpeler src={bron.src} onBekeken={() => setVideoBekeken(true)} onFout={opVideoFout} />
                     )}
 
                     {speelbaar && open.vereist_video && !videoBekeken && (

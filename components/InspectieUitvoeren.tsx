@@ -10,6 +10,7 @@ import { INSPECTIE_FOTO_BUCKET, type InspectieFotoItem } from '@/lib/inspectie-f
 import type { AiLeverancierStatus, AiSuggestie } from '@/lib/ai-analyse'
 import TaalWissel, { useTaal } from './TaalWissel'
 import InspectieFotoAi from './InspectieFotoAi'
+import { useVerseUrls } from '@/lib/verse-urls'
 import type {
   Inspectie,
   InspectieBevinding,
@@ -124,8 +125,12 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
   // gebeuren pas ná de await (asynchroon), niet synchroon in de effect-body.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { herlaad() }, [herlaad])
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { herlaadFotos() }, [herlaadFotos])
+  // De signed URL's van de inspectiefoto's zijn een uur geldig. laadFotos()
+  // haalt op én onthoudt wanneer, zodat de hook ze via dezelfde beveiligde
+  // route kan verversen als het scherm lang openstaat. Zie lib/verse-urls.ts.
+  const { laad: laadFotos, herstelBeeld } = useVerseUrls(herlaadFotos)
+
+  useEffect(() => { laadFotos() }, [laadFotos])
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { herlaadSuggesties() }, [herlaadSuggesties])
 
@@ -237,7 +242,8 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
                 t={t}
                 inspectieId={inspectie.id}
                 fotos={fotos.filter(f => f.bevinding_id === b.id)}
-                onFotosGewijzigd={herlaadFotos}
+                onFotosGewijzigd={laadFotos}
+                onBeeldFout={herstelBeeld}
                 aiStatus={aiStatus}
                 suggesties={suggesties.filter(s => s.bevinding_id === b.id)}
                 onSuggestiesGewijzigd={herlaadSuggesties}
@@ -255,7 +261,8 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
           <p className="text-xs font-medium text-ink/40 uppercase tracking-wider mb-2">{t('fotoBijInspectie')}</p>
           <FotoBlok
             inspectieId={inspectie.id} bevindingId={null} readOnly={readOnly} t={t}
-            fotos={fotos.filter(f => f.bevinding_id === null)} onGewijzigd={herlaadFotos}
+            fotos={fotos.filter(f => f.bevinding_id === null)} onGewijzigd={laadFotos}
+            onBeeldFout={herstelBeeld}
           />
         </div>
       )}
@@ -327,6 +334,9 @@ type RowProps = {
   inspectieId: string
   fotos: InspectieFotoItem[]
   onFotosGewijzigd: () => void
+  // Aangeroepen als een thumbnail niet laadt (vrijwel altijd een verlopen
+  // signed URL); haalt dan verse URL's op.
+  onBeeldFout: () => void
   aiStatus: AiLeverancierStatus | null
   suggesties: AiSuggestie[]
   onSuggestiesGewijzigd: () => void
@@ -336,7 +346,7 @@ type RowProps = {
 
 function BevindingRow({
   companyId, nummer, bevinding, readOnly, t, inspectieId, fotos, onFotosGewijzigd,
-  aiStatus, suggesties, onSuggestiesGewijzigd, onPatch, onHistorieGewijzigd,
+  onBeeldFout, aiStatus, suggesties, onSuggestiesGewijzigd, onPatch, onHistorieGewijzigd,
 }: RowProps) {
   const supabase = createClient()
   const [opmerking, setOpmerking] = useState(bevinding.opmerking ?? '')
@@ -546,7 +556,7 @@ function BevindingRow({
       {(!readOnly || fotos.length > 0) && (
         <FotoBlok
           inspectieId={inspectieId} bevindingId={bevinding.id} readOnly={readOnly} t={t}
-          fotos={fotos} onGewijzigd={onFotosGewijzigd} compact
+          fotos={fotos} onGewijzigd={onFotosGewijzigd} onBeeldFout={onBeeldFout} compact
           aiStatus={aiStatus} suggesties={suggesties}
           onSuggestiesGewijzigd={onSuggestiesGewijzigd}
           onAiOvergenomen={neemAiConceptOver}
@@ -581,7 +591,7 @@ function metReden(bericht: string, reden?: string | null): string {
 // kiest het pad nooit zelf.
 
 function FotoBlok({
-  inspectieId, bevindingId, fotos, readOnly, t, onGewijzigd, compact = false,
+  inspectieId, bevindingId, fotos, readOnly, t, onGewijzigd, onBeeldFout, compact = false,
   aiStatus = null, suggesties = [], onSuggestiesGewijzigd, onAiOvergenomen,
   heeftToelichting = false, heeftResultaat = false,
 }: {
@@ -591,6 +601,7 @@ function FotoBlok({
   readOnly: boolean
   t: Vertaler
   onGewijzigd: () => void
+  onBeeldFout?: () => void
   compact?: boolean
   // AI-voorwerk hoort bij een INSPECTIEPUNT, niet bij de inspectie als geheel:
   // een concept moet ergens in kunnen landen. Bij het losse fotoblok onderaan
@@ -687,6 +698,7 @@ function FotoBlok({
                       (die zou de URL naar een cachebare route spiegelen). */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={f.downloadUrl} alt={f.bestandsnaam ?? t('fotos')}
+                    onError={onBeeldFout}
                     className="h-20 w-20 object-cover rounded border border-ink/10" />
                 </a>
               ) : (

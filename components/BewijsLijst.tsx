@@ -14,6 +14,9 @@ type Props = {
   magVerwijderen?: boolean
   verwijderBezigId?: string | null
   onVerwijder?: (id: string) => void
+  // Wordt aangeroepen als een thumbnail niet laadt. Vrijwel altijd een
+  // verlopen signed URL; de aanroeper haalt dan verse URL's op.
+  onBeeldFout?: () => void
 }
 
 // Toont de bewijzen van een actie: thumbnails voor afbeeldingen, een herkenbaar
@@ -25,6 +28,7 @@ export default function BewijsLijst({
   magVerwijderen = false,
   verwijderBezigId = null,
   onVerwijder,
+  onBeeldFout,
 }: Props) {
   if (laden) return <p className="text-xs text-ink/40">Bewijzen laden…</p>
   if (bewijzen.length === 0) return <p className="text-xs text-ink/40">Nog geen bewijs toegevoegd.</p>
@@ -39,7 +43,12 @@ export default function BewijsLijst({
             {img ? (
               <a href={b.downloadUrl!} target="_blank" rel="noopener noreferrer" className="shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={b.downloadUrl!} alt={naam} className="w-16 h-16 object-cover rounded bg-surface" />
+                <img
+                  src={b.downloadUrl!}
+                  alt={naam}
+                  onError={onBeeldFout}
+                  className="w-16 h-16 object-cover rounded bg-surface"
+                />
               </a>
             ) : (
               <a

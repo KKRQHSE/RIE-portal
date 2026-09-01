@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import BewijsUpload from './BewijsUpload'
 import BewijsLijst from './BewijsLijst'
+import { useVerseUrls } from '@/lib/verse-urls'
 import type { BewijsItem } from '@/lib/bewijs'
 
 type Modus = 'gast' | 'beheerder'
@@ -48,13 +49,14 @@ export default function BewijsBlok({ modus, actieId, token }: Props) {
     }
   }, [modus, actieId, token])
 
-  // De enige synchrone setState in haal() is setFout(null); bij het monteren is
-  // fout al null, dus React rendert daar niet eens voor. Alle echte state
-  // (bewijzen, laden) wordt pas ná de fetch gezet. Geen cascaderende renders.
+  // De signed URL's van de bewijsstukken zijn een uur geldig. laad() haalt op
+  // én onthoudt wanneer, zodat de hook ze via dezelfde beveiligde route kan
+  // verversen als het tabblad lang openstaat. Zie lib/verse-urls.ts.
+  const { laad, herstelBeeld } = useVerseUrls(haal)
+
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    haal()
-  }, [haal])
+    laad()
+  }, [laad])
 
   async function verwijder(id: string) {
     setFout(null)
@@ -72,7 +74,7 @@ export default function BewijsBlok({ modus, actieId, token }: Props) {
 
   return (
     <div className="space-y-2">
-      <BewijsUpload modus={modus} actieId={actieId} token={token} onUploaded={haal} />
+      <BewijsUpload modus={modus} actieId={actieId} token={token} onUploaded={laad} />
       {fout && <p className="text-xs text-red-600">{fout}</p>}
       <BewijsLijst
         bewijzen={bewijzen}
@@ -80,6 +82,7 @@ export default function BewijsBlok({ modus, actieId, token }: Props) {
         magVerwijderen={modus === 'beheerder'}
         verwijderBezigId={verwijderBezigId}
         onVerwijder={verwijder}
+        onBeeldFout={herstelBeeld}
       />
     </div>
   )

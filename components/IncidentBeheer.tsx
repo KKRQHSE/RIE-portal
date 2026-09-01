@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useSyncExternalStore } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useVerseUrls } from '@/lib/verse-urls'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import {
   STATUS_LABEL,
@@ -476,10 +477,12 @@ function IncidentDetail({
       setFotos(fotos)
     } catch { setFotos([]) }
   }, [incident.id])
-  // laadFotos begint met een await; er wordt geen enkele state synchroon gezet.
-  // De regel kan dat niet zien en slaat hier ten onrechte aan.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { laadFotos() }, [laadFotos])
+  // De signed URL's van de incidentfoto's zijn een uur geldig. laad() haalt op
+  // én onthoudt wanneer, zodat de hook ze via dezelfde beveiligde route kan
+  // verversen als het tabblad lang openstaat. Zie lib/verse-urls.ts.
+  const { laad: laadFotosVers, herstelBeeld } = useVerseUrls(laadFotos)
+
+  useEffect(() => { laadFotosVers() }, [laadFotosVers])
 
   function toggle(arr: number[], set: (v: number[]) => void, code: number) {
     set(arr.includes(code) ? arr.filter(c => c !== code) : [...arr, code])
@@ -572,7 +575,12 @@ function IncidentDetail({
                     /* Signed URL van een privé-bucket: bewust geen next/image —
                        die zou de kortlevende URL via een cachebare route spiegelen. */
                     /* eslint-disable-next-line @next/next/no-img-element */
-                    ? <img src={f.downloadUrl} alt={f.bestandsnaam ?? 'foto'} className="w-full h-full object-cover" />
+                    ? <img
+                        src={f.downloadUrl}
+                        alt={f.bestandsnaam ?? 'foto'}
+                        onError={herstelBeeld}
+                        className="w-full h-full object-cover"
+                      />
                     : <span className="flex items-center justify-center w-full h-full text-xs text-ink/40">bestand</span>}
                 </a>
               ))}

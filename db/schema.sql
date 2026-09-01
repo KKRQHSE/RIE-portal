@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-01T03:58:45.181Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-01T06:07:54.723Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -982,9 +982,6 @@ CREATE POLICY bedrijf_inspectie_doel_sel ON public.bedrijf_inspectie_doel AS PER
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_modules_sel ON public.bedrijf_modules AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
-CREATE POLICY bedrijf_modules_wr ON public.bedrijf_modules AS PERMISSIVE FOR ALL TO public
-  USING (mag_bedrijf_beheren(company_id))
-  WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_rubriek_sel ON public.bedrijf_rubriek AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_toolbox_sel ON public.bedrijf_toolbox AS PERMISSIVE FOR SELECT TO public
@@ -1029,21 +1026,12 @@ CREATE POLICY companies_select ON public.companies AS PERMISSIVE FOR SELECT TO p
   USING (((id = my_company_id()) OR is_admin()));
 CREATE POLICY deellinks_select ON public.deellinks AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
-CREATE POLICY deellinks_write ON public.deellinks AS PERMISSIVE FOR ALL TO public
-  USING (((company_id = my_company_id()) OR is_admin()))
-  WITH CHECK (((company_id = my_company_id()) OR is_admin()));
 CREATE POLICY fotos_select ON public.fotos AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
 CREATE POLICY functiegroep_sel ON public.functiegroep AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
-CREATE POLICY functiegroep_wr ON public.functiegroep AS PERMISSIVE FOR ALL TO public
-  USING (mag_bedrijf_beheren(company_id))
-  WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY herinner_instelling_select ON public.herinner_instelling AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
-CREATE POLICY herinner_instelling_write ON public.herinner_instelling AS PERMISSIVE FOR ALL TO public
-  USING (mag_bedrijf_beheren(company_id))
-  WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY herinnering_log_select ON public.herinnering_log AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY incident_sel ON public.incident AS PERMISSIVE FOR SELECT TO public
@@ -1079,14 +1067,8 @@ CREATE POLICY inspectie_historie_sel ON public.inspectie_historie AS PERMISSIVE 
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY inspectie_sjabloon_sel ON public.inspectie_sjabloon AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
-CREATE POLICY inspectie_sjabloon_wr ON public.inspectie_sjabloon AS PERMISSIVE FOR ALL TO public
-  USING (mag_bedrijf_beheren(company_id))
-  WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY inspectie_sjabloon_punt_sel ON public.inspectie_sjabloon_punt AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
-CREATE POLICY inspectie_sjabloon_punt_wr ON public.inspectie_sjabloon_punt AS PERMISSIVE FOR ALL TO public
-  USING (mag_bedrijf_beheren(company_id))
-  WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY merken_admin_all ON public.merken AS PERMISSIVE FOR ALL TO public
   USING (is_admin())
   WITH CHECK (is_admin());
@@ -1107,9 +1089,8 @@ CREATE POLICY pva_select ON public.pva_items AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
 CREATE POLICY pva_update ON public.pva_items AS PERMISSIVE FOR UPDATE TO public
   USING (((company_id = my_company_id()) OR is_admin()));
-CREATE POLICY rie_versies_beheer ON public.rie_versies AS PERMISSIVE FOR ALL TO public
-  USING (mag_bedrijf_beheren(company_id))
-  WITH CHECK (mag_bedrijf_beheren(company_id));
+CREATE POLICY rie_versies_sel ON public.rie_versies AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY toolbox_bron_adm ON public.toolbox_bron AS PERMISSIVE FOR ALL TO public
   USING (is_admin())
   WITH CHECK (is_admin());

@@ -29,6 +29,7 @@
 // ============================================================================
 
 import { createClient } from '@supabase/supabase-js'
+import pg from 'pg'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -55,6 +56,7 @@ const env = loadEnv()
 const URL = env.NEXT_PUBLIC_SUPABASE_URL
 const ANON = env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const SERVICE = env.SUPABASE_SERVICE_ROLE_KEY
+const DBURL = env.DATABASE_URL
 
 if (!URL || !ANON) { console.error('SUPABASE-URL/ANON ontbreken in .env.local.'); process.exit(1) }
 if (!SERVICE) { console.log('— SUPABASE_SERVICE_ROLE_KEY ontbreekt; test overgeslagen.'); process.exit(0) }
@@ -433,6 +435,97 @@ async function run() {
     check('een account verwijderen zet historie.wie op NULL zonder de regel te raken',
       na?.wie === null && na?.wijziging === 'ONVTEST regel van een account',
       `wie=${na?.wie} wijziging=${String(na?.wijziging).slice(0, 40)}`)
+  }
+
+  // =====================================================================
+  // DEEL 6 — welke tabellen zijn nog rechtstreeks schrijfbaar?
+  // =====================================================================
+  // Migratie 0055 liet zien dat een ALL-policy stilletjes een tweede weg naar
+  // binnen openhoudt naast de RPC's. 0056 heeft de overbodige opgeruimd. Deze
+  // controle leest de schrijf-policies LIVE uit de database en piept zodra er
+  // een bijkomt die hier niet verklaard staat — zodat de volgende niet weer
+  // maanden onopgemerkt blijft.
+  if (!DBURL) {
+    console.log('\nDEEL 6 — overgeslagen (DATABASE_URL ontbreekt in .env.local)')
+  } else {
+    console.log('\nDEEL 6 — schrijf-policies buiten de RPC\'s om\n')
+
+    // Waarom elke overgebleven schrijf-policy er mag zijn. Komt er iets bij dat
+    // hier niet staat, dan faalt deze test — en dat is de bedoeling.
+    const VERKLAARD = {
+      // De app schrijft hier bewust rechtstreeks vanuit de client.
+      personen: 'PersonenClient.tsx insert/update',
+      pva_items: 'ActielijstClient.tsx en PvaCard.tsx update',
+      audit: 'AuditDetailClient.tsx r51, generieke from(table).update()',
+      audit_vca_bevinding: 'AuditDetailClient.tsx r51',
+      audit_iso_observatie: 'AuditDetailClient.tsx insert/delete',
+      audit_verbeterpunt: 'AuditDetailClient.tsx insert/delete',
+      // Admin-only: al op is_admin() gescope't, geen per-bedrijf-oppervlak.
+      companies: 'admin-only update',
+      merken: 'admin-only referentietabel',
+      toolbox_bron: 'admin-only referentietabel',
+      centrale_rubriek: 'admin-only centrale bibliotheek',
+      centrale_vraag: 'admin-only centrale bibliotheek',
+      centrale_toolbox: 'admin-only centrale bibliotheek',
+      centrale_toolbox_vraag: 'admin-only centrale bibliotheek',
+      centrale_audit_vca_paragraaf: 'admin-only centrale catalogus',
+      incident_basis_oorzaak: 'admin-only referentietabel',
+      incident_directe_oorzaak: 'admin-only referentietabel',
+      incident_gevolg_soort: 'admin-only referentietabel',
+    }
+
+    // In 0055/0056 dichtgezet. Duikt een van deze weer op, dan is er een
+    // migratie teruggedraaid of per ongeluk een policy herbouwd.
+    const DICHTGEZET = [
+      'inspectie', 'inspectie_bevinding', 'inspectie_historie', 'module_historie',
+      'deellinks', 'functiegroep', 'herinner_instelling', 'inspectie_sjabloon',
+      'inspectie_sjabloon_punt', 'bedrijf_modules', 'rie_versies',
+    ]
+
+    const client = new pg.Client({ connectionString: DBURL })
+    await client.connect()
+    let rijen = []
+    try {
+      const r = await client.query(`
+        select distinct tablename
+          from pg_policies
+         where schemaname = 'public' and cmd <> 'SELECT'
+         order by tablename`)
+      rijen = r.rows.map(x => x.tablename)
+    } finally {
+      await client.end()
+    }
+
+    const onverklaard = rijen.filter(t => !(t in VERKLAARD))
+    check('geen ONVERKLAARDE schrijf-policy op een publieke tabel',
+      onverklaard.length === 0,
+      onverklaard.length ? `nieuw en niet verklaard: ${onverklaard.join(', ')}`
+                         : `${rijen.length} tabellen, allemaal verklaard`)
+
+    const teruggekomen = DICHTGEZET.filter(t => rijen.includes(t))
+    check('de dichtgezette tabellen (0055/0056) zijn nog steeds dicht',
+      teruggekomen.length === 0,
+      teruggekomen.length ? `weer schrijfbaar: ${teruggekomen.join(', ')}`
+                          : `${DICHTGEZET.length} stuks dicht`)
+
+    // En het moet ook echt zo werken, niet alleen op papier.
+    {
+      const { error } = await T.kam.from('inspectie_sjabloon')
+        .update({ naam: 'ONVTEST sjabloon gekaapt' }).eq('company_id', T.companyId)
+      const { data: na } = await admin.from('inspectie_sjabloon')
+        .select('naam').eq('company_id', T.companyId).limit(1).single()
+      check('KAM kan een sjabloon niet meer rechtstreeks wijzigen',
+        na?.naam === 'ONVTEST rondgang',
+        error ? 'geweigerd' : `naam is nu: ${na?.naam}`)
+    }
+    {
+      const { error } = await T.kam.from('bedrijf_modules')
+        .update({ actief: false }).eq('company_id', T.companyId)
+      const { data: na } = await admin.from('bedrijf_modules')
+        .select('actief').eq('company_id', T.companyId).limit(1).single()
+      check('KAM kan een module niet meer rechtstreeks uitzetten',
+        na?.actief === true, error ? 'geweigerd' : `actief is nu: ${na?.actief}`)
+    }
   }
 
   // --- de hele inspectie verwijderen moet nog kunnen (cascade) ---

@@ -516,3 +516,57 @@ AI-route 21/21 en AI-robuustheid 49/49.
 twee bevindingen. De AVG-punten uit Beslissing 65 (bewaartermijn van de
 AI-suggesties, technische blokkade voor herkenbare personen) staan nog open, maar
 dat zijn beleidskeuzes, geen gaten.
+
+---
+
+## Nagekomen — 1 september 2026, deel 2: de rest van het schema nagelopen
+
+Bevinding 2 ging over drie tabellen, maar het patroon zat breder in het schema:
+een `ALL`-policy die stilletjes een tweede weg naar binnen openhoudt naast de
+RPC's. Alle publieke tabellen nagelopen op dat patroon.
+
+**Werkwijze:** per tabel elke `from('<tabel>')` in de codebase bekeken op de
+gebruikte operatie, en in `db/schema.sql` gecontroleerd welke RPC er wél in
+schrijft. Alleen tabellen waar de app **uitsluitend leest** komen in aanmerking.
+
+**Opgeruimd (migratie 0056)** — zeven tabellen die de app alleen leest:
+
+| tabel | schrijfweg die blijft |
+| --- | --- |
+| `deellinks` | `create_deellink`, `intrek_deellink` |
+| `functiegroep` | `functiegroep_opslaan/_archiveren`, `persoon_functiegroep_zetten` |
+| `herinner_instelling` | `zet_herinner_ritme` |
+| `inspectie_sjabloon` | `sjabloon_opslaan/_archiveren/_doelgroep_zetten`, `inspectie_start` |
+| `inspectie_sjabloon_punt` | `punt_opslaan`, `punt_verwijderen` |
+| `bedrijf_modules` | `module_activeren/_stopzetten/_gebruik_zetten` |
+| `rie_versies` | alleen `import/import_run.mjs`, via DATABASE_URL als owner |
+
+`rie_versies` was een apart geval: zijn **enige** policy was de `ALL`, die dus ook
+het lezen regelde. Botweg droppen had de tabel onleesbaar gemaakt. Daar is de
+`ALL` vervangen door een `SELECT` met exact dezelfde voorwaarde.
+
+**Bewust laten staan:**
+
+- `personen` en `pva_items` — de app schrijft daar rechtstreeks vanuit de client
+  (`PersonenClient.tsx`, `ActielijstClient.tsx`, `PvaCard.tsx`). Hun policy is
+  functioneel.
+- **De auditmodule** (`audit`, `audit_vca_bevinding`, `audit_iso_observatie`,
+  `audit_verbeterpunt`) — die schrijft vanuit de client via een generieke
+  `from(table).update(patch)` in `AuditDetailClient.tsx` r51. Daar de policy
+  weghalen betekent eerst al die schrijfacties naar RPC's verhuizen: een echte
+  verbouwing, geen policy-ingreep. **Genoteerd als kandidaat, niet gedaan.**
+- De admin-only referentietabellen (`merken`, `toolbox_bron`, `incident_*`,
+  `centrale_*`, `companies`) — al op `is_admin()` gescope't.
+
+**Nieuwe bewaking.** `onveranderlijkheid_test.mjs` heeft er een DEEL 6 bij dat de
+schrijf-policies **live uit de database** leest en faalt zodra er een bijkomt die
+niet in de verklaarde lijst staat, plus een lijst van de elf tabellen die 0055/0056
+hebben dichtgezet. Zo blijft de volgende `ALL`-policy niet maanden onopgemerkt.
+Het script controleert ook echt gedrag: een KAM kan een sjabloon niet meer
+rechtstreeks wijzigen en een module niet meer rechtstreeks uitzetten.
+
+**Bewijs:** `onveranderlijkheid_test.mjs` **38/38**. Volledige suite opnieuw,
+identiek aan de basislijn — met name `module_isolatie` 8/8, `inspectie_isolatie`
+51/51, `centrale_bibliotheek` 34/34 en `persoon_merge` 20/20, want die raken de
+opgeschoonde tabellen. `tsc` + `next build` groen, lint op de basislijn, schema
+gedumpt. Policies in het schema: 74 → 64.

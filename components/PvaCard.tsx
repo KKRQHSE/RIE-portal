@@ -61,6 +61,20 @@ export default function PvaCard({
   magBeheren = false,
 }: Props) {
   const [open, setOpen] = useState(false)
+  // Is deze kaart ooit opengeklapt geweest? Zo ja, dan blijft de onderkant
+  // gemonteerd en verbergen we hem alleen met CSS bij dichtklappen.
+  //
+  // Waarom: BewijsBlok haalt zijn bewijsstukken op bij mount. Werd de onderkant
+  // bij dichtklappen uit de DOM gehaald, dan was elke keer opendoen een nieuw
+  // rondje naar /api/bewijs/beheerder-download — en dat rondje maakt aan de
+  // serverkant ook nog eens een verse signed URL per bestand. Vijf keer
+  // dicht-en-open kostte zo vijf extra rondjes.
+  //
+  // Alleen 'open' als voorwaarde nemen kan niet: dan zou élke kaart op de pagina
+  // zijn bewijs ophalen bij het laden, ook de kaarten die niemand openklapt.
+  // Vandaar deze tweede vlag: niets renderen tot de eerste keer opendoen,
+  // daarna gemonteerd laten.
+  const [ooitGeopend, setOoitGeopend] = useState(false)
   const router = useRouter()
 
   // ref bevat vraagnummers gescheiden door "/", bv "F1-1 / F1-2".
@@ -182,7 +196,7 @@ export default function PvaCard({
       {/* Rustige, scanbare kopregel: onderwerp + de kernfeiten */}
       <button
         className="w-full flex items-start gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { setOpen(o => !o); setOoitGeopend(true) }}
         aria-expanded={open}
       >
         <span className={`shrink-0 mt-0.5 ${prioBadge}`}>{item.prio}</span>
@@ -201,9 +215,14 @@ export default function PvaCard({
         <span className="text-ink/30 text-xs mt-1 shrink-0">{open ? '▲' : '▼'}</span>
       </button>
 
-      {/* Alles onder de vouw: rustig detail + beheer (geen permanente tabelbrij) */}
-      {open && (
-        <div className="border-t border-surface px-4 pb-4 pt-3 space-y-4">
+      {/* Alles onder de vouw: rustig detail + beheer (geen permanente tabelbrij).
+          Blijft na de eerste keer opendoen gemonteerd; dichtklappen verbergt hem
+          alleen, zodat BewijsBlok niet telkens opnieuw gaat ophalen. */}
+      {ooitGeopend && (
+        <div
+          hidden={!open}
+          className={`border-t border-surface px-4 pb-4 pt-3 space-y-4 ${open ? '' : 'hidden'}`}
+        >
 
           {/* RI&E-verwijzingen */}
           {refNums.length > 0 && (

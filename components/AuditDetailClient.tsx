@@ -47,13 +47,29 @@ export default function AuditDetailClient({
   const [verbeterpunten, setVerbeterpunten] = useState<AuditVerbeterpunt[]>(initialVerbeterpunten)
   const [fout, setFout] = useState<string | null>(null)
 
+  // Alle schrijfacties lopen via RPC's (migratie 0057). Eerder ging dit met een
+  // generieke `from(table).update(patch)`, en daarvoor moesten de audittabellen
+  // een ALL-policy houden — de laatste plek in het portaal waar de client
+  // rechtstreeks in de database schreef. De RPC's kennen per tabel een witte
+  // lijst van velden; een onbekend veld geeft een fout in plaats van een stille
+  // no-op. `bijgewerkt_op` stempelt de server nu zelf.
+  const RPC_VOOR: Record<string, string> = {
+    audit: 'audit_opslaan',
+    audit_vca_bevinding: 'audit_vca_bevinding_opslaan',
+    audit_iso_observatie: 'audit_iso_observatie_opslaan',
+    audit_verbeterpunt: 'audit_verbeterpunt_opslaan',
+  }
+
   async function persist(table: string, id: string, patch: Record<string, unknown>) {
-    const { error } = await supabase.from(table).update(patch).eq('id', id)
+    const rpc = RPC_VOOR[table]
+    if (!rpc) { setFout('Onbekend onderdeel; niet opgeslagen.'); return }
+    const param = table === 'audit' ? 'p_audit_id' : 'p_id'
+    const { error } = await supabase.rpc(rpc, { [param]: id, p_patch: patch })
     if (error) setFout(error.message)
   }
   function updAudit(patch: Partial<Audit>, persistDb = true) {
     setAudit(prev => ({ ...prev, ...patch }))
-    if (persistDb) persist('audit', audit.id, { ...patch, bijgewerkt_op: new Date().toISOString() })
+    if (persistDb) persist('audit', audit.id, patch)
   }
 
   async function maakActie(soort: 'vca' | 'verbeterpunt', bronId: string) {
@@ -89,28 +105,28 @@ export default function AuditDetailClient({
   }, [bevindingen])
 
   async function nieuweObservatie() {
-    const { data, error } = await supabase.from('audit_iso_observatie')
-      .insert({ audit_id: audit.id, company_id: audit.company_id, thema: '', volgorde: observaties.length })
-      .select('*').single()
+    const { data, error } = await supabase.rpc('audit_iso_observatie_toevoegen', { p_audit_id: audit.id })
     if (error) { setFout(error.message); return }
     setObservaties(prev => [...prev, data as AuditIsoObservatie])
   }
   async function verwijderObservatie(id: string) {
+    const vorige = observaties
     setObservaties(prev => prev.filter(o => o.id !== id))
-    const { error } = await supabase.from('audit_iso_observatie').delete().eq('id', id)
-    if (error) setFout(error.message)
+    const { error } = await supabase.rpc('audit_iso_observatie_verwijderen', { p_id: id })
+    // Mislukt het, dan de rij terugzetten: anders is hij van het scherm
+    // verdwenen terwijl hij nog in de database staat.
+    if (error) { setFout(error.message); setObservaties(vorige) }
   }
   async function nieuwVerbeterpunt() {
-    const { data, error } = await supabase.from('audit_verbeterpunt')
-      .insert({ audit_id: audit.id, company_id: audit.company_id, constatering: '', soort: 'verbeterpunt', volgorde: verbeterpunten.length })
-      .select('*').single()
+    const { data, error } = await supabase.rpc('audit_verbeterpunt_toevoegen', { p_audit_id: audit.id })
     if (error) { setFout(error.message); return }
     setVerbeterpunten(prev => [...prev, data as AuditVerbeterpunt])
   }
   async function verwijderVerbeterpunt(id: string) {
+    const vorige = verbeterpunten
     setVerbeterpunten(prev => prev.filter(v => v.id !== id))
-    const { error } = await supabase.from('audit_verbeterpunt').delete().eq('id', id)
-    if (error) setFout(error.message)
+    const { error } = await supabase.rpc('audit_verbeterpunt_verwijderen', { p_id: id })
+    if (error) { setFout(error.message); setVerbeterpunten(vorige) }
   }
 
   return (

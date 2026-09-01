@@ -131,8 +131,12 @@ async function run() {
   }
   // Positief: A maakt van EIGEN verbeterpunt een actie (RPC → pva_items).
   {
-    const { data: vp } = await clientA.from('audit_verbeterpunt')
-      .insert({ audit_id: aAudit, company_id: aId, constatering: 'AUDITTEST_A_vp', soort: 'afwijking' }).select('id').single()
+    // Via de RPC's (0057/0058): rechtstreeks inserten kan niet meer.
+    const { data: vp, error: eVp } = await clientA.rpc('audit_verbeterpunt_toevoegen', { p_audit_id: aAudit })
+    if (eVp || !vp?.id) throw new Error(`verbeterpunt toevoegen: ${eVp?.message ?? 'geen rij terug'}`)
+    await clientA.rpc('audit_verbeterpunt_opslaan', {
+      p_id: vp.id, p_patch: { constatering: 'AUDITTEST_A_vp', soort: 'afwijking' },
+    })
     const { data: actieId, error } = await clientA.rpc('audit_bevinding_naar_actie', { p_soort: 'verbeterpunt', p_bron_id: vp.id })
     check('A maakt actie van eigen verbeterpunt (positieve controle)', !error && !!actieId, error ? error.message : 'ok')
     if (actieId) {
@@ -148,8 +152,9 @@ async function run() {
     // 1. Een VCA-bevinding met toelichting → de toelichting wordt het onderwerp.
     const { data: bev } = await clientA.from('audit_vca_bevinding')
       .select('id').eq('audit_id', aAudit).eq('code', '11.1').single()
-    await clientA.from('audit_vca_bevinding')
-      .update({ status: 'verbeterpunt', toelichting: 'AUDITTEST_melden stimuleren' }).eq('id', bev.id)
+    await clientA.rpc('audit_vca_bevinding_opslaan', {
+      p_id: bev.id, p_patch: { status: 'verbeterpunt', toelichting: 'AUDITTEST_melden stimuleren' },
+    })
 
     const { data: actieId, error } = await clientA.rpc('audit_bevinding_naar_actie', { p_soort: 'vca', p_bron_id: bev.id })
     check('A maakt actie van eigen VCA-bevinding', !error && !!actieId, error ? error.message : 'ok')
@@ -182,16 +187,129 @@ async function run() {
 
   // Kopregels 0041: Aan/Van bestaan en zijn per bedrijf afgeschermd.
   {
-    const { error } = await clientA.from('audit')
-      .update({ gericht_aan: 'AUDITTEST_directie', auditor: 'AUDITTEST_auditor' }).eq('id', aAudit)
+    const { error } = await clientA.rpc('audit_opslaan', {
+      p_audit_id: aAudit, p_patch: { gericht_aan: 'AUDITTEST_directie', auditor: 'AUDITTEST_auditor' },
+    })
     check('A kan Aan/Van van eigen audit vullen', !error, error?.message)
     const { data } = await clientA.from('audit').select('gericht_aan, auditor').eq('id', aAudit).single()
     check('Aan/Van bewaard', data?.gericht_aan === 'AUDITTEST_directie' && data?.auditor === 'AUDITTEST_auditor')
   }
   {
-    await clientA.from('audit').update({ auditor: 'HACK' }).eq('id', bAudit.id)
+    await clientA.rpc('audit_opslaan', { p_audit_id: bAudit.id, p_patch: { auditor: 'HACK' } })
     const { data } = await admin.from('audit').select('auditor').eq('id', bAudit.id).single()
     check('A kan Aan/Van van B niet overschrijven', data?.auditor === null, data?.auditor ?? 'null')
+  }
+
+  // ---------------------------------------------------------------------
+  // Schrijf-RPC's van de auditmodule (migratie 0057) en het dichtzetten van de
+  // directe schrijftoegang (0058). Dit was de laatste plek in het portaal waar
+  // de client rechtstreeks in de database schreef.
+  // ---------------------------------------------------------------------
+  {
+    // --- witte lijst: een onbekend veld is een fout, geen stille no-op ---
+    const { error: eOnbekend } = await clientA.rpc('audit_opslaan', {
+      p_audit_id: aAudit, p_patch: { company_id: bId },
+    })
+    check('audit_opslaan weigert een veld buiten de witte lijst',
+      !!eOnbekend && /onbekend veld/i.test(eOnbekend.message || ''), eOnbekend?.message?.slice(0, 60))
+
+    const { data: naPoging } = await admin.from('audit').select('company_id').eq('id', aAudit).single()
+    check('en het bedrijf van de audit is niet verschoven', naPoging?.company_id === aId)
+  }
+  {
+    // --- waardecontrole ---
+    const { error } = await clientA.rpc('audit_opslaan', {
+      p_audit_id: aAudit, p_patch: { status: 'verzonnen' },
+    })
+    check('audit_opslaan weigert een ongeldige status',
+      !!error && /ongeldige status/i.test(error.message || ''), error?.message?.slice(0, 60))
+  }
+  {
+    const { data: bev } = await clientA.from('audit_vca_bevinding')
+      .select('id').eq('audit_id', aAudit).limit(1).single()
+    const { error } = await clientA.rpc('audit_vca_bevinding_opslaan', {
+      p_id: bev.id, p_patch: { status: 'bestaat_niet' },
+    })
+    check('audit_vca_bevinding_opslaan weigert een ongeldige status',
+      !!error && /ongeldige bevindingstatus/i.test(error.message || ''), error?.message?.slice(0, 60))
+  }
+  {
+    // --- cross-company via de RPC's ---
+    // B heeft een ISO-audit, dus geen VCA-bevindingen; het verbeterpunt is hier
+    // het doelwit.
+    const { error: e2 } = await clientA.rpc('audit_verbeterpunt_opslaan', {
+      p_id: bVp.id, p_patch: { constatering: 'HACK' },
+    })
+    check('A kan een verbeterpunt van B niet bijwerken', !!e2, e2 ? 'geweigerd' : 'GEEN fout!')
+
+    const { error: e3 } = await clientA.rpc('audit_verbeterpunt_verwijderen', { p_id: bVp.id })
+    check('A kan een verbeterpunt van B niet verwijderen', !!e3, e3 ? 'geweigerd' : 'GEEN fout!')
+
+    const { data: nog } = await admin.from('audit_verbeterpunt').select('id').eq('id', bVp.id)
+    check('het verbeterpunt van B bestaat nog', (nog?.length ?? 0) === 1)
+
+    const { error: e4 } = await clientA.rpc('audit_iso_observatie_toevoegen', { p_audit_id: bAudit.id })
+    check('A kan geen observatie toevoegen aan een audit van B', !!e4, e4 ? 'geweigerd' : 'GEEN fout!')
+  }
+  {
+    // --- anon komt er niet bij (Beslissing 62) ---
+    for (const [naam, params] of [
+      ['audit_opslaan', { p_audit_id: aAudit, p_patch: { auditor: 'HACK' } }],
+      ['audit_iso_observatie_toevoegen', { p_audit_id: aAudit }],
+      ['audit_verbeterpunt_toevoegen', { p_audit_id: aAudit }],
+    ]) {
+      const { error } = await anon.rpc(naam, params)
+      check(`anon kan ${naam} niet aanroepen`, !!error, error?.message?.slice(0, 50))
+    }
+  }
+  {
+    // --- de gelukkige gang: toevoegen, bijwerken, verwijderen ---
+    const { data: obs, error: eToe } = await clientA.rpc('audit_iso_observatie_toevoegen', { p_audit_id: aAudit })
+    check('A kan een observatie toevoegen aan de eigen audit', !eToe && !!obs?.id, eToe?.message?.slice(0, 60))
+
+    if (obs?.id) {
+      const { error: eOp } = await clientA.rpc('audit_iso_observatie_opslaan', {
+        p_id: obs.id, p_patch: { thema: 'AUDITTEST_thema', observatie: 'AUDITTEST_waarneming' },
+      })
+      const { data: na } = await admin.from('audit_iso_observatie')
+        .select('thema, observatie').eq('id', obs.id).single()
+      check('en bijwerken landt in de database',
+        !eOp && na?.thema === 'AUDITTEST_thema' && na?.observatie === 'AUDITTEST_waarneming',
+        eOp?.message?.slice(0, 60))
+
+      const { error: eWeg } = await clientA.rpc('audit_iso_observatie_verwijderen', { p_id: obs.id })
+      const { data: weg } = await admin.from('audit_iso_observatie').select('id').eq('id', obs.id)
+      check('en verwijderen werkt', !eWeg && (weg?.length ?? 0) === 0, eWeg?.message?.slice(0, 60))
+    }
+
+    const { data: vp, error: eVp } = await clientA.rpc('audit_verbeterpunt_toevoegen', { p_audit_id: aAudit })
+    check('A kan een verbeterpunt toevoegen aan de eigen audit', !eVp && !!vp?.id, eVp?.message?.slice(0, 60))
+    if (vp?.id) {
+      await clientA.rpc('audit_verbeterpunt_opslaan', { p_id: vp.id, p_patch: { soort: 'afwijking' } })
+      const { data: na } = await admin.from('audit_verbeterpunt').select('soort').eq('id', vp.id).single()
+      check('soort van een verbeterpunt is bij te werken', na?.soort === 'afwijking', na?.soort)
+      await clientA.rpc('audit_verbeterpunt_verwijderen', { p_id: vp.id })
+    }
+  }
+  {
+    // --- 0058: rechtstreeks schrijven kan niet meer ---
+    const { error } = await clientA.from('audit')
+      .update({ auditor: 'AUDITTEST_rechtstreeks' }).eq('id', aAudit)
+    const { data: na } = await admin.from('audit').select('auditor').eq('id', aAudit).single()
+    check('A kan de audit niet meer RECHTSTREEKS bijwerken (alleen via de RPC)',
+      na?.auditor === 'AUDITTEST_auditor',
+      error ? 'geweigerd' : `auditor is nu: ${na?.auditor}`)
+
+    const { data: bevA } = await clientA.from('audit_vca_bevinding')
+      .select('id, toelichting').eq('audit_id', aAudit).limit(1).single()
+    await clientA.from('audit_vca_bevinding').update({ toelichting: 'RECHTSTREEKS' }).eq('id', bevA.id)
+    const { data: naBev } = await admin.from('audit_vca_bevinding')
+      .select('toelichting').eq('id', bevA.id).single()
+    check('en een VCA-bevinding evenmin', naBev?.toelichting !== 'RECHTSTREEKS',
+      `toelichting: ${String(naBev?.toelichting).slice(0, 30)}`)
+
+    const { data: nogSteeds } = await clientA.from('audit').select('id').eq('id', aAudit)
+    check('lezen kan nog gewoon (de select-policy blijft)', (nogSteeds?.length ?? 0) === 1)
   }
 
   // Defensief: B's audit ongewijzigd.

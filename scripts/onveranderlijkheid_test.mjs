@@ -456,10 +456,6 @@ async function run() {
       // De app schrijft hier bewust rechtstreeks vanuit de client.
       personen: 'PersonenClient.tsx insert/update',
       pva_items: 'ActielijstClient.tsx en PvaCard.tsx update',
-      audit: 'AuditDetailClient.tsx r51, generieke from(table).update()',
-      audit_vca_bevinding: 'AuditDetailClient.tsx r51',
-      audit_iso_observatie: 'AuditDetailClient.tsx insert/delete',
-      audit_verbeterpunt: 'AuditDetailClient.tsx insert/delete',
       // Admin-only: al op is_admin() gescope't, geen per-bedrijf-oppervlak.
       companies: 'admin-only update',
       merken: 'admin-only referentietabel',
@@ -474,12 +470,14 @@ async function run() {
       incident_gevolg_soort: 'admin-only referentietabel',
     }
 
-    // In 0055/0056 dichtgezet. Duikt een van deze weer op, dan is er een
+    // In 0055/0056/0058 dichtgezet. Duikt een van deze weer op, dan is er een
     // migratie teruggedraaid of per ongeluk een policy herbouwd.
     const DICHTGEZET = [
       'inspectie', 'inspectie_bevinding', 'inspectie_historie', 'module_historie',
       'deellinks', 'functiegroep', 'herinner_instelling', 'inspectie_sjabloon',
       'inspectie_sjabloon_punt', 'bedrijf_modules', 'rie_versies',
+      // 0057/0058: de auditmodule schrijft nu via RPC's.
+      'audit', 'audit_vca_bevinding', 'audit_iso_observatie', 'audit_verbeterpunt',
     ]
 
     const client = new pg.Client({ connectionString: DBURL })
@@ -503,7 +501,7 @@ async function run() {
                          : `${rijen.length} tabellen, allemaal verklaard`)
 
     const teruggekomen = DICHTGEZET.filter(t => rijen.includes(t))
-    check('de dichtgezette tabellen (0055/0056) zijn nog steeds dicht',
+    check('de dichtgezette tabellen (0055/0056/0058) zijn nog steeds dicht',
       teruggekomen.length === 0,
       teruggekomen.length ? `weer schrijfbaar: ${teruggekomen.join(', ')}`
                           : `${DICHTGEZET.length} stuks dicht`)

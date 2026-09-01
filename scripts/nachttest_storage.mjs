@@ -3,7 +3,9 @@
 // ----------------------------------------------------------------------------
 // Toetst of een ingelogde gebruiker van bedrijf A via de Supabase Storage-API
 // RECHTSTREEKS (buiten de app om) bij de bewijsbestanden van bedrijf B kan.
-// Pad-conventie: bewijs/<company_id>/<actieId>/<random>.<ext> (bedrijf-geprefixt).
+// Pad-conventie: bewijs/<company_id>/<actieId>/<random>.<ext> — het EERSTE segment
+// is de letterlijke string 'bewijs', de company staat op positie 2. De policy uit
+// migratie 0054 kijkt daarom naar (storage.foldername(name))[2].
 //
 // De app zelf gebruikt service-role signed URLs (na geguarde RPC's), dus deze test
 // gaat over het ONDERLIGGENDE storage.objects-RLS: dekt dat de bedrijfsgrens af?
@@ -68,9 +70,15 @@ async function run() {
   console.log(`  A=${A}  B=${B}`)
 
   // Service-role legt een "geheim" bewijsbestand van B neer (zoals de app dat doet).
+  // Padconventie zoals de APP hem echt maakt: bewijs/<company_id>/<actie_id>/<bestand>
+  // (zie deellink_bewijs_pad in de database en app/api/bewijs/beheerder-upload).
+  // Het eerste segment is de letterlijke string 'bewijs'; de company staat op
+  // positie 2. Dit script liet die prefix eerder weg, waardoor het een padvorm
+  // toetste die in productie niet bestaat — en de positieve controle faalde na
+  // het invoeren van de per-bedrijf-policy (migratie 0054).
   const actie = randomUUID()
-  const bPad = `${B}/${actie}/geheim_${TS}.txt`
-  const aPad = `${A}/${randomUUID()}/eigen_${TS}.txt`
+  const bPad = `bewijs/${B}/${actie}/geheim_${TS}.txt`
+  const aPad = `bewijs/${A}/${randomUUID()}/eigen_${TS}.txt`
   paden.push(bPad, aPad)
   {
     const { error } = await admin.storage.from('bewijs').upload(bPad, Buffer.from('GEHEIM bewijs van bedrijf B'), { contentType: 'text/plain', upsert: true })
@@ -88,13 +96,13 @@ async function run() {
   }
   // 2. A somt B's bewijsmap op (enumeratie)
   {
-    const { data, error } = await cA.storage.from('bewijs').list(`${B}/${actie}`)
+    const { data, error } = await cA.storage.from('bewijs').list(`bewijs/${B}/${actie}`)
     const ziet = (data?.length ?? 0) > 0
     rec('A kan B-bewijsmap NIET opsommen (list)', !ziet, ziet ? `LISTTE ${data.length} bestand(en) van B` : (error ? `geweigerd (${error.message})` : 'leeg'))
   }
   // 3. A schrijft een bestand in B's map
   {
-    const indringer = `${B}/${actie}/INDRINGER_${TS}.txt`
+    const indringer = `bewijs/${B}/${actie}/INDRINGER_${TS}.txt`
     const { data, error } = await cA.storage.from('bewijs').upload(indringer, Buffer.from('A schrijft in B'), { contentType: 'text/plain' })
     const gelukt = !!data && !error
     if (gelukt) paden.push(indringer)
@@ -104,6 +112,52 @@ async function run() {
   {
     const { data, error } = await cA.storage.from('bewijs').download(aPad)
     rec('positieve controle: A kan EIGEN bewijsbestand downloaden', !!data, error ? `(${error.message})` : 'ok')
+  }
+
+  // ---------------------------------------------------------------------
+  // APP-FLOW — precies wat de vier bewijs-routes doen.
+  // ---------------------------------------------------------------------
+  // De per-bedrijf-policy uit migratie 0054 mag deze weg niet raken: elke route
+  // mint met de SERVICE ROLE een signed URL, en de browser gebruikt dat token
+  // in plaats van een policy. Als dat hier breekt, breekt bewijs uploaden of
+  // downloaden in de app — dus dit hoort in dezelfde test te staan als het lek.
+  console.log('\n=== APP-FLOW (service-role signed URL, zoals de routes) ===')
+  {
+    const flowPad = `bewijs/${A}/${randomUUID()}/appflow_${TS}.txt`
+    paden.push(flowPad)
+
+    // 1. Route mint een upload-token (beheerder-upload / gast-upload).
+    const { data: up, error: eUp } = await admin.storage.from('bewijs').createSignedUploadUrl(flowPad)
+    rec('route kan een upload-token minten (service role)', !!up?.token && !eUp, eUp?.message)
+
+    // 2. De INGELOGDE beheerder uploadt met dat token (BewijsUpload.tsx).
+    if (up?.token) {
+      const { error } = await cA.storage.from('bewijs').uploadToSignedUrl(flowPad, up.token,
+        Buffer.from('bewijs via de app-flow'), { contentType: 'text/plain' })
+      rec('ingelogde beheerder kan uploaden met dat token', !error, error?.message)
+    }
+
+    // 3. De SESSIELOZE gast uploadt met een eigen token (gast-deellink).
+    const gastPad = `bewijs/${A}/${randomUUID()}/gastflow_${TS}.txt`
+    paden.push(gastPad)
+    const { data: gUp } = await admin.storage.from('bewijs').createSignedUploadUrl(gastPad)
+    if (gUp?.token) {
+      const gast = createClient(URL, ANON, { auth: { persistSession: false, autoRefreshToken: false } })
+      const { error } = await gast.storage.from('bewijs').uploadToSignedUrl(gastPad, gUp.token,
+        Buffer.from('bewijs van een gast zonder account'), { contentType: 'text/plain' })
+      rec('sessieloze gast kan uploaden met een eigen token', !error, error?.message)
+    }
+
+    // 4. Route mint een download-URL en die levert de inhoud (beheerder/gast-download).
+    const { data: dl } = await admin.storage.from('bewijs').createSignedUrl(flowPad, 60)
+    if (dl?.signedUrl) {
+      const res = await fetch(dl.signedUrl)
+      const tekst = res.ok ? await res.text() : ''
+      rec('signed download-URL levert het bestand nog steeds',
+        res.ok && tekst.includes('app-flow'), `HTTP ${res.status}`)
+    } else {
+      rec('signed download-URL levert het bestand nog steeds', false, 'geen URL gekregen')
+    }
   }
 }
 

@@ -1,5 +1,8 @@
-'use client'
-
+// Server component. Deze tegelweergave heeft geen enkele interactie van zichzelf
+// (geen hooks, geen event-handlers) — alleen Link-navigatie. Zonder 'use client'
+// blijft de opbouw op de server en gaat er minder JavaScript naar de browser.
+// De echt interactieve kinderen houden hun eigen 'use client': Gauge (animatie
+// met useEffect/useState) en LogoutButton (klik + supabase-browserclient).
 import Link from 'next/link'
 import type { Company, DashboardOverzicht } from '@/lib/types'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'

@@ -1,5 +1,5 @@
-'use client'
-
+// Server component. Alleen Link-navigatie, geen hooks of event-handlers, dus
+// geen 'use client' nodig. Gauge en LogoutButton houden hun eigen 'use client'.
 import Link from 'next/link'
 import type { DashboardAdminRegel } from '@/lib/types'
 import LogoutButton from './LogoutButton'

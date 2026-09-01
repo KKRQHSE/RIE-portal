@@ -3,7 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import PersonenClient from '@/components/PersonenClient'
 import type { MergeLogRegel } from '@/components/PersoonSamenvoegen'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
-import { haalPersonen } from '@/lib/personen-data'
+import { selecteerPersonen, koppelKamIndienNodig } from '@/lib/personen-data'
 import type { Functiegroep } from '@/lib/types'
 
 export default async function PersonenPage({
@@ -17,29 +17,14 @@ export default async function PersonenPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, company_id, naam')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile) redirect('/login')
-  // Beheer: admin mag elk bedrijf; een client uitsluitend zijn eigen bedrijf.
-  const magBeheren =
-    profile.role === 'admin' ||
-    (profile.role === 'client' && profile.company_id === company_id)
-  if (!magBeheren) notFound()
-
-  const heeftNaam = !!profile.naam?.trim()
-  // Alleen de client (KAM) is actiehouder; de admin is systeembeheerder en
-  // hoort niet in het adresboek/de dropdown — dus geen koppeling/naamvraag.
-  const isClient = profile.role === 'client'
-
-  // Onafhankelijke leesacties tegelijk. haalPersonen koppelt de ingelogde KAM
-  // alleen als hij nog ontbreekt (geen schrijfactie bij elke lading meer).
+  // Alle onafhankelijke leesacties tegelijk, inclusief het profiel zelf — zoals
+  // de inspectiepagina het al doet. Ook de personen-select hangt nergens van af;
+  // alleen het eventuele koppelen van de KAM heeft het profiel nodig en gebeurt
+  // hieronder, ná de autorisatiecontrole. RLS schermt elke query af op bedrijf.
   const [
+    { data: profile },
     { data: company },
-    personen,
+    personenEerst,
     { data: deellinks },
     { data: functiegroepen },
     { data: mergeLog },
@@ -47,11 +32,16 @@ export default async function PersonenPage({
   ] =
     await Promise.all([
       supabase
+        .from('users')
+        .select('role, company_id, naam')
+        .eq('id', user.id)
+        .single(),
+      supabase
         .from('companies')
         .select('id, name, approved_at, approved_by')
         .eq('id', company_id)
         .single(),
-      haalPersonen(supabase, company_id, isClient && heeftNaam ? user.email ?? null : null),
+      selecteerPersonen(supabase, company_id),
       supabase
         .from('deellinks')
         .select('id, company_id, persoon_id, token, vervalt_op, ingetrokken')
@@ -75,7 +65,27 @@ export default async function PersonenPage({
       haalHuisstijl(company_id),
     ])
 
+  if (!profile) redirect('/login')
+  // Beheer: admin mag elk bedrijf; een client uitsluitend zijn eigen bedrijf.
+  const magBeheren =
+    profile.role === 'admin' ||
+    (profile.role === 'client' && profile.company_id === company_id)
+  if (!magBeheren) notFound()
   if (!company) notFound()
+
+  const heeftNaam = !!profile.naam?.trim()
+  // Alleen de client (KAM) is actiehouder; de admin is systeembeheerder en
+  // hoort niet in het adresboek/de dropdown — dus geen koppeling/naamvraag.
+  const isClient = profile.role === 'client'
+
+  // Koppelt de ingelogde KAM alleen als hij nog ontbreekt (geen schrijfactie bij
+  // elke lading), en pas nu we weten dat hij dit bedrijf mag beheren.
+  const personen = await koppelKamIndienNodig(
+    supabase,
+    company_id,
+    isClient && heeftNaam ? user.email ?? null : null,
+    personenEerst,
+  )
 
   return (
     <PersonenClient

@@ -11,7 +11,9 @@ type ServerClient = Awaited<ReturnType<typeof createClient>>
 const PERSOON_COLS =
   'id, company_id, naam, email, status, voorgesteld_door, archived_at, functiegroep_id, datum_in_dienst, datum_uit_dienst'
 
-async function selecteerPersonen(
+// Losse leesactie: geen enkele afhankelijkheid van het profiel, dus een pagina
+// mag hem gerust naast zijn andere queries in één Promise.all zetten.
+export async function selecteerPersonen(
   supabase: ServerClient,
   companyId: string,
 ): Promise<Persoon[]> {
@@ -24,15 +26,18 @@ async function selecteerPersonen(
   return (data ?? []) as Persoon[]
 }
 
+// Tweede helft: staat de KAM er al bij, dan is dit gratis. Apart aanroepbaar
+// zodat een pagina de select hierboven parallel met zijn andere queries kan doen
+// en pas daarna, als het profiel bekend is, deze stap zet.
+//
 // `kamEmail` = het e-mailadres van de ingelogde KAM, of null wanneer koppelen niet
 // van toepassing is (admin, of een client die zijn naam nog niet heeft ingevuld).
-export async function haalPersonen(
+export async function koppelKamIndienNodig(
   supabase: ServerClient,
   companyId: string,
   kamEmail: string | null,
+  personen: Persoon[],
 ): Promise<Persoon[]> {
-  const personen = await selecteerPersonen(supabase, companyId)
-
   const ontbreekt =
     !!kamEmail &&
     !personen.some(p => p.email?.toLowerCase() === kamEmail.toLowerCase())
@@ -42,4 +47,13 @@ export async function haalPersonen(
   // KAM staat er nog niet bij → eenmalig koppelen en opnieuw ophalen.
   await supabase.rpc('koppel_mij_als_persoon', { p_company_id: companyId })
   return selecteerPersonen(supabase, companyId)
+}
+
+export async function haalPersonen(
+  supabase: ServerClient,
+  companyId: string,
+  kamEmail: string | null,
+): Promise<Persoon[]> {
+  const personen = await selecteerPersonen(supabase, companyId)
+  return koppelKamIndienNodig(supabase, companyId, kamEmail, personen)
 }

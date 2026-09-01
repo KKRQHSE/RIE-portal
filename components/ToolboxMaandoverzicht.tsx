@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Gauge from './Gauge'
 import type { ToolboxSessiesOverzicht, ToolboxSessieRegel, ToolboxSessiePersoon, ToolboxOverzichtItem, ToolboxBron } from '@/lib/types'
@@ -36,12 +36,17 @@ export default function ToolboxMaandoverzicht({
   const [openSessie, setOpenSessie] = useState<string | null>(null)
   const [nieuwVoor, setNieuwVoor] = useState<string | null>(null) // maandsleutel of 'los'
 
-  async function herlaad() {
+  const herlaad = useCallback(async () => {
     const { data: d, error } = await supabase.rpc('toolbox_sessies_overzicht', { p_company_id: companyId })
     if (error) { setFout(error.message); return }
     setData(d as ToolboxSessiesOverzicht)
-  }
-  useEffect(() => { herlaad() /* verse stand bij openen */ }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, companyId])
+
+  // herlaad begint met een await; er wordt niets synchroon gezet. De regel kan
+  // dat niet zien. (herlaad zit nu in een useCallback, dus de dependency-lijst
+  // klopt ook echt en de exhaustive-deps-uitzondering kon eruit.)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { herlaad() /* verse stand bij openen */ }, [herlaad])
 
   const personen = data?.personen ?? []
   const target = data?.sessie_doel_per_jaar ?? 12
@@ -151,9 +156,13 @@ function TargetKop({
   onJaar: (j: number) => void; onOpgeslagen: () => Promise<void>; setFout: (v: string | null) => void
 }) {
   const [bewerk, setBewerk] = useState(false)
-  const [waarde, setWaarde] = useState(String(target))
   const [bezig, setBezig] = useState(false)
-  useEffect(() => { setWaarde(String(target)) }, [target])
+  // Alleen wat de gebruiker zélf heeft ingetypt in state; null = nog niets
+  // getypt, dan volgt het veld gewoon het huidige doel. Zo hoeft er geen effect
+  // te zijn die de prop naar state kopieert (dat gaf cascaderende renders en
+  // een lintfout), en klopt de waarde vanzelf weer na een opslag.
+  const [getypt, setGetypt] = useState<string | null>(null)
+  const waarde = getypt ?? String(target)
 
   async function opslaan() {
     setBezig(true); setFout(null)
@@ -163,6 +172,7 @@ function TargetKop({
     setBezig(false)
     if (error) { setFout(error.message); return }
     setBewerk(false)
+    setGetypt(null)   // veld volgt weer het (nieuwe) doel
     await onOpgeslagen()
   }
 
@@ -205,11 +215,11 @@ function TargetKop({
         {bewerk ? (
           <span className="inline-flex items-center gap-1">
             <span className="text-xs text-ink/50">doel/jaar</span>
-            <input type="number" min={0} value={waarde} onChange={e => setWaarde(e.target.value)}
+            <input type="number" min={0} value={waarde} onChange={e => setGetypt(e.target.value)}
               aria-label="Jaartarget" className="w-16 text-sm border border-ink/20 rounded px-2 py-1 bg-white" />
             <button type="button" onClick={opslaan} disabled={bezig}
               className="text-xs px-2 py-1 rounded-full bg-accent text-white hover:opacity-90 disabled:opacity-40">OK</button>
-            <button type="button" onClick={() => { setBewerk(false); setWaarde(String(target)) }}
+            <button type="button" onClick={() => { setBewerk(false); setGetypt(null) }}
               className="text-xs px-2 py-1 rounded-full border border-ink/20 text-ink/60">×</button>
           </span>
         ) : (

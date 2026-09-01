@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import {
@@ -19,6 +19,13 @@ const STATUS_STIJL: Record<Incident['status'], string> = {
   in_onderzoek: 'bg-blue-100 text-blue-800',
   afgehandeld: 'bg-green-100 text-green-800',
 }
+
+// Hulpjes voor het uitlezen van window.location.origin via useSyncExternalStore.
+// Buiten de component zodat het stabiele referenties zijn (anders abonneert
+// React bij elke render opnieuw).
+const geenAbonnement = () => () => {}
+const leesOrigin = () => window.location.origin
+const leesOriginServer = () => ''
 
 function datumNL(d: string | null): string {
   if (!d) return '—'
@@ -289,8 +296,11 @@ function MeldlinkPaneel({
   const [gekopieerd, setGekopieerd] = useState(false)
   const [bevestigRoteren, setBevestigRoteren] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
-  const [origin, setOrigin] = useState('')
-  useEffect(() => { setOrigin(window.location.origin) }, [])
+  // window.location is een externe bron; useSyncExternalStore leest hem zonder
+  // setState-in-effect. Op de server '' zodat de eerste render aan beide kanten
+  // gelijk is (geen hydration-mismatch); daarna de echte origin. De waarde
+  // verandert nooit binnen een pagina, dus er valt niets te abonneren.
+  const origin = useSyncExternalStore(geenAbonnement, leesOrigin, leesOriginServer)
 
   const meldUrl = meldlink ? `${origin}/melden/${meldlink.token}` : ''
 
@@ -466,6 +476,9 @@ function IncidentDetail({
       setFotos(fotos)
     } catch { setFotos([]) }
   }, [incident.id])
+  // laadFotos begint met een await; er wordt geen enkele state synchroon gezet.
+  // De regel kan dat niet zien en slaat hier ten onrechte aan.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { laadFotos() }, [laadFotos])
 
   function toggle(arr: number[], set: (v: number[]) => void, code: number) {
@@ -556,6 +569,9 @@ function IncidentDetail({
                 <a key={f.id} href={f.downloadUrl ?? '#'} target="_blank" rel="noopener noreferrer"
                   className="block w-20 h-20 rounded-lg overflow-hidden border border-ink/10 bg-gray-50">
                   {f.downloadUrl && f.type?.startsWith('image/')
+                    /* Signed URL van een privé-bucket: bewust geen next/image —
+                       die zou de kortlevende URL via een cachebare route spiegelen. */
+                    /* eslint-disable-next-line @next/next/no-img-element */
                     ? <img src={f.downloadUrl} alt={f.bestandsnaam ?? 'foto'} className="w-full h-full object-cover" />
                     : <span className="flex items-center justify-center w-full h-full text-xs text-ink/40">bestand</span>}
                 </a>

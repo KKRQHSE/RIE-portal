@@ -48,7 +48,11 @@ export default function BewijsBlok({ modus, actieId, token }: Props) {
     }
   }, [modus, actieId, token])
 
+  // De enige synchrone setState in haal() is setFout(null); bij het monteren is
+  // fout al null, dus React rendert daar niet eens voor. Alle echte state
+  // (bewijzen, laden) wordt pas ná de fetch gezet. Geen cascaderende renders.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     haal()
   }, [haal])
 

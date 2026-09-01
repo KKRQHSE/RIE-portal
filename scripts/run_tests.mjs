@@ -83,14 +83,18 @@ function draai(script) {
     let uit = ''
     kind.stdout.on('data', d => { uit += d.toString() })
     kind.stderr.on('data', d => { uit += d.toString() })
-    kind.on('close', code => {
+    // Zonder deze handler eindigt een mislukte spawn als een naamloze FAIL
+    // zonder uitvoer, en ga je in het verkeerde script zoeken.
+    kind.on('error', e => { uit += `\nSPAWN-FOUT: ${e.message}\n` })
+    kind.on('close', (code, signal) => {
       const regels = uit.split(/\r?\n/).filter(Boolean)
       const samenvatting = [...regels].reverse()
         .find(r => /\d+\/\d+\s+(tests|checks|controles)\s+geslaagd|->\s*(PASS|FAIL)|EINDOORDEEL|isoleert per bedrijf/i.test(r))
       resolve({
         code,
         seconden: Math.round((Date.now() - begin) / 1000),
-        samenvatting: (samenvatting ?? regels.at(-1) ?? '(geen uitvoer)').trim().slice(0, 70),
+        samenvatting: (samenvatting ?? regels.at(-1)
+          ?? `(geen uitvoer — exit ${code}${signal ? `, signaal ${signal}` : ''})`).trim().slice(0, 70),
         fails: regels.filter(r => /^FAIL/i.test(r.trim())).map(r => r.trim().slice(0, 160)),
       })
     })

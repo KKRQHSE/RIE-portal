@@ -413,7 +413,6 @@ async function run() {
     // De https-constraint houdt een javascript:-URL tegen.
     {
       const { error } = await adminClient.rpc('toolbox_bron_opslaan', {
-        // eslint-disable-next-line no-script-url
         p_id: null, p_naam: 'TBTEST_bad', p_url: 'javascript:alert(1)', p_omschrijving: null, p_volgorde: 1,
       })
       check('URL zonder https:// wordt geweigerd', !!error, error ? 'geweigerd' : 'GEEN fout!')

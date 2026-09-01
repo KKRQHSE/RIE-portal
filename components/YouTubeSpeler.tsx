@@ -49,8 +49,10 @@ export default function YouTubeSpeler({
   const intervalRef = useRef<number | null>(null)
   const bekekenRef = useRef(false)
   // Callbacks in een ref, zodat het effect niet herstart bij een nieuwe render.
+  // Het bijwerken hoort in een effect en niet in de renderbody: een ref tijdens
+  // render aanraken is niet veilig bij onderbroken renders.
   const cb = useRef({ onBekeken, onFout })
-  cb.current = { onBekeken, onFout }
+  useEffect(() => { cb.current = { onBekeken, onFout } })
 
   useEffect(() => {
     let afgebroken = false

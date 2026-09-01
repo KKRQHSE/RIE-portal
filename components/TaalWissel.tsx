@@ -1,24 +1,59 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useSyncExternalStore, useCallback } from 'react'
 import { TALEN, type Taal } from '@/lib/i18n-werknemer'
 
 const SLEUTEL = 'rie-taal'
 
-// Taalkeuze onthouden binnen de sessie (sessionStorage). Default NL; op de server
-// en bij de eerste render altijd NL (geen hydration-mismatch), daarna evt. TR.
-export function useTaal(): [Taal, (t: Taal) => void] {
-  const [taal, setTaalState] = useState<Taal>('nl')
-  useEffect(() => {
-    try {
-      const v = sessionStorage.getItem(SLEUTEL)
-      if (v === 'tr' || v === 'nl') setTaalState(v)
-    } catch { /* geen sessionStorage → NL */ }
-  }, [])
-  const setTaal = (t: Taal) => {
-    setTaalState(t)
-    try { sessionStorage.setItem(SLEUTEL, t) } catch { /* stil */ }
+// sessionStorage is een externe bron, en daar is useSyncExternalStore voor.
+// Eerder stond hier een useEffect die na de eerste render setState deed; dat
+// werkte, maar het is precies het patroon dat React afraadt (cascaderende
+// renders) en het gaf een lintfout.
+//
+// De drie stukjes hieronder doen samen hetzelfde als voorheen:
+//   * abonneren  — luister naar wijzigingen in een ander tabblad (storage-event)
+//                  én naar onze eigen setTaal (custom event, want storage vuurt
+//                  niet in het tabblad dat zelf schrijft);
+//   * client     — lees de opgeslagen taal, val bij twijfel terug op NL;
+//   * server     — altijd NL, zodat de eerste render op de server en op de
+//                  client gelijk zijn en er geen hydration-mismatch ontstaat.
+const TAAL_EVENT = 'rie-taal-gewijzigd'
+
+// Terugval voor browsers waar sessionStorage gooit (privémodus). Zonder dit zou
+// de taalknop daar stil niets doen, terwijl het vroeger in het geheugen wél
+// werkte — alleen niet bewaard bleef.
+let taalInGeheugen: Taal = 'nl'
+
+function abonneer(herteken: () => void): () => void {
+  window.addEventListener('storage', herteken)
+  window.addEventListener(TAAL_EVENT, herteken)
+  return () => {
+    window.removeEventListener('storage', herteken)
+    window.removeEventListener(TAAL_EVENT, herteken)
   }
+}
+
+function leesClient(): Taal {
+  try {
+    const v = sessionStorage.getItem(SLEUTEL)
+    return v === 'tr' || v === 'nl' ? v : taalInGeheugen
+  } catch {
+    return taalInGeheugen // geen sessionStorage (privémodus, oude browser)
+  }
+}
+
+const leesServer = (): Taal => 'nl'
+
+export function useTaal(): [Taal, (t: Taal) => void] {
+  const taal = useSyncExternalStore(abonneer, leesClient, leesServer)
+
+  const setTaal = useCallback((t: Taal) => {
+    taalInGeheugen = t
+    try { sessionStorage.setItem(SLEUTEL, t) } catch { /* stil */ }
+    // Zelf seinen: het storage-event vuurt alleen in ándere tabbladen.
+    window.dispatchEvent(new Event(TAAL_EVENT))
+  }, [])
+
   return [taal, setTaal]
 }
 

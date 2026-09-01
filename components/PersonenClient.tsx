@@ -174,6 +174,9 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
   async function stuurUitnodiging(persoonId: string) {
     setMailBezig(persoonId)
     setMailUitkomst(prev => {
+      // Deze persoon uit de uitkomsten halen door hem er bij het uitpakken uit
+      // te laten vallen; de weggegooide waarde gebruiken we niet.
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { [persoonId]: _weg, ...rest } = prev
       return rest
     })

@@ -67,7 +67,7 @@ function decodeer(matrix: boolean[][]): { tekst: string; ecOk: boolean; mask: nu
   posA.forEach(([r, c], i) => { if (matrix[r][c]) raw |= 1 << (14 - i) })
   const unmasked = raw ^ 0x5412
   const data5 = unmasked >> 10
-  const ecLevel = data5 >> 3, mask = data5 & 7
+  const mask = data5 & 7   // het ec-niveau zit in data5 >> 3, maar dat toetsen we hier niet
   const fn = MASKS[mask]
 
   // Datacellen in zigzag lezen + unmasken.

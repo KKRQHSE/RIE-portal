@@ -43,6 +43,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, fout: 'Kon instellingen niet laden.' }, { status: 500 })
   }
 
+  // Bedrijfsnamen in ÉÉN query vooraf i.p.v. één query per bedrijf in de lus
+  // (N+1). De naam gaat alleen de afzender-header in; ontbreekt hij, dan geldt
+  // dezelfde terugval als voorheen.
+  const companyIds = (instellingen ?? []).map(i => i.company_id as string)
+  const namen = new Map<string, string>()
+  if (companyIds.length > 0) {
+    const { data: companies } = await service
+      .from('companies')
+      .select('id, name')
+      .in('id', companyIds)
+    for (const c of companies ?? []) namen.set(c.id as string, c.name as string)
+  }
+
   const samenvatting: Array<{ companyId: string; verstuurd: number; mislukt: number }> = []
 
   for (const inst of instellingen ?? []) {
@@ -62,12 +75,7 @@ export async function POST(request: Request) {
       }
       const kandidaten = (data ?? []) as Kandidaat[]
 
-      const { data: company } = await service
-        .from('companies')
-        .select('name')
-        .eq('id', companyId)
-        .single()
-      const bedrijf = company?.name ?? 'het veiligheidsportaal'
+      const bedrijf = namen.get(companyId) ?? 'het veiligheidsportaal'
 
       for (const k of kandidaten) {
         try {

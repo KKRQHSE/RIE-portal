@@ -11,13 +11,15 @@
 //
 //   * toolbox_deelname heeft een BEFORE UPDATE-TRIGGER. Die geldt voor iedereen,
 //     ook voor service_role. Echt bevroren.
-//   * inspectie / inspectie_bevinding / inspectie_historie hebben een ALL-policy
-//     (mag_bedrijf_beheren). De "afgerond = bevroren"-regel zit alléén in de
-//     RPC's. Wie de RPC's overslaat, komt er langs.
+//   * inspectie / inspectie_bevinding / inspectie_historie hadden alléén de
+//     RPC-guard en een ALL-policy: wie de RPC's oversloeg kwam er langs. Sinds
+//     migratie 0055 hebben ze dezelfde bescherming als toolbox_deelname.
 //
-// DEEL 3 en 4 FALEN op dit moment BEWUST. Dat is de openstaande bevinding uit
-// NACHTTEST_RAPPORT_2026-08-31.md, niet een kapotte test. Zodra het voorstel uit
-// dat rapport is doorgevoerd horen ze groen te worden.
+// DEEL 3 en 4 faalden bij het schrijven van dit script (8 gaten). Migratie 0055
+// heeft ze gedicht met triggers plus het schrappen van de ALL-policies; sindsdien
+// is alles groen. DEEL 5 bewaakt de andere kant: dat die strengheid niet te ver
+// gaat en een lopende inspectie, de persoon-merge, de FK's en cascade-verwijdering
+// gewoon blijven werken.
 //
 // Draaien:  node --use-system-ca scripts/onveranderlijkheid_test.mjs
 //
@@ -323,6 +325,131 @@ async function run() {
           error ? 'geweigerd' : `${na?.length ?? 0} verzonnen regels aangemaakt`)
       }
     }
+  }
+
+  // =====================================================================
+  // DEEL 5 — wat NIET bevroren mag raken (migratie 0055)
+  // =====================================================================
+  // De triggers uit 0055 zijn streng genoeg om per ongeluk te veel dicht te
+  // zetten. Dit deel bewijst dat alles wat moet blijven werken, werkt.
+  console.log('\nDEEL 5 — lopend blijft bewerkbaar, uitzonderingen blijven werken\n')
+
+  // --- een LOPENDE inspectie is gewoon te bewerken ---
+  const { data: insp2 } = await admin.from('inspectie').insert({
+    company_id: T.companyId, status: 'concept',
+    sjabloon_naam_snap: 'ONVTEST lopend', controlesoort_snap: 'rondgang',
+  }).select('id').single()
+  const { data: bev2 } = await admin.from('inspectie_bevinding').insert({
+    company_id: T.companyId, inspectie_id: insp2.id, punt_tekst_snap: 'ONVTEST lopend punt',
+    verplicht: false, volgorde: 1, resultaat: null, afhandeling: 'geen',
+  }).select('id').single()
+  {
+    const { error } = await T.kam.rpc('bevinding_opslaan', {
+      p_bevinding_id: bev2.id, p_resultaat: 'in_orde',
+      p_afhandeling: 'geen', p_opmerking: 'ONVTEST lopend opgeslagen',
+    })
+    const { data: na } = await admin.from('inspectie_bevinding')
+      .select('opmerking').eq('id', bev2.id).single()
+    check('een LOPENDE inspectie is nog gewoon in te vullen',
+      !error && na?.opmerking === 'ONVTEST lopend opgeslagen', error?.message?.slice(0, 60))
+  }
+  {
+    const { error } = await T.kam.rpc('inspectie_conclusie_opslaan', {
+      p_inspectie_id: insp2.id, p_conclusie: 'ONVTEST lopende conclusie',
+    })
+    check('de conclusie van een lopende inspectie is nog te bewerken', !error, error?.message?.slice(0, 60))
+  }
+  {
+    const { error } = await T.kam.rpc('inspectie_afronden', {
+      p_inspectie_id: insp2.id, p_conclusie: 'ONVTEST afgerond',
+    })
+    check('een lopende inspectie kan nog steeds worden AFGEROND (de overgang mag)',
+      !error, error?.message?.slice(0, 60))
+  }
+
+  // --- service_role komt er ook niet doorheen ---
+  {
+    const { error } = await admin.from('inspectie')
+      .update({ conclusie: 'ONVTEST service_role' }).eq('id', T.inspectieId)
+    const { data: na } = await admin.from('inspectie').select('conclusie').eq('id', T.inspectieId).single()
+    check('ook SERVICE_ROLE kan een afgeronde inspectie niet wijzigen',
+      na?.conclusie === 'ONVTEST conclusie',
+      error ? `geweigerd: ${String(error.message).slice(0, 50)}` : `conclusie is nu: ${na?.conclusie}`)
+  }
+  {
+    const { data: voor } = await admin.from('inspectie_historie')
+      .select('id, wijziging').eq('inspectie_id', T.inspectieId).limit(1).single()
+    const { error } = await admin.from('inspectie_historie')
+      .update({ wijziging: 'ONVTEST service_role historie' }).eq('id', voor.id)
+    const { data: na } = await admin.from('inspectie_historie').select('wijziging').eq('id', voor.id).single()
+    check('ook SERVICE_ROLE kan de historie niet herschrijven',
+      na?.wijziging === voor.wijziging,
+      error ? `geweigerd: ${String(error.message).slice(0, 50)}` : `regel is nu: ${na?.wijziging}`)
+  }
+
+  // --- persoon_samenvoegen moet de koppeling nog kunnen verschuiven ---
+  {
+    const { data: p1 } = await admin.from('personen')
+      .insert({ company_id: T.companyId, naam: 'ONVTEST bron', status: 'actief' })
+      .select('id').single()
+    const { data: p2 } = await admin.from('personen')
+      .insert({ company_id: T.companyId, naam: 'ONVTEST doel', status: 'actief' })
+      .select('id').single()
+    // De AFGERONDE inspectie aan de bronpersoon koppelen: precies het geval waar
+    // een te strenge trigger de persoon-merge zou breken.
+    await admin.from('inspectie').update({ persoon_id: p1.id }).eq('id', T.inspectieId)
+    const { data: gekoppeld } = await admin.from('inspectie')
+      .select('persoon_id').eq('id', T.inspectieId).single()
+    check('persoon_id van een afgeronde inspectie mag nog verschuiven (voor de merge)',
+      gekoppeld?.persoon_id === p1.id)
+
+    await admin.from('personen').delete().eq('id', p1.id)
+    const { data: naDelete } = await admin.from('inspectie')
+      .select('persoon_id, conclusie').eq('id', T.inspectieId).single()
+    check('FK ON DELETE SET NULL werkt nog op een afgeronde inspectie',
+      naDelete?.persoon_id === null && naDelete?.conclusie === 'ONVTEST conclusie')
+    await admin.from('personen').delete().eq('id', p2.id)
+  }
+
+  // --- account verwijderen mag historie.wie nog op NULL zetten ---
+  {
+    const email = `onvtest_extra_${TS}@example.test`
+    const { data: u2 } = await admin.auth.admin.createUser({
+      email, password: PW, email_confirm: true,
+    })
+    await admin.from('users').upsert({
+      id: u2.user.id, email, role: 'client', company_id: T.companyId, naam: 'ONVTEST extra',
+    })
+    const { data: regel } = await admin.from('inspectie_historie').insert({
+      company_id: T.companyId, inspectie_id: T.inspectieId, wie: u2.user.id,
+      wanneer: new Date().toISOString(), wijziging: 'ONVTEST regel van een account',
+    }).select('id').single()
+    check('nieuwe historieregels toevoegen mag nog (append-only, niet read-only)', !!regel)
+
+    await admin.from('users').delete().eq('id', u2.user.id)
+    await admin.auth.admin.deleteUser(u2.user.id)
+    const { data: na } = await admin.from('inspectie_historie')
+      .select('wie, wijziging').eq('id', regel.id).single()
+    check('een account verwijderen zet historie.wie op NULL zonder de regel te raken',
+      na?.wie === null && na?.wijziging === 'ONVTEST regel van een account',
+      `wie=${na?.wie} wijziging=${String(na?.wijziging).slice(0, 40)}`)
+  }
+
+  // --- de hele inspectie verwijderen moet nog kunnen (cascade) ---
+  {
+    const { data: wegwerp } = await admin.from('inspectie').insert({
+      company_id: T.companyId, status: 'afgerond',
+      sjabloon_naam_snap: 'ONVTEST wegwerp', controlesoort_snap: 'rondgang',
+    }).select('id').single()
+    await admin.from('inspectie_historie').insert({
+      company_id: T.companyId, inspectie_id: wegwerp.id,
+      wanneer: new Date().toISOString(), wijziging: 'ONVTEST historie bij wegwerp',
+    })
+    const { error } = await admin.from('inspectie').delete().eq('id', wegwerp.id)
+    const { data: rest } = await admin.from('inspectie_historie').select('id').eq('inspectie_id', wegwerp.id)
+    check('een hele inspectie verwijderen kan nog (cascade neemt de historie mee)',
+      !error && (rest?.length ?? 0) === 0,
+      error ? `geweigerd: ${String(error.message).slice(0, 50)}` : `${rest?.length ?? 0} historieregels over`)
   }
 }
 

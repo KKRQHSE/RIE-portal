@@ -12,12 +12,33 @@ eigen testdata achteraf opgeruimd, en riskante of grote wijzigingen alleen
 gedocumenteerd — niet gebouwd.
 
 > **Status: afgerond.** Alle onderdelen uit de opdracht zijn gedraaid.
+>
+> **Nagekomen (1 september 2026): beide bevindingen zijn gedicht.** Zie de
+> afmeldingen hieronder bij elke bevinding. Migraties 0054 en 0055.
 
 ---
 
-## ⚠️ BELANGRIJKSTE BEVINDING — bekijk dit als eerste
+## ✅ BEVINDING 1 — OPGELOST (migratie 0054, 1 sep 2026)
 
-### De `bewijs`-bucket schermt niet per bedrijf af (cross-tenant storage-lek)
+> **Afgemeld.** De drie te ruime policies zijn vervangen door één select-policy
+> op padsegment `[2]`, en er is bewust géén insert/update-policy teruggezet —
+> hetzelfde regime als `inspectie-foto`.
+>
+> **Bewijs:** `nachttest_storage.mjs` **8/8** (was 1/4). A kan B's bewijsmap niet
+> meer opsommen, niet lezen en er niet in schrijven; het eigen bedrijf wél.
+>
+> **En de app werkt nog:** de test heeft er een APP-FLOW-sectie bij die precies
+> doet wat de vier bewijs-routes doen — service-role mint een upload-token, de
+> ingelogde beheerder én de sessieloze gast uploaden ermee, en een signed
+> download-URL levert het bestand (HTTP 200).
+>
+> **Onderweg gevonden:** `nachttest_storage.mjs` schreef zelf naar
+> `<company_id>/<actie>/…` zónder de `bewijs/`-prefix, terwijl de app en het enige
+> echte object in de bucket die prefix wél hebben. De kop van het script beschreef
+> de juiste conventie, de code niet. Daardoor faalde de positieve controle zodra
+> de policy erin zat. Rechtgezet.
+
+### De `bewijs`-bucket schermde niet per bedrijf af (cross-tenant storage-lek)
 
 `scripts/nachttest_storage.mjs` faalt, en terecht. Een **ingelogde gebruiker van
 bedrijf A** kan bij de bewijsbestanden van bedrijf B:
@@ -115,9 +136,40 @@ worden, en `scripts/inspectie_foto_selftest.mjs` + de bewijs-flows in de browser
 
 ---
 
-## ⚠️ TWEEDE BELANGRIJKE BEVINDING — de inspectiehistorie is vervalsbaar
+## ✅ BEVINDING 2 — OPGELOST (migratie 0055, 1 sep 2026)
 
-### Een afgeronde inspectie is alleen in de RPC's bevroren, niet in de database
+> **Afgemeld.** Twee sloten, zoals bij `toolbox_deelname`:
+> de `ALL`-policies op `inspectie`, `inspectie_bevinding`, `inspectie_historie` en
+> `module_historie` zijn geschrapt (de `*_sel`-policies blijven), en er zijn
+> triggers bij gekomen die óók tegen `service_role` bijten.
+>
+> **Bewijs:** `onveranderlijkheid_test.mjs` **34/34** (was 16/24). Alle acht
+> pogingen uit de tabel hieronder worden nu geweigerd, ook met de service role.
+>
+> **Twee valkuilen die eerst zijn uitgezocht** — zonder die uitzonderingen had de
+> trigger het systeem gebroken:
+> 1. `persoon_samenvoegen` verschuift `inspectie.persoon_id` óók op afgeronde
+>    inspecties;
+> 2. vier FK's met `ON DELETE SET NULL` schrijven naar deze tabellen
+>    (`persoon_id`, `sjabloon_id`, `actie_id`, `historie.wie`).
+>
+> De triggers kijken naar **`OLD.status`**, dus de overgang náár afgerond blijft
+> gewoon toegestaan en een lopende inspectie is onveranderd bewerkbaar. De
+> vergelijking is kolomlijst-vrij (`to_jsonb(new) - 'kolom'`), net als
+> `toolbox_deelname_immutable`: later toegevoegde kolommen zijn automatisch
+> beschermd.
+>
+> **Verwijderen:** een losse historieregel kan niet meer weg, ook niet met de
+> service role. Een heel bedrijf of een hele inspectie verwijderen kan nog wél
+> (cascade) — nodig voor het AVG-verwijderrecht. De trigger onderscheidt de twee
+> door te kijken of de ouder nog bestaat; dat is vooraf empirisch geverifieerd.
+>
+> **Niet te streng geworden:** het script heeft er een DEEL 5 bij dat bewijst dat
+> een lopende inspectie invulbaar blijft, afronden werkt, de persoon-merge werkt
+> op een afgeronde inspectie, de FK's hun werk doen, nieuwe historieregels erbij
+> mogen, en cascade-verwijdering werkt.
+
+### Een afgeronde inspectie was alleen in de RPC's bevroren, niet in de database
 
 `scripts/onveranderlijkheid_test.mjs` (nieuw). Een **gewone ingelogde KAM van het
 eigen bedrijf** kan de RPC's volledig overslaan en rechtstreeks via PostgREST:
@@ -441,3 +493,26 @@ leverancier die stukgaat.
 | bewijs-bucket per bedrijf afschermen | vervangt policies op klantbewijs — jouw akkoord nodig |
 | ALL-policies op inspectie/historie | raakt de kerntabellen van een module — jouw akkoord nodig |
 | append-only trigger op de historietabellen | aparte afweging: maakt ook opschonen onmogelijk |
+
+---
+
+## Nagekomen — 1 september 2026: beide bevindingen gedicht
+
+| | migratie | bewijs |
+| --- | --- | --- |
+| Bevinding 1 — bewijs-bucket | `0054_bewijs_bucket_per_bedrijf.sql` | `nachttest_storage.mjs` 8/8 (was 1/4) |
+| Bevinding 2 — afgeronde inspectie | `0055_afgeronde_inspectie_bevriezen.sql` | `onveranderlijkheid_test.mjs` 34/34 (was 16/24) |
+
+**Volledige regressie na beide migraties, alles groen en gelijk aan de basislijn:**
+security-hardening 26/26, toolbox 64/64, inspectie 51/51, AI-isolatie 29/29,
+bibliotheek 34/34, audit 24/24, dashboard 17/17 + 7/7, incidenten 20/20, modules
+8/8, persoon-merge 20/20, inspectie-e2e 18/18, foto-selftest 16/16, RLS-nachttest,
+QR 0 fout, AI-zelftest 15/15, anon-audit 20/20. Via de draaiende app:
+AI-route 21/21 en AI-robuustheid 49/49.
+
+`tsc` + `next build` groen, lint op de bestaande basislijn, schema gedumpt.
+
+**Wat hierna nog openstaat uit dit rapport:** niets meer op het gebied van deze
+twee bevindingen. De AVG-punten uit Beslissing 65 (bewaartermijn van de
+AI-suggesties, technische blokkade voor herkenbare personen) staan nog open, maar
+dat zijn beleidskeuzes, geen gaten.

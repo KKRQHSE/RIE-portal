@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-01T03:52:47.648Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-01T03:58:45.181Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -1069,23 +1069,14 @@ CREATE POLICY incident_meldlink_sel ON public.incident_meldlink AS PERMISSIVE FO
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY inspectie_sel ON public.inspectie AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
-CREATE POLICY inspectie_wr ON public.inspectie AS PERMISSIVE FOR ALL TO public
-  USING (mag_bedrijf_beheren(company_id))
-  WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY inspectie_ai_suggestie_sel ON public.inspectie_ai_suggestie AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY inspectie_bevinding_sel ON public.inspectie_bevinding AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
-CREATE POLICY inspectie_bevinding_wr ON public.inspectie_bevinding AS PERMISSIVE FOR ALL TO public
-  USING (mag_bedrijf_beheren(company_id))
-  WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY inspectie_foto_sel ON public.inspectie_foto AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY inspectie_historie_sel ON public.inspectie_historie AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
-CREATE POLICY inspectie_historie_wr ON public.inspectie_historie AS PERMISSIVE FOR ALL TO public
-  USING (mag_bedrijf_beheren(company_id))
-  WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY inspectie_sjabloon_sel ON public.inspectie_sjabloon AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY inspectie_sjabloon_wr ON public.inspectie_sjabloon AS PERMISSIVE FOR ALL TO public
@@ -1103,9 +1094,6 @@ CREATE POLICY merken_select ON public.merken AS PERMISSIVE FOR SELECT TO public
   USING (true);
 CREATE POLICY module_historie_sel ON public.module_historie AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
-CREATE POLICY module_historie_wr ON public.module_historie AS PERMISSIVE FOR ALL TO public
-  USING (mag_bedrijf_beheren(company_id))
-  WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY modules_select ON public.modules AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
 CREATE POLICY personen_select ON public.personen AS PERMISSIVE FOR SELECT TO public
@@ -3331,6 +3319,57 @@ begin
   return v_id;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.inspectie_bevinding_bevroren_bewaken()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+begin
+  if tg_op = 'DELETE' then
+    -- Bij een CASCADE (de inspectie zelf verdwijnt) is de ouder al weg; dan mag
+    -- het. Bestaat de ouder nog én is die bevroren, dan is dit een rechtstreekse
+    -- verwijdering en gaat hij niet door.
+    if exists (select 1 from inspectie where id = old.inspectie_id)
+       and inspectie_is_bevroren(old.inspectie_id) then
+      raise exception 'Deze inspectie is afgerond of geannuleerd; bevindingen liggen vast';
+    end if;
+    return old;
+  end if;
+
+  if not inspectie_is_bevroren(old.inspectie_id) then
+    return new;
+  end if;
+
+  -- actie_id mag nog naar NULL door de FK als een PvA-actie wordt verwijderd.
+  if to_jsonb(new) - 'actie_id' is distinct from to_jsonb(old) - 'actie_id' then
+    raise exception 'Deze inspectie is afgerond of geannuleerd; de bevinding ligt vast';
+  end if;
+
+  return new;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.inspectie_bevroren_bewaken()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+begin
+  -- OLD, niet NEW: de overgang náár afgerond moet mogelijk blijven.
+  if old.status not in ('afgerond', 'geannuleerd') then
+    return new;
+  end if;
+
+  -- Alleen de twee koppelvelden mogen nog schuiven (persoon_samenvoegen en de
+  -- FK's met ON DELETE SET NULL). De rest ligt vast.
+  if to_jsonb(new) - 'persoon_id' - 'sjabloon_id'
+     is distinct from
+     to_jsonb(old) - 'persoon_id' - 'sjabloon_id' then
+    raise exception 'Deze inspectie is afgerond of geannuleerd en ligt vast';
+  end if;
+
+  return new;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.inspectie_bibliotheek(p_company_id uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -3514,6 +3553,37 @@ begin
   delete from inspectie_foto where id = p_foto_id;
   return v_pad;
 end;
+$function$;
+CREATE OR REPLACE FUNCTION public.inspectie_historie_append_only()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+begin
+  if tg_op = 'DELETE' then
+    if exists (select 1 from inspectie where id = old.inspectie_id) then
+      raise exception 'De inspectiehistorie kan niet worden verwijderd';
+    end if;
+    return old;   -- cascade: de hele inspectie verdwijnt
+  end if;
+
+  -- wie mag nog naar NULL door de FK als een account wordt verwijderd.
+  if to_jsonb(new) - 'wie' is distinct from to_jsonb(old) - 'wie' then
+    raise exception 'De inspectiehistorie kan niet worden gewijzigd';
+  end if;
+
+  return new;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.inspectie_is_bevroren(p_inspectie_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'public'
+AS $function$
+  select coalesce(
+    (select status in ('afgerond', 'geannuleerd') from inspectie where id = p_inspectie_id),
+    false)
 $function$;
 CREATE OR REPLACE FUNCTION public.inspectie_rapport(p_inspectie_id uuid)
  RETURNS jsonb
@@ -3896,6 +3966,24 @@ begin
   insert into module_historie (company_id, module, wie, wanneer, wijziging)
   values (p_company_id, v_module, auth.uid(), now(),
           case when p_aan then 'Gebruik aangezet' else 'Gebruik uitgezet' end);
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.module_historie_append_only()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+begin
+  if tg_op = 'DELETE' then
+    if exists (select 1 from companies where id = old.company_id) then
+      raise exception 'De modulehistorie kan niet worden verwijderd';
+    end if;
+    return old;   -- cascade: het hele bedrijf verdwijnt
+  end if;
+
+  -- Geen uitzonderingen: module_historie.wie heeft geen FK, dus er is geen
+  -- kolom die door referentiële integriteit hoeft te kunnen wijzigen.
+  raise exception 'De modulehistorie kan niet worden gewijzigd';
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.module_stopzetten(p_company_id uuid, p_module text)
@@ -5381,6 +5469,12 @@ GRANT EXECUTE ON FUNCTION public.inspectie_ai_suggestie_besluit(p_suggestie_id u
 REVOKE EXECUTE ON FUNCTION public.inspectie_ai_suggestie_opslaan(p_foto_id uuid, p_beschrijving text, p_concept text, p_leverancier text, p_model text, p_toestemming boolean) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_ai_suggestie_opslaan(p_foto_id uuid, p_beschrijving text, p_concept text, p_leverancier text, p_model text, p_toestemming boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_ai_suggestie_opslaan(p_foto_id uuid, p_beschrijving text, p_concept text, p_leverancier text, p_model text, p_toestemming boolean) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.inspectie_bevinding_bevroren_bewaken() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.inspectie_bevinding_bevroren_bewaken() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_bevinding_bevroren_bewaken() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.inspectie_bevroren_bewaken() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.inspectie_bevroren_bewaken() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_bevroren_bewaken() TO service_role;
 REVOKE EXECUTE ON FUNCTION public.inspectie_bibliotheek(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_bibliotheek(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_bibliotheek(p_company_id uuid) TO service_role;
@@ -5401,6 +5495,12 @@ GRANT EXECUTE ON FUNCTION public.inspectie_foto_registreren(p_inspectie_id uuid,
 REVOKE EXECUTE ON FUNCTION public.inspectie_foto_verwijderen(p_foto_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_foto_verwijderen(p_foto_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_foto_verwijderen(p_foto_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.inspectie_historie_append_only() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.inspectie_historie_append_only() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_historie_append_only() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.inspectie_is_bevroren(p_inspectie_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.inspectie_is_bevroren(p_inspectie_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_is_bevroren(p_inspectie_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.inspectie_rapport(p_inspectie_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_rapport(p_inspectie_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_rapport(p_inspectie_id uuid) TO service_role;
@@ -5434,6 +5534,9 @@ GRANT EXECUTE ON FUNCTION public.module_activeren(p_company_id uuid, p_module te
 REVOKE EXECUTE ON FUNCTION public.module_gebruik_zetten(p_company_id uuid, p_module text, p_aan boolean) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.module_gebruik_zetten(p_company_id uuid, p_module text, p_aan boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.module_gebruik_zetten(p_company_id uuid, p_module text, p_aan boolean) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.module_historie_append_only() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.module_historie_append_only() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.module_historie_append_only() TO service_role;
 REVOKE EXECUTE ON FUNCTION public.module_stopzetten(p_company_id uuid, p_module text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.module_stopzetten(p_company_id uuid, p_module text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.module_stopzetten(p_company_id uuid, p_module text) TO service_role;
@@ -5557,6 +5660,10 @@ GRANT EXECUTE ON FUNCTION public.zet_mijn_naam(p_naam text) TO service_role;
 -- Triggers (public)
 -- ============================================================
 
+CREATE TRIGGER inspectie_bevroren_no_update BEFORE UPDATE ON public.inspectie FOR EACH ROW EXECUTE FUNCTION inspectie_bevroren_bewaken();
+CREATE TRIGGER inspectie_bevinding_bevroren_no_update BEFORE DELETE OR UPDATE ON public.inspectie_bevinding FOR EACH ROW EXECUTE FUNCTION inspectie_bevinding_bevroren_bewaken();
+CREATE TRIGGER inspectie_historie_append_only_trg BEFORE DELETE OR UPDATE ON public.inspectie_historie FOR EACH ROW EXECUTE FUNCTION inspectie_historie_append_only();
+CREATE TRIGGER module_historie_append_only_trg BEFORE DELETE OR UPDATE ON public.module_historie FOR EACH ROW EXECUTE FUNCTION module_historie_append_only();
 CREATE TRIGGER toolbox_deelname_no_update BEFORE UPDATE ON public.toolbox_deelname FOR EACH ROW EXECUTE FUNCTION toolbox_deelname_immutable();
 
 -- ============================================================

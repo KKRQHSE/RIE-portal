@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 
 export type Profile = {
@@ -9,7 +10,14 @@ export type Profile = {
 }
 
 // De enige plek die bepaalt: wie is deze gebruiker, welke rol, welk bedrijf.
-export async function getSessionProfile(): Promise<Profile | null> {
+//
+// In cache() verpakt: wordt deze binnen één request meer dan eens aangeroepen
+// (bv. een layout én de pagina eronder), dan gaat er nog maar één auth.getUser()
+// en één users-select naar Supabase. Per request, niet eroverheen — een
+// rolwijziging is bij de volgende weergave gewoon zichtbaar. Vandaag roept geen
+// enkele route hem twee keer aan; dit is er zodat dat ook niet stiekem duur
+// wordt zodra een pagina onder /[company_id] hem wél gaat gebruiken.
+export const getSessionProfile = cache(async (): Promise<Profile | null> => {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -26,7 +34,7 @@ export async function getSessionProfile(): Promise<Profile | null> {
     return { id: user.id, role: 'none', company_id: null, email: user.email ?? null, naam: null }
   }
   return data as Profile
-}
+})
 
 // De enige plek die bepaalt waar een rol naartoe gaat na inloggen.
 export function homePathFor(p: Profile): string {

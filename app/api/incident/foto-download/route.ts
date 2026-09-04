@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   // simpelweg geen rijen terug.
   const { data: rijen, error } = await supabase
     .from('incident_foto')
-    .select('id, storage_pad, bestandsnaam, type')
+    .select('id, company_id, storage_pad, bestandsnaam, type')
     .eq('incident_id', incidentId)
     .order('aangemaakt_op', { ascending: true })
   if (error) return fout('Geen toegang.', 403)
@@ -47,6 +47,15 @@ export async function POST(request: Request) {
           .from(INCIDENT_FOTO_BUCKET)
           .createSignedUrl(r.storage_pad, DOWNLOAD_GELDIGHEID_SEC, signedUrlOpties(r.type, r.bestandsnaam))
         downloadUrl = signed?.signedUrl ?? null
+        // Legt de UITGIFTE van de signed URL vast, niet het ophalen zelf;
+        // zichtbaar falen (console.error), niet blokkerend.
+        if (downloadUrl) {
+          const { error: logErr } = await supabase.rpc('audit_log_schrijven', {
+            p_actie: 'foto_gedownload', p_entiteit: 'incident_foto', p_entiteit_id: r.id,
+            p_company_id: r.company_id ?? null, p_detail: { bestandsnaam: r.bestandsnaam ?? null, incident_id: incidentId },
+          })
+          if (logErr) console.error('[audit_log] foto_gedownload (incident) mislukt', r.id, logErr.message)
+        }
       }
       return {
         id: String(r.id),

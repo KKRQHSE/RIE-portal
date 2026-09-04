@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-04T20:31:01.422Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-04T21:10:44.346Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -68,6 +68,17 @@ CREATE TABLE public.audit_iso_observatie (
   iso_clausule text,
   observatie text,
   volgorde integer DEFAULT 0 NOT NULL
+);
+
+CREATE TABLE public.audit_log (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  wie uuid,
+  wanneer timestamp with time zone DEFAULT now() NOT NULL,
+  actie text NOT NULL,
+  entiteit text NOT NULL,
+  entiteit_id uuid,
+  company_id uuid,
+  detail jsonb
 );
 
 CREATE TABLE public.audit_vca_bevinding (
@@ -652,6 +663,7 @@ CREATE TABLE public.vragen (
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_pkey PRIMARY KEY (id);
 ALTER TABLE public.audit ADD CONSTRAINT audit_pkey PRIMARY KEY (id);
 ALTER TABLE public.audit_iso_observatie ADD CONSTRAINT audit_iso_observatie_pkey PRIMARY KEY (id);
+ALTER TABLE public.audit_log ADD CONSTRAINT audit_log_pkey PRIMARY KEY (id);
 ALTER TABLE public.audit_vca_bevinding ADD CONSTRAINT audit_vca_bevinding_pkey PRIMARY KEY (id);
 ALTER TABLE public.audit_verbeterpunt ADD CONSTRAINT audit_verbeterpunt_pkey PRIMARY KEY (id);
 ALTER TABLE public.bedrijf_dashboard_instelling ADD CONSTRAINT bedrijf_dashboard_instelling_pkey PRIMARY KEY (company_id);
@@ -849,6 +861,8 @@ CREATE INDEX actie_historie_company_idx ON public.actie_historie USING btree (co
 CREATE INDEX actie_historie_item_idx ON public.actie_historie USING btree (pva_item_id);
 CREATE INDEX audit_company_jaar_idx ON public.audit USING btree (company_id, jaar);
 CREATE INDEX audit_iso_observatie_audit_idx ON public.audit_iso_observatie USING btree (audit_id);
+CREATE INDEX audit_log_company_wanneer_idx ON public.audit_log USING btree (company_id, wanneer DESC);
+CREATE INDEX audit_log_wie_wanneer_idx ON public.audit_log USING btree (wie, wanneer DESC);
 CREATE INDEX audit_vca_bevinding_audit_idx ON public.audit_vca_bevinding USING btree (audit_id);
 CREATE INDEX audit_verbeterpunt_audit_idx ON public.audit_verbeterpunt USING btree (audit_id);
 CREATE INDEX bedrijf_inspectie_doel_company_idx ON public.bedrijf_inspectie_doel USING btree (company_id);
@@ -909,6 +923,7 @@ CREATE INDEX vragen_module_idx ON public.vragen USING btree (module_id);
 ALTER TABLE public.actie_historie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_iso_observatie ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_vca_bevinding ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_verbeterpunt ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_dashboard_instelling ENABLE ROW LEVEL SECURITY;
@@ -968,6 +983,8 @@ CREATE POLICY audit_sel ON public.audit AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY audit_iso_observatie_sel ON public.audit_iso_observatie AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
+CREATE POLICY audit_log_admin_read ON public.audit_log AS PERMISSIVE FOR SELECT TO public
+  USING (is_admin());
 CREATE POLICY audit_vca_bevinding_sel ON public.audit_vca_bevinding AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY audit_verbeterpunt_sel ON public.audit_verbeterpunt AS PERMISSIVE FOR SELECT TO public
@@ -1409,6 +1426,26 @@ begin
   delete from audit_iso_observatie where id = p_id;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.audit_log_immutable()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  raise exception 'audit_log is append-only: wijzigen, verwijderen of legen kan niet, ook niet met service-role';
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.audit_log_schrijven(p_actie text, p_entiteit text, p_entiteit_id uuid, p_company_id uuid, p_detail jsonb DEFAULT NULL::jsonb)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  insert into public.audit_log (wie, actie, entiteit, entiteit_id, company_id, detail)
+  values (auth.uid(), p_actie, p_entiteit, p_entiteit_id, p_company_id, p_detail);
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.audit_opslaan(p_audit_id uuid, p_patch jsonb)
  RETURNS void
  LANGUAGE plpgsql
@@ -1820,7 +1857,7 @@ begin
   return coalesce((
     select jsonb_agg(to_jsonb(b) order by b.created_at desc)
     from (
-      select id, pad, bestandsnaam, type, grootte, geupload_door, uploader_type,
+      select id, company_id, pad, bestandsnaam, type, grootte, geupload_door, uploader_type,
              verwijderd_op, verwijderd_door, created_at
       from public.bewijs
       where pva_item_id = p_actie_id
@@ -2602,7 +2639,7 @@ begin
   return coalesce((
     select jsonb_agg(to_jsonb(b) order by b.created_at desc)
     from (
-      select id, pad, bestandsnaam, type, grootte, geupload_door, created_at
+      select id, company_id, pad, bestandsnaam, type, grootte, geupload_door, created_at
       from public.bewijs
       where pva_item_id = p_actie_id and verwijderd_op is null
     ) b
@@ -3140,7 +3177,6 @@ begin
     raise exception 'Ongeldige waarde medische dienst';
   end if;
 
-  -- Alleen bestaande oorzaakcodes bewaren (onbekende stil negeren).
   select coalesce(array_agg(c order by c), '{}') into v_directe
   from unnest(coalesce(p_directe_oorzaken,'{}')) c
   where exists (select 1 from public.incident_directe_oorzaak d where d.code = c);
@@ -3169,6 +3205,10 @@ begin
                                       end,
     laatst_bijgewerkt_op            = now()
   where id = p_incident_id and company_id = p_company_id;
+
+  insert into public.audit_log (wie, actie, entiteit, entiteit_id, company_id, detail)
+  values (auth.uid(), 'incident_gewijzigd', 'incident', p_incident_id, p_company_id,
+    jsonb_build_object('status', p_status));
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.incident_foto_pad_token(p_token text, p_incident_id uuid, p_bestandsnaam text)
@@ -3425,7 +3465,10 @@ begin
   where id = p_incident_id and company_id = p_company_id
   returning * into v_row;
 
-  -- Medische velden gaan hier nooit mee terug, ongeacht wat er in de DB staat.
+  insert into public.audit_log (wie, actie, entiteit, entiteit_id, company_id, detail)
+  values (auth.uid(), 'incident_gewijzigd', 'incident', p_incident_id, p_company_id,
+    jsonb_build_object('status', p_status));
+
   return jsonb_build_object(
     'id', v_row.id, 'company_id', v_row.company_id, 'status', v_row.status,
     'directe_oorzaken', v_row.directe_oorzaken, 'basis_oorzaken', v_row.basis_oorzaken,
@@ -4482,8 +4525,6 @@ declare
 begin
   v_company := persoon_merge_context(p_doel_id, p_bron_id);
 
-  -- Zelfde controle als het bevestigingsscherm zag. Een merge die daar mocht,
-  -- kan hier alsnog weigeren als er intussen iets is bijgekomen.
   v_voorbeeld := personen_merge_voorbeeld(p_doel_id, p_bron_id);
   if jsonb_array_length(v_voorbeeld->'botsingen') > 0 then
     raise exception 'Samenvoegen kan niet: beide personen hebben getekend bij %',
@@ -4492,13 +4533,10 @@ begin
   end if;
 
   select naam into v_doel_naam from personen where id = p_doel_id;
-  -- De gegevens op het bron-record zelf (e-mail, functiegroep, dienstdata,
-  -- logins) alvast bewaren: na de delete zijn ze niet meer op te halen.
   select naam, email, functiegroep_id, datum_in_dienst, datum_uit_dienst, user_id
     into v_bron from personen where id = p_bron_id;
   v_bron_naam := v_bron.naam;
 
-  -- Levende koppelingen zonder unieke sleutel: gewoon verschuiven.
   update inspectie       set persoon_id = p_doel_id where persoon_id = p_bron_id;
   get diagnostics n_inspecties = row_count;
   update pva_items       set persoon_id = p_doel_id where persoon_id = p_bron_id;
@@ -4506,13 +4544,9 @@ begin
   update herinnering_log set persoon_id = p_doel_id where persoon_id = p_bron_id;
   get diagnostics n_herinner = row_count;
 
-  -- Bewijsstukken: alleen de koppeling schuift op. bevestigde_naam, handtekening
-  -- en de snapshots blijven ongemoeid — de trigger bewaakt dat.
   update toolbox_deelname set persoon_id = p_doel_id where persoon_id = p_bron_id;
   get diagnostics n_toolbox = row_count;
 
-  -- Inspectiedoel: PK (company_id, persoon_id). Heeft de doel-persoon er al een,
-  -- dan houdt hij die; anders schuift het doel van de bron mee.
   delete from bedrijf_inspectie_doel
    where persoon_id = p_bron_id
      and exists (select 1 from bedrijf_inspectie_doel d
@@ -4520,16 +4554,12 @@ begin
   update bedrijf_inspectie_doel set persoon_id = p_doel_id where persoon_id = p_bron_id;
   get diagnostics n_doel = row_count;
 
-  -- Deellink: UNIQUE (persoon_id). Zelfde regel; een deellink is een
-  -- deelverwijzing, geen bewijsstuk, dus die van de bron mag vervallen.
   delete from deellinks
    where persoon_id = p_bron_id
      and exists (select 1 from deellinks d where d.persoon_id = p_doel_id);
   update deellinks set persoon_id = p_doel_id where persoon_id = p_bron_id;
   get diagnostics n_deellink = row_count;
 
-  -- personen.voorgesteld_door is een self-FK met ON DELETE SET NULL: had de bron
-  -- iemand voorgesteld, dan zou dat spoor bij het verwijderen verdwijnen.
   update personen set voorgesteld_door = p_doel_id where voorgesteld_door = p_bron_id;
 
   v_verschoven := jsonb_build_object(
@@ -4537,19 +4567,15 @@ begin
     'toolbox', n_toolbox, 'inspectie_doel', n_doel, 'deellink', n_deellink
   );
 
-  -- Logregel vóór het verwijderen: na de delete is de bron-naam nergens meer te
-  -- halen. doel_id blijft bestaan, dus die mag als verwijzing mee.
   insert into public.persoon_merge_log (company_id, doel_id, doel_naam, bron_naam, verschoven, wie)
   values (v_company, p_doel_id, v_doel_naam, v_bron_naam, v_verschoven, auth.uid());
 
-  -- De bron verdwijnt. Alles wat nog naar hem wees is hierboven verschoven; wat
-  -- resteert (niets) zou casceren, en dat willen we juist weten als het misgaat.
+  insert into public.audit_log (wie, actie, entiteit, entiteit_id, company_id, detail)
+  values (auth.uid(), 'personen_samengevoegd', 'personen', p_doel_id, v_company,
+    jsonb_build_object('doel_naam', v_doel_naam, 'bron_naam', v_bron_naam));
+
   delete from personen where id = p_bron_id;
 
-  -- Pas NA de delete de lege velden van de doel-persoon aanvullen uit de bron:
-  -- personen heeft UNIQUE (company_id, email), dus het e-mailadres overnemen kan
-  -- niet zolang de bron nog bestaat. coalesce, dus eigen gegevens van de
-  -- doel-persoon worden nooit overschreven — alleen gaten gevuld.
   update personen
      set email            = coalesce(email,            v_bron.email),
          functiegroep_id  = coalesce(functiegroep_id,  v_bron.functiegroep_id),
@@ -4561,6 +4587,19 @@ begin
   return jsonb_build_object(
     'doel_naam', v_doel_naam, 'bron_naam', v_bron_naam, 'verschoven', v_verschoven
   );
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.personen_verwijderd_loggen()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  insert into public.audit_log (wie, actie, entiteit, entiteit_id, company_id, detail)
+  values (auth.uid(), 'persoon_verwijderd', 'personen', old.id, old.company_id,
+    jsonb_build_object('naam', old.naam, 'email', old.email));
+  return old;
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.persoon_functiegroep_zetten(p_persoon_id uuid, p_functiegroep_id uuid)
@@ -4706,6 +4745,25 @@ begin
   end if;
 
   delete from inspectie_sjabloon_punt where id = p_punt_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.rol_gewijzigd_loggen()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  if new.role is distinct from old.role or new.company_id is distinct from old.company_id then
+    insert into public.audit_log (wie, actie, entiteit, entiteit_id, company_id, detail)
+    values (auth.uid(), 'rol_gewijzigd', 'users', new.id, new.company_id,
+      jsonb_build_object(
+        'email', new.email,
+        'oude_rol', old.role, 'nieuwe_rol', new.role,
+        'oud_bedrijf', old.company_id, 'nieuw_bedrijf', new.company_id
+      ));
+  end if;
+  return new;
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.rubriek_koppelen(p_company_id uuid, p_rubriek_id uuid)
@@ -5700,6 +5758,12 @@ GRANT EXECUTE ON FUNCTION public.audit_iso_observatie_toevoegen(p_audit_id uuid)
 REVOKE EXECUTE ON FUNCTION public.audit_iso_observatie_verwijderen(p_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.audit_iso_observatie_verwijderen(p_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.audit_iso_observatie_verwijderen(p_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.audit_log_immutable() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.audit_log_immutable() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.audit_log_immutable() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.audit_log_schrijven(p_actie text, p_entiteit text, p_entiteit_id uuid, p_company_id uuid, p_detail jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.audit_log_schrijven(p_actie text, p_entiteit text, p_entiteit_id uuid, p_company_id uuid, p_detail jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.audit_log_schrijven(p_actie text, p_entiteit text, p_entiteit_id uuid, p_company_id uuid, p_detail jsonb) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.audit_opslaan(p_audit_id uuid, p_patch jsonb) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.audit_opslaan(p_audit_id uuid, p_patch jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.audit_opslaan(p_audit_id uuid, p_patch jsonb) TO service_role;
@@ -5958,6 +6022,9 @@ GRANT EXECUTE ON FUNCTION public.personen_merge_voorbeeld(p_doel_id uuid, p_bron
 REVOKE EXECUTE ON FUNCTION public.personen_samenvoegen(p_doel_id uuid, p_bron_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.personen_samenvoegen(p_doel_id uuid, p_bron_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.personen_samenvoegen(p_doel_id uuid, p_bron_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.personen_verwijderd_loggen() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.personen_verwijderd_loggen() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.personen_verwijderd_loggen() TO service_role;
 REVOKE EXECUTE ON FUNCTION public.persoon_functiegroep_zetten(p_persoon_id uuid, p_functiegroep_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.persoon_functiegroep_zetten(p_persoon_id uuid, p_functiegroep_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.persoon_functiegroep_zetten(p_persoon_id uuid, p_functiegroep_id uuid) TO service_role;
@@ -5969,6 +6036,9 @@ GRANT EXECUTE ON FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid
 REVOKE EXECUTE ON FUNCTION public.punt_verwijderen(p_punt_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.punt_verwijderen(p_punt_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.punt_verwijderen(p_punt_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.rol_gewijzigd_loggen() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rol_gewijzigd_loggen() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rol_gewijzigd_loggen() TO service_role;
 REVOKE EXECUTE ON FUNCTION public.rubriek_koppelen(p_company_id uuid, p_rubriek_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.rubriek_koppelen(p_company_id uuid, p_rubriek_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.rubriek_koppelen(p_company_id uuid, p_rubriek_id uuid) TO service_role;
@@ -6069,11 +6139,16 @@ GRANT EXECUTE ON FUNCTION public.zet_mijn_naam(p_naam text) TO service_role;
 -- Triggers (public)
 -- ============================================================
 
+CREATE TRIGGER audit_log_no_delete BEFORE DELETE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_immutable();
+CREATE TRIGGER audit_log_no_truncate BEFORE TRUNCATE ON public.audit_log FOR EACH STATEMENT EXECUTE FUNCTION audit_log_immutable();
+CREATE TRIGGER audit_log_no_update BEFORE UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_immutable();
 CREATE TRIGGER inspectie_bevroren_no_update BEFORE UPDATE ON public.inspectie FOR EACH ROW EXECUTE FUNCTION inspectie_bevroren_bewaken();
 CREATE TRIGGER inspectie_bevinding_bevroren_no_update BEFORE DELETE OR UPDATE ON public.inspectie_bevinding FOR EACH ROW EXECUTE FUNCTION inspectie_bevinding_bevroren_bewaken();
 CREATE TRIGGER inspectie_historie_append_only_trg BEFORE DELETE OR UPDATE ON public.inspectie_historie FOR EACH ROW EXECUTE FUNCTION inspectie_historie_append_only();
 CREATE TRIGGER module_historie_append_only_trg BEFORE DELETE OR UPDATE ON public.module_historie FOR EACH ROW EXECUTE FUNCTION module_historie_append_only();
+CREATE TRIGGER personen_verwijderd_audit AFTER DELETE ON public.personen FOR EACH ROW EXECUTE FUNCTION personen_verwijderd_loggen();
 CREATE TRIGGER toolbox_deelname_no_update BEFORE UPDATE ON public.toolbox_deelname FOR EACH ROW EXECUTE FUNCTION toolbox_deelname_immutable();
+CREATE TRIGGER users_rol_audit AFTER UPDATE OF role, company_id ON public.users FOR EACH ROW EXECUTE FUNCTION rol_gewijzigd_loggen();
 
 -- ============================================================
 -- Auth-integratie (trigger op auth.users)

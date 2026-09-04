@@ -12,6 +12,7 @@ function fout(bericht: string, status: number) {
 // Ruwe vorm zoals deellink_bewijs_lijst die teruggeeft (paden + metadata).
 type RawBewijs = {
   id?: string
+  company_id?: string
   pad?: string
   bestandsnaam?: string | null
   type?: string | null
@@ -54,6 +55,18 @@ export async function POST(request: Request) {
           .from(BEWIJS_BUCKET)
           .createSignedUrl(r.pad, DOWNLOAD_GELDIGHEID_SEC, signedUrlOpties(r.type, r.bestandsnaam))
         downloadUrl = signed?.signedUrl ?? null
+        // Gast heeft geen sessie (auth.uid() = null in de log) — via de
+        // service-role, want de anon-client mag audit_log_schrijven niet
+        // aanroepen (bewust: alleen authenticated/service_role). Legt de
+        // UITGIFTE vast, niet het ophalen; zichtbaar falen, niet blokkerend
+        // (zelfde keuze als de beheerder-download-route).
+        if (downloadUrl) {
+          const { error: logErr } = await service.rpc('audit_log_schrijven', {
+            p_actie: 'bewijs_gedownload', p_entiteit: 'bewijs', p_entiteit_id: r.id ?? null,
+            p_company_id: r.company_id ?? null, p_detail: { bestandsnaam: r.bestandsnaam ?? null, gast: true },
+          })
+          if (logErr) console.error('[audit_log] bewijs_gedownload (gast) mislukt', r.id, logErr.message)
+        }
       }
       return {
         id: String(r.id ?? ''),

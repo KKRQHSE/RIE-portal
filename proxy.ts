@@ -5,11 +5,11 @@ import { NextResponse, type NextRequest } from 'next/server'
 // '/a' = gast-deellinkpagina (actiehouders zonder account).
 // '/api/herinneringen/heartbeat' = automatische wekker, aangeroepen door pg_cron
 //   (heeft géén sessie). De route beschermt zichzelf met de x-heartbeat-secret-check;
-//   zonder die uitzondering zou de middleware de cron-aanroep naar /login redirecten.
+//   zonder die uitzondering zou de proxy de cron-aanroep naar /login redirecten.
 // '/api/bewijs/gast-upload' + '/api/bewijs/gast-download' = bewijs-routes die de
 //   sessieloze gast via zijn deellink aanroept. De beveiliging zit volledig in de
 //   routes zelf: de deellink-token wordt door de SECURITY DEFINER-RPC's gevalideerd
-//   (zie lib/supabase/anon.ts). Zonder deze uitzondering zou de middleware de gast
+//   (zie lib/supabase/anon.ts). Zonder deze uitzondering zou de proxy de gast
 //   naar /login redirecten en kon hij geen bewijs uploaden/downloaden.
 const PUBLIC_PATHS = [
   '/login',
@@ -24,7 +24,10 @@ const PUBLIC_PATHS = [
   '/api/incident/foto-upload',
 ]
 
-export async function middleware(request: NextRequest) {
+// Hernoemd van middleware.ts naar proxy.ts in Next.js 16 (zelfde API/gedrag,
+// alleen de bestands-/functienaam wijzigt — zie de "Migration to Proxy"-sectie
+// in node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md).
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(

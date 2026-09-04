@@ -192,14 +192,14 @@ async function run() {
   // --- 1. anon komt er niet eens bij (EXECUTE ingetrokken, Beslissing 62) ---
   {
     const { error } = await anon.rpc('inspectie_ai_suggestie_opslaan', {
-      p_foto_id: A.fotoId, p_beschrijving: 'x', p_concept: 'y',
+      p_foto_id: A.fotoId, p_beschrijving: 'x', p_bevindingen: ['y'], p_acties: [],
       p_leverancier: 'groq', p_model: 'test', p_toestemming: true,
     })
     check('anon kan inspectie_ai_suggestie_opslaan niet aanroepen', !!error, error?.message?.slice(0, 60))
   }
   {
     const { error } = await anon.rpc('inspectie_ai_suggestie_besluit', {
-      p_suggestie_id: A.fotoId, p_besluit: 'overgenomen', p_tekst: 'x',
+      p_suggestie_id: A.fotoId, p_besluit: 'overgenomen', p_bevindingen_gekozen: ['x'], p_acties_gekozen: [],
     })
     check('anon kan inspectie_ai_suggestie_besluit niet aanroepen', !!error, error?.message?.slice(0, 60))
   }
@@ -207,7 +207,7 @@ async function run() {
   // --- 2. Toestemming is geen formaliteit: zonder true weigert de RPC ---
   {
     const { error } = await clientA.rpc('inspectie_ai_suggestie_opslaan', {
-      p_foto_id: A.fotoId, p_beschrijving: 'x', p_concept: 'y',
+      p_foto_id: A.fotoId, p_beschrijving: 'x', p_bevindingen: ['y'], p_acties: [],
       p_leverancier: 'groq', p_model: 'test', p_toestemming: false,
     })
     check('opslaan zonder toestemming wordt geweigerd',
@@ -215,7 +215,7 @@ async function run() {
   }
   {
     const { error } = await clientA.rpc('inspectie_ai_suggestie_opslaan', {
-      p_foto_id: A.fotoId, p_beschrijving: 'x', p_concept: 'y',
+      p_foto_id: A.fotoId, p_beschrijving: 'x', p_bevindingen: ['y'], p_acties: [],
       p_leverancier: 'groq', p_model: 'test', p_toestemming: null,
     })
     check('opslaan met toestemming = null wordt geweigerd (null-veilig)',
@@ -225,7 +225,7 @@ async function run() {
   // --- 3. Alleen bij een foto die aan een inspectiepunt hangt ---
   {
     const { error } = await clientA.rpc('inspectie_ai_suggestie_opslaan', {
-      p_foto_id: A.losseFotoId, p_beschrijving: 'x', p_concept: 'y',
+      p_foto_id: A.losseFotoId, p_beschrijving: 'x', p_bevindingen: ['y'], p_acties: [],
       p_leverancier: 'groq', p_model: 'test', p_toestemming: true,
     })
     check('foto zonder inspectiepunt krijgt geen AI-voorwerk',
@@ -235,7 +235,7 @@ async function run() {
   // --- 4. Cross-company: A op de foto van B ---
   {
     const { error } = await clientA.rpc('inspectie_ai_suggestie_opslaan', {
-      p_foto_id: B.fotoId, p_beschrijving: 'x', p_concept: 'y',
+      p_foto_id: B.fotoId, p_beschrijving: 'x', p_bevindingen: ['y'], p_acties: [],
       p_leverancier: 'groq', p_model: 'test', p_toestemming: true,
     })
     check('A kan geen suggestie opslaan op een foto van B', !!error, error ? 'geweigerd' : 'GEEN fout!')
@@ -246,12 +246,14 @@ async function run() {
   }
 
   // --- 5. Positieve controle: A op zijn eigen foto ---
+  const AI_BEVINDING = 'AITEST concept: ladder niet vastgezet, valgevaar.'
+  const AI_ACTIE = 'AITEST actie: ladder vastzetten aan de gevel.'
   let suggestieA = null
   {
     const { data, error } = await clientA.rpc('inspectie_ai_suggestie_opslaan', {
       p_foto_id: A.fotoId,
       p_beschrijving: 'AITEST beschrijving: ladder tegen een gevel.',
-      p_concept: 'AITEST concept: ladder niet vastgezet, valgevaar.',
+      p_bevindingen: [AI_BEVINDING], p_acties: [AI_ACTIE],
       p_leverancier: 'groq', p_model: 'aitest-model', p_toestemming: true,
     })
     suggestieA = data ?? null
@@ -281,7 +283,7 @@ async function run() {
     check('B ziet de suggestie van A niet', !error && (data?.length ?? 0) === 0, `${data?.length ?? '?'} rijen`)
 
     const { error: eB } = await clientB2.rpc('inspectie_ai_suggestie_besluit', {
-      p_suggestie_id: suggestieA, p_besluit: 'overgenomen', p_tekst: 'gekaapt',
+      p_suggestie_id: suggestieA, p_besluit: 'overgenomen', p_bevindingen_gekozen: [AI_BEVINDING], p_acties_gekozen: [],
     })
     check('B kan niet beslissen over de suggestie van A', !!eB, eB ? 'geweigerd' : 'GEEN fout!')
   }
@@ -290,39 +292,64 @@ async function run() {
     check('de toelichting van A is na de poging van B nog steeds leeg', opm === null, `opmerking=${JSON.stringify(opm)}`)
   }
 
-  // --- 8. Overnemen schrijft de door de MENS vastgestelde tekst, niet de AI-tekst ---
+  // --- 8. Overnemen: alleen wat is aangevinkt landt, niets dat niet was
+  //        voorgesteld — de UI biedt checkboxes, geen vrije tekst, en dat
+  //        wordt hier serverside vergrendeld (migratie 0059). ---
   {
+    // Zelfverzonnen tekst die niet in de AI-suggestie voorkwam wordt geweigerd,
+    // ook al staat de suggestie nog open.
     const { error } = await clientA.rpc('inspectie_ai_suggestie_besluit', {
       p_suggestie_id: suggestieA, p_besluit: 'overgenomen',
-      p_tekst: 'AITEST door mens aangepast: ladder niet vastgezet EN te kort.',
+      p_bevindingen_gekozen: ['AITEST door mens verzonnen, niet voorgesteld'], p_acties_gekozen: [],
     })
-    check('A kan zijn eigen suggestie overnemen', !error, error?.message?.slice(0, 60))
+    check('een bevinding die niet uit de AI-suggestie komt wordt geweigerd',
+      !!error && /komt niet uit de ai-suggestie/i.test(error.message || ''), error?.message?.slice(0, 60))
   }
   {
     const opm = await leesOpmerking(A.bevindingId)
-    check('de toelichting bevat de aangepaste MENSELIJKE tekst, niet de AI-tekst',
-      opm === 'AITEST door mens aangepast: ladder niet vastgezet EN te kort.',
-      `opmerking=${JSON.stringify(opm)}`)
+    check('die geweigerde poging heeft niets weggeschreven', opm === null, `opmerking=${JSON.stringify(opm)}`)
+  }
+  {
+    // De échte AI-bevinding + AI-actie aanvinken en overnemen mag wél.
+    const { error } = await clientA.rpc('inspectie_ai_suggestie_besluit', {
+      p_suggestie_id: suggestieA, p_besluit: 'overgenomen',
+      p_bevindingen_gekozen: [AI_BEVINDING], p_acties_gekozen: [AI_ACTIE],
+    })
+    check('A kan zijn eigen suggestie overnemen (aangevinkte bevinding + actie)', !error, error?.message?.slice(0, 60))
+  }
+  {
+    const opm = await leesOpmerking(A.bevindingId)
+    check('de toelichting bevat exact de aangevinkte bevinding', opm === AI_BEVINDING, `opmerking=${JSON.stringify(opm)}`)
   }
   {
     const { data } = await admin
-      .from('inspectie_ai_suggestie').select('ai_concept, besluit_tekst, status, besloten_op')
+      .from('inspectie_ai_suggestie').select('ai_bevindingen, ai_acties, besluit_tekst, status, besloten_op')
       .eq('id', suggestieA).single()
-    check('het oorspronkelijke AI-concept blijft onveranderd bewaard als herkomst',
-      data?.ai_concept === 'AITEST concept: ladder niet vastgezet, valgevaar.'
+    check('het oorspronkelijke AI-voorwerk blijft onveranderd bewaard als herkomst',
+      JSON.stringify(data?.ai_bevindingen) === JSON.stringify([AI_BEVINDING])
+        && JSON.stringify(data?.ai_acties) === JSON.stringify([AI_ACTIE])
         && data?.status === 'overgenomen' && !!data?.besloten_op,
-      `status=${data?.status}`)
+      `status=${data?.status} ai_bevindingen=${JSON.stringify(data?.ai_bevindingen)}`)
+  }
+  {
+    const { data } = await admin
+      .from('pva_items').select('id, onderwerp, status, bron_type, bron_id')
+      .eq('company_id', A.companyId).eq('bron_type', 'inspectie_bevinding').eq('bron_id', A.bevindingId)
+    const actie = (data ?? []).find(p => p.onderwerp === AI_ACTIE)
+    check('de aangevinkte actie staat als eigen rij in de actielijst, gekoppeld aan de bevinding',
+      !!actie && actie.status === 'Open', `${data?.length ?? 0} rijen`)
   }
   {
     const { data } = await admin
       .from('inspectie_historie').select('wijziging')
       .eq('inspectie_id', A.inspectieId)
-    const heeft = (data ?? []).some(h => /AI-suggestie overgenomen/i.test(h.wijziging || ''))
-    check('het overnemen staat in de historie van de inspectie', heeft)
+    const heeftBevinding = (data ?? []).some(h => /AI-suggestie overgenomen/i.test(h.wijziging || ''))
+    const heeftActie = (data ?? []).some(h => /AI-actiesuggestie/i.test(h.wijziging || ''))
+    check('zowel het overnemen als de actiesuggestie staan in de historie', heeftBevinding && heeftActie)
   }
   {
     const { error } = await clientA.rpc('inspectie_ai_suggestie_besluit', {
-      p_suggestie_id: suggestieA, p_besluit: 'verworpen', p_tekst: null,
+      p_suggestie_id: suggestieA, p_besluit: 'verworpen',
     })
     check('een al beoordeelde suggestie kan niet nog eens beslist worden',
       !!error && /al beoordeeld/i.test(error.message || ''), error?.message?.slice(0, 60))
@@ -344,15 +371,17 @@ async function run() {
     }).select('id').single()
 
     const { data: sugId } = await clientA.rpc('inspectie_ai_suggestie_opslaan', {
-      p_foto_id: fotoZonder.id, p_beschrijving: 'AITEST', p_concept: 'AITEST concept',
+      p_foto_id: fotoZonder.id, p_beschrijving: 'AITEST',
+      p_bevindingen: ['AITEST concept'], p_acties: ['AITEST actie zonder resultaat'],
       p_leverancier: 'groq', p_model: 'aitest-model', p_toestemming: true,
     })
     check('een concept opslaan mag wél zonder gekozen resultaat', !!sugId)
 
     const { error } = await clientA.rpc('inspectie_ai_suggestie_besluit', {
-      p_suggestie_id: sugId, p_besluit: 'overgenomen', p_tekst: 'mag hier niet landen',
+      p_suggestie_id: sugId, p_besluit: 'overgenomen',
+      p_bevindingen_gekozen: ['AITEST concept'], p_acties_gekozen: [],
     })
-    check('overnemen zonder gekozen resultaat wordt geweigerd',
+    check('overnemen van een BEVINDING zonder gekozen resultaat wordt geweigerd',
       !!error && /kies eerst een resultaat/i.test(error.message || ''), error?.message?.slice(0, 60))
     {
       const opm = await leesOpmerking(bevZonder.id)
@@ -361,22 +390,39 @@ async function run() {
     {
       // Verwerpen mag wél altijd — een concept weggooien vraagt geen oordeel.
       const { error: eV } = await clientA.rpc('inspectie_ai_suggestie_besluit', {
-        p_suggestie_id: sugId, p_besluit: 'verworpen', p_tekst: null,
+        p_suggestie_id: sugId, p_besluit: 'verworpen',
       })
       check('verwerpen mag wél zonder gekozen resultaat', !eV, eV?.message?.slice(0, 60))
     }
     {
-      // En zodra er een resultaat staat, lukt overnemen gewoon.
+      // Een ACTIE-ALLEEN (geen bevinding aangevinkt) raakt de toelichting niet
+      // en mag daarom WEL zonder gekozen resultaat — nieuw in migratie 0059.
+      const { data: sugActie } = await clientA.rpc('inspectie_ai_suggestie_opslaan', {
+        p_foto_id: fotoZonder.id, p_beschrijving: 'AITEST',
+        p_bevindingen: [], p_acties: ['AITEST actie zonder resultaat 2'],
+        p_leverancier: 'groq', p_model: 'aitest-model', p_toestemming: true,
+      })
+      const { error: eA } = await clientA.rpc('inspectie_ai_suggestie_besluit', {
+        p_suggestie_id: sugActie, p_besluit: 'overgenomen',
+        p_bevindingen_gekozen: [], p_acties_gekozen: ['AITEST actie zonder resultaat 2'],
+      })
+      check('een actie-alleen overnemen lukt ook zonder gekozen resultaat', !eA, eA?.message?.slice(0, 60))
+      const { data: acties } = await admin.from('pva_items')
+        .select('id').eq('bron_type', 'inspectie_bevinding').eq('bron_id', bevZonder.id)
+      check('de actie is aangemaakt, ook zonder resultaat op het punt', (acties?.length ?? 0) === 1)
+    }
+    {
+      // En zodra er een resultaat staat, lukt overnemen van een bevinding gewoon.
       await admin.from('inspectie_bevinding').update({ resultaat: 'in_orde' }).eq('id', bevZonder.id)
       const { data: sug2 } = await clientA.rpc('inspectie_ai_suggestie_opslaan', {
-        p_foto_id: fotoZonder.id, p_beschrijving: 'AITEST', p_concept: 'AITEST concept 2',
+        p_foto_id: fotoZonder.id, p_beschrijving: 'AITEST', p_bevindingen: ['AITEST concept 2'], p_acties: [],
         p_leverancier: 'groq', p_model: 'aitest-model', p_toestemming: true,
       })
       const { error: eO } = await clientA.rpc('inspectie_ai_suggestie_besluit', {
-        p_suggestie_id: sug2, p_besluit: 'overgenomen', p_tekst: 'AITEST nu mag het wel',
+        p_suggestie_id: sug2, p_besluit: 'overgenomen', p_bevindingen_gekozen: ['AITEST concept 2'], p_acties_gekozen: [],
       })
       const opm = await leesOpmerking(bevZonder.id)
-      check('met een resultaat lukt overnemen wél', !eO && opm === 'AITEST nu mag het wel',
+      check('met een resultaat lukt overnemen wél', !eO && opm === 'AITEST concept 2',
         eO?.message?.slice(0, 60) ?? `opmerking=${JSON.stringify(opm)}`)
     }
   }
@@ -384,12 +430,12 @@ async function run() {
   // --- 9. Verwerpen laat de bevinding ongemoeid ---
   {
     const { data: id2 } = await clientA.rpc('inspectie_ai_suggestie_opslaan', {
-      p_foto_id: A.fotoId, p_beschrijving: 'AITEST tweede', p_concept: 'AITEST tweede concept',
+      p_foto_id: A.fotoId, p_beschrijving: 'AITEST tweede', p_bevindingen: ['AITEST tweede concept'], p_acties: [],
       p_leverancier: 'groq', p_model: 'aitest-model', p_toestemming: true,
     })
     const voor = await leesOpmerking(A.bevindingId)
     const { error } = await clientA.rpc('inspectie_ai_suggestie_besluit', {
-      p_suggestie_id: id2, p_besluit: 'verworpen', p_tekst: null,
+      p_suggestie_id: id2, p_besluit: 'verworpen',
     })
     const na = await leesOpmerking(A.bevindingId)
     check('verwerpen lukt en laat de toelichting ongewijzigd', !error && na === voor,
@@ -397,7 +443,7 @@ async function run() {
   }
   {
     const { error } = await clientA.rpc('inspectie_ai_suggestie_besluit', {
-      p_suggestie_id: suggestieA, p_besluit: 'iets_anders', p_tekst: 'x',
+      p_suggestie_id: suggestieA, p_besluit: 'iets_anders', p_bevindingen_gekozen: ['x'], p_acties_gekozen: [],
     })
     check('een onbekend besluit wordt geweigerd',
       !!error && /ongeldig besluit/i.test(error.message || ''), error?.message?.slice(0, 60))
@@ -407,20 +453,20 @@ async function run() {
   {
     // Een verse suggestie klaarzetten vóór het bevriezen, om óók het besluit te toetsen.
     const { data: id3 } = await clientA.rpc('inspectie_ai_suggestie_opslaan', {
-      p_foto_id: A.fotoId, p_beschrijving: 'AITEST derde', p_concept: 'AITEST derde concept',
+      p_foto_id: A.fotoId, p_beschrijving: 'AITEST derde', p_bevindingen: ['AITEST derde concept'], p_acties: [],
       p_leverancier: 'groq', p_model: 'aitest-model', p_toestemming: true,
     })
     await admin.from('inspectie').update({ status: 'afgerond' }).eq('id', A.inspectieId)
 
     const { error: e1 } = await clientA.rpc('inspectie_ai_suggestie_opslaan', {
-      p_foto_id: A.fotoId, p_beschrijving: 'x', p_concept: 'y',
+      p_foto_id: A.fotoId, p_beschrijving: 'x', p_bevindingen: ['y'], p_acties: [],
       p_leverancier: 'groq', p_model: 'test', p_toestemming: true,
     })
     check('bij een AFGERONDE inspectie kan er geen AI-voorwerk meer bij',
       !!e1 && /afgerond/i.test(e1.message || ''), e1?.message?.slice(0, 60))
 
     const { error: e2 } = await clientA.rpc('inspectie_ai_suggestie_besluit', {
-      p_suggestie_id: id3, p_besluit: 'overgenomen', p_tekst: 'te laat',
+      p_suggestie_id: id3, p_besluit: 'overgenomen', p_bevindingen_gekozen: ['AITEST derde concept'], p_acties_gekozen: [],
     })
     check('bij een AFGERONDE inspectie kan een concept niet meer overgenomen worden',
       !!e2 && /afgerond/i.test(e2.message || ''), e2?.message?.slice(0, 60))
@@ -432,7 +478,7 @@ async function run() {
   {
     const { error } = await clientA.from('inspectie_ai_suggestie').insert({
       inspectie_id: A.inspectieId, bevinding_id: A.bevindingId, company_id: A.companyId,
-      ai_concept: 'directe insert', leverancier: 'x', model: 'y',
+      ai_bevindingen: ['directe insert'], leverancier: 'x', model: 'y',
     })
     check('een directe insert op inspectie_ai_suggestie wordt geweigerd', !!error, error ? 'geweigerd' : 'GEEN fout!')
   }
@@ -449,6 +495,7 @@ async function cleanup() {
   if (companyIds.length) {
     for (const tbl of [
       'inspectie_ai_suggestie',
+      'pva_items',
       'inspectie_foto',
       'inspectie_historie',
       'inspectie_bevinding',

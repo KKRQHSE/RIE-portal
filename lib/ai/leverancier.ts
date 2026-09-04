@@ -26,12 +26,14 @@ export type FotoAnalyseInvoer = {
   puntTekst: string | null
 }
 
-// Wat de leverancier teruggeeft. Twee gescheiden velden, want ze hebben een
-// verschillende status: de beschrijving is waarneming, het concept is een
-// voorstel dat de mens nog moet wegen.
+// Wat de leverancier teruggeeft. Drie gescheiden velden, want ze hebben een
+// verschillende status: de beschrijving is waarneming, bevindingen/acties zijn
+// aanvinkbare voorstellen die de mens nog moet wegen — en apart van elkaar,
+// want "wat ik zie" en "wat je eraan kunt doen" zijn geen synoniemen.
 export type FotoAnalyseUitkomst = {
   beschrijving: string
-  conceptBevinding: string
+  bevindingen: string[]
+  acties: string[]
 }
 
 // Een storing bij de leverancier, met een reden die veilig aan de gebruiker

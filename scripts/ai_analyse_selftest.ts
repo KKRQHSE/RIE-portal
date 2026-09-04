@@ -63,47 +63,65 @@ function check(naam: string, ok: boolean, detail?: string) {
 console.log('DEEL 1 — antwoord-parser (geen netwerk)\n')
 
 {
-  const u = leesAntwoord('{"beschrijving": "Een ladder tegen een gevel.", "concept_bevinding": "Ladder niet vastgezet."}')
-  check('kale JSON wordt in twee velden gesplitst',
-    u.beschrijving === 'Een ladder tegen een gevel.' && u.conceptBevinding === 'Ladder niet vastgezet.')
+  const u = leesAntwoord('{"beschrijving": "Een ladder tegen een gevel.", "bevindingen": ["Ladder niet vastgezet."], "acties": ["Ladder vastzetten."]}')
+  check('kale JSON wordt in drie velden gesplitst',
+    u.beschrijving === 'Een ladder tegen een gevel.'
+      && u.bevindingen.length === 1 && u.bevindingen[0] === 'Ladder niet vastgezet.'
+      && u.acties.length === 1 && u.acties[0] === 'Ladder vastzetten.')
 }
 {
-  const u = leesAntwoord('```json\n{"beschrijving": "Rommel in het gangpad.", "concept_bevinding": "Struikelgevaar."}\n```')
+  const u = leesAntwoord('```json\n{"beschrijving": "Rommel in het gangpad.", "bevindingen": ["Struikelgevaar."], "acties": []}\n```')
   check('JSON in een ```-hek wordt gelezen',
-    u.beschrijving === 'Rommel in het gangpad.' && u.conceptBevinding === 'Struikelgevaar.')
+    u.beschrijving === 'Rommel in het gangpad.' && u.bevindingen[0] === 'Struikelgevaar.' && u.acties.length === 0)
 }
 {
-  const u = leesAntwoord('<think>Even nadenken over de foto...</think>\n{"beschrijving": "Losse kabel.", "concept_bevinding": "Kabel over looppad."}')
+  const u = leesAntwoord('<think>Even nadenken over de foto...</think>\n{"beschrijving": "Losse kabel.", "bevindingen": ["Kabel over looppad."], "acties": ["Kabel wegleggen."]}')
   check('een <think>-blok wordt weggeknipt',
-    u.beschrijving === 'Losse kabel.' && u.conceptBevinding === 'Kabel over looppad.')
+    u.beschrijving === 'Losse kabel.' && u.bevindingen[0] === 'Kabel over looppad.' && u.acties[0] === 'Kabel wegleggen.')
 }
 {
-  const u = leesAntwoord('Hier is mijn antwoord:\n{"beschrijving": "Steiger zonder leuning.", "concept_bevinding": "Valgevaar."}\nTot zover.')
+  const u = leesAntwoord('Hier is mijn antwoord:\n{"beschrijving": "Steiger zonder leuning.", "bevindingen": ["Valgevaar."], "acties": ["Leuning plaatsen."]}\nTot zover.')
   check('JSON tussen omringende tekst wordt eruit gevist',
-    u.beschrijving === 'Steiger zonder leuning.' && u.conceptBevinding === 'Valgevaar.')
+    u.beschrijving === 'Steiger zonder leuning.' && u.bevindingen[0] === 'Valgevaar.' && u.acties[0] === 'Leuning plaatsen.')
 }
 {
   // Het model negeert het formaat en antwoordt in proza. Dan liever de hele
-  // tekst als beschrijving dan een verzonnen bevinding.
+  // tekst als beschrijving dan verzonnen bevindingen of acties.
   const u = leesAntwoord('Ik zie een werkbank met gereedschap dat door elkaar ligt.')
-  check('proza zonder JSON belandt in de beschrijving, concept blijft leeg',
-    u.beschrijving === 'Ik zie een werkbank met gereedschap dat door elkaar ligt.' && u.conceptBevinding === '',
-    `concept=${JSON.stringify(u.conceptBevinding)}`)
+  check('proza zonder JSON belandt in de beschrijving, lijsten blijven leeg',
+    u.beschrijving === 'Ik zie een werkbank met gereedschap dat door elkaar ligt.'
+      && u.bevindingen.length === 0 && u.acties.length === 0,
+    `bevindingen=${JSON.stringify(u.bevindingen)} acties=${JSON.stringify(u.acties)}`)
 }
 {
   const u = leesAntwoord('{"beschrijving": "Alleen dit veld."}')
   check('een half ingevuld JSON-antwoord levert nog steeds de beschrijving',
-    u.beschrijving === 'Alleen dit veld.' && u.conceptBevinding === '')
+    u.beschrijving === 'Alleen dit veld.' && u.bevindingen.length === 0 && u.acties.length === 0)
 }
 {
   const u = leesAntwoord('')
-  check('een leeg antwoord geeft twee lege velden (geen crash)',
-    u.beschrijving === '' && u.conceptBevinding === '')
+  check('een leeg antwoord geeft lege velden (geen crash)',
+    u.beschrijving === '' && u.bevindingen.length === 0 && u.acties.length === 0)
 }
 {
   const u = leesAntwoord('<think>alleen maar denken</think>')
   check('een antwoord dat alléén uit denkwerk bestaat geeft niets terug',
-    u.beschrijving === '' && u.conceptBevinding === '')
+    u.beschrijving === '' && u.bevindingen.length === 0 && u.acties.length === 0)
+}
+{
+  // Zie je niets, dan mogen bevindingen/acties gewoon leeg zijn — geen fout.
+  const u = leesAntwoord('{"beschrijving": "Alles ziet er in orde uit.", "bevindingen": [], "acties": []}')
+  check('lege lijsten zijn een geldig antwoord (geen risico gezien)',
+    u.beschrijving === 'Alles ziet er in orde uit.' && u.bevindingen.length === 0 && u.acties.length === 0)
+}
+{
+  // Een model dat de bovengrens negeert wordt hard afgekapt, en niet-strings
+  // in de lijst worden overgeslagen in plaats van een crash te geven.
+  const veel = Array.from({ length: 9 }, (_, i) => `punt ${i + 1}`)
+  const u = leesAntwoord(JSON.stringify({ beschrijving: 'x', bevindingen: [...veel, 123, null], acties: veel }))
+  check('lijsten worden afgekapt op AI_MAX_ITEMS en niet-strings genegeerd',
+    u.bevindingen.length === 5 && u.acties.length === 5 && u.bevindingen[0] === 'punt 1',
+    `bevindingen=${u.bevindingen.length} acties=${u.acties.length}`)
 }
 {
   const ok = SYSTEEM_PROMPT.includes('Nederlands')
@@ -181,13 +199,18 @@ if (!SLEUTEL) {
 
     const uitkomst = leesAntwoord(inhoud)
     check('de parser haalt er een beschrijving uit', uitkomst.beschrijving.trim().length > 0)
-    check('de parser haalt er een concept-bevinding uit', uitkomst.conceptBevinding.trim().length > 0)
+    // Geen harde eis op niet-lege lijsten: het testplaatje is twee kleurvlakken
+    // zonder echt risico, en de opdracht zegt expliciet niets te verzinnen als
+    // er niets te vinden is. Alleen de VORM moet kloppen (arrays, geen crash).
+    check('bevindingen en acties komen als array terug (leeg mag, verzonnen niet)',
+      Array.isArray(uitkomst.bevindingen) && Array.isArray(uitkomst.acties))
     check('het model kijkt echt naar het beeld (noemt rood of blauw)',
       /rood|blauw|red|blue/i.test(inhoud))
 
     console.log('\n--- wat het model teruggaf ---')
     console.log('beschrijving :', uitkomst.beschrijving.slice(0, 300))
-    console.log('concept      :', uitkomst.conceptBevinding.slice(0, 300))
+    console.log('bevindingen  :', JSON.stringify(uitkomst.bevindingen).slice(0, 300))
+    console.log('acties       :', JSON.stringify(uitkomst.acties).slice(0, 300))
     console.log('------------------------------')
   }
 }

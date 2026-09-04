@@ -88,7 +88,7 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
   const herlaadSuggesties = useCallback(async () => {
     const { data } = await supabase
       .from('inspectie_ai_suggestie')
-      .select('id, bevinding_id, foto_id, ai_beschrijving, ai_concept, leverancier, model, status')
+      .select('id, bevinding_id, foto_id, ai_beschrijving, ai_bevindingen, ai_acties, leverancier, model, status')
       .eq('inspectie_id', inspectie.id)
       .order('aangemaakt_op', { ascending: false })
     setSuggesties((data ?? []).map(r => ({
@@ -96,7 +96,8 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
       bevinding_id: String(r.bevinding_id),
       foto_id: (r.foto_id as string | null) ?? null,
       beschrijving: (r.ai_beschrijving as string | null) ?? null,
-      concept: (r.ai_concept as string | null) ?? null,
+      bevindingen: (r.ai_bevindingen as string[] | null) ?? [],
+      acties: (r.ai_acties as string[] | null) ?? [],
       leverancier: String(r.leverancier ?? ''),
       model: String(r.model ?? ''),
       status: r.status as AiSuggestie['status'],

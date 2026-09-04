@@ -386,13 +386,13 @@ async function run() {
     const fotoZonder = await maakFoto(A.companyId, A.inspectieId, A.bevindingZonder,
       'zonder.png', maakTestPng(), 'image/png')
     const { data: sugId, error: eOp } = await kamA.client.rpc('inspectie_ai_suggestie_opslaan', {
-      p_foto_id: fotoZonder.id, p_beschrijving: 'AIROB', p_concept: 'AIROB concept',
+      p_foto_id: fotoZonder.id, p_beschrijving: 'AIROB', p_bevindingen: ['AIROB concept'], p_acties: [],
       p_leverancier: 'groq', p_model: 'test', p_toestemming: true,
     })
     check('een concept opslaan mag ook zonder gekozen resultaat', !eOp && !!sugId, eOp?.message?.slice(0, 60))
 
     const { error } = await kamA.client.rpc('inspectie_ai_suggestie_besluit', {
-      p_suggestie_id: sugId, p_besluit: 'overgenomen', p_tekst: 'langs het scherm om',
+      p_suggestie_id: sugId, p_besluit: 'overgenomen', p_bevindingen_gekozen: ['AIROB concept'], p_acties_gekozen: [],
     })
     check('overnemen zonder resultaat wordt ook rechtstreeks op de RPC geweigerd',
       !!error && /kies eerst een resultaat/i.test(error.message || ''), error?.message?.slice(0, 60))

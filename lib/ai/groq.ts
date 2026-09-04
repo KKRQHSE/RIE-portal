@@ -92,7 +92,7 @@ export function maakGroqLeverancier(): Leverancier {
       }
 
       const uitkomst = leesAntwoord(inhoud)
-      if (!uitkomst.beschrijving && !uitkomst.conceptBevinding) {
+      if (!uitkomst.beschrijving && uitkomst.bevindingen.length === 0 && uitkomst.acties.length === 0) {
         throw new AiStoring('De AI gaf geen bruikbaar antwoord.', 'leeg antwoord na parsen')
       }
       return uitkomst

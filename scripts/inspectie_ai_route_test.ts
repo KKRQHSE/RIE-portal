@@ -328,8 +328,10 @@ async function run() {
       check('met sleutel: de analyse slaagt', r.status === 200, `HTTP ${r.status} ${JSON.stringify(r.body).slice(0, 160)}`)
       const suggestie = r.body.suggestie as Record<string, unknown> | undefined
       check('er komt een suggestie terug met status concept', suggestie?.status === 'concept', String(suggestie?.status))
-      check('de suggestie heeft een beschrijving of een concept',
-        !!(suggestie?.beschrijving || suggestie?.concept))
+      const bevindingen = suggestie?.bevindingen as unknown
+      const acties = suggestie?.acties as unknown
+      check('de suggestie heeft een beschrijving, bevindingen of acties',
+        !!(suggestie?.beschrijving || (Array.isArray(bevindingen) && bevindingen.length) || (Array.isArray(acties) && acties.length)))
       check('het antwoord bevat geen sleutel', !/gsk_/i.test(JSON.stringify(r.body)))
       check('de suggestie staat als concept in de database', (await aantalSuggesties(A.companyId)) === 1)
 
@@ -348,7 +350,8 @@ async function run() {
 
       console.log('\n--- het concept dat de inspecteur te zien krijgt ---')
       console.log('beschrijving :', String(suggestie?.beschrijving ?? '').slice(0, 300))
-      console.log('concept      :', String(suggestie?.concept ?? '').slice(0, 300))
+      console.log('bevindingen  :', JSON.stringify(bevindingen).slice(0, 300))
+      console.log('acties       :', JSON.stringify(acties).slice(0, 300))
       console.log('---------------------------------------------------')
     }
   }

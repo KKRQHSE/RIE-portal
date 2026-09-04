@@ -1,14 +1,17 @@
 'use client'
 
 // ============================================================================
-// AI-voorwerk bij één foto van één inspectiepunt (migratie 0050).
+// AI-voorwerk bij één foto van één inspectiepunt (migratie 0050, uitgebreid
+// in 0059 met aanvinkbare bevindingen + actiesuggesties).
 // ----------------------------------------------------------------------------
 // DE MENS BESLIST — dat is hier geen slogan maar de opbouw van het scherm:
 //   * het toestemmingsvinkje staat standaard UIT en zonder vinkje is de knop
 //     dood; er gaat geen foto weg door een onbedoelde klik;
-//   * wat terugkomt heet zichtbaar CONCEPT en staat in een bewerkbaar veld;
-//   * er wordt niets in de bevinding vastgelegd tot iemand op 'Overnemen' klikt;
-//   * 'Weggooien' laat de toelichting ongemoeid.
+//   * wat terugkomt is een korte beschrijving plus twee lijsten met AANVINK-
+//     BARE voorstellen (bevindingen, acties) — allemaal standaard UIT;
+//   * er wordt niets in de bevinding of de actielijst vastgelegd tot iemand
+//     op 'Overnemen' klikt, en dan ALLEEN wat is aangevinkt;
+//   * 'Weggooien' laat alles ongemoeid.
 //
 // De aanroep zelf gebeurt server-side (app/api/inspectie/ai-analyse). Deze
 // component kent geen sleutel, geen endpoint en geen leverancier — alleen wat
@@ -41,7 +44,8 @@ type Props = {
   heeftToelichting: boolean
   // Is er al een resultaat gekozen bij dit punt? Zonder resultaat rendert het
   // invulscherm geen toelichtingveld, dus zou een overgenomen tekst onzichtbaar
-  // worden opgeslagen. Overnemen is dan uit — de RPC weigert het ook (0051).
+  // worden opgeslagen. Overnemen van bevindingen is dan uit — de RPC weigert
+  // het ook (0051). Acties-alleen raken de toelichting niet en blijven vrij.
   heeftResultaat: boolean
   t: Vertaler
   onOvergenomen: (tekst: string) => void
@@ -60,7 +64,10 @@ export default function InspectieFotoAi({
   const [besluitBezig, setBesluitBezig] = useState(false)
   const [melding, setMelding] = useState<Melding>(null)
   const [suggestie, setSuggestie] = useState<AiSuggestie | null>(openConcept)
-  const [conceptTekst, setConceptTekst] = useState(openConcept?.concept ?? '')
+  // Index-gebaseerd: welke bevindingen/acties heeft de inspecteur aangevinkt.
+  // Standaard leeg — ook aanvinken is een bewuste keuze, geen automatische.
+  const [bevGekozen, setBevGekozen] = useState<Set<number>>(new Set())
+  const [actGekozen, setActGekozen] = useState<Set<number>>(new Set())
   const [overgenomen, setOvergenomen] = useState(false)
 
   const vinkjeId = `ai-toestemming-${foto.id}`
@@ -68,6 +75,12 @@ export default function InspectieFotoAi({
   const dienst = aiStatus?.weergavenaam || 'een externe AI-dienst'
   const waarschuwing = t(aiStatus?.regio === 'eu' ? 'aiWaarschuwingEu' : 'aiWaarschuwingBuitenEu')
     .replace('{dienst}', dienst)
+
+  function wissel(set: Set<number>, zet: (s: Set<number>) => void, i: number) {
+    const volgende = new Set(set)
+    if (volgende.has(i)) volgende.delete(i); else volgende.add(i)
+    zet(volgende)
+  }
 
   async function analyseer() {
     if (!toestemming || bezig) return
@@ -102,7 +115,8 @@ export default function InspectieFotoAi({
       }
 
       setSuggestie(uitkomst.suggestie)
-      setConceptTekst(uitkomst.suggestie.concept ?? '')
+      setBevGekozen(new Set())
+      setActGekozen(new Set())
       setOvergenomen(false)
     } catch {
       setMelding({ soort: 'fout', tekst: t('foutAi') })
@@ -111,22 +125,25 @@ export default function InspectieFotoAi({
     }
   }
 
-  // Het enige moment waarop AI-voorwerk in de bevinding belandt — en dan nog
-  // met de tekst zoals die nú in het bewerkbare veld staat, niet met de
-  // oorspronkelijke AI-tekst.
+  // Het enige moment waarop AI-voorwerk in de bevinding of de actielijst
+  // belandt — en dan nog alleen met wat is aangevinkt.
   async function overnemen() {
-    if (!suggestie || besluitBezig || !heeftResultaat) return
-    const tekst = conceptTekst.trim()
-    if (!tekst) {
-      setMelding({ soort: 'fout', tekst: t('aiLeegOvernemen') })
+    if (!suggestie || besluitBezig) return
+    const bevindingen = suggestie.bevindingen.filter((_, i) => bevGekozen.has(i))
+    const acties = suggestie.acties.filter((_, i) => actGekozen.has(i))
+    if (bevindingen.length === 0 && acties.length === 0) {
+      setMelding({ soort: 'fout', tekst: t('aiNietsAangevinkt') })
       return
     }
+    if (bevindingen.length > 0 && !heeftResultaat) return
+
     setBesluitBezig(true)
     setMelding(null)
     const { error } = await supabase.rpc('inspectie_ai_suggestie_besluit', {
       p_suggestie_id: suggestie.id,
       p_besluit: 'overgenomen',
-      p_tekst: tekst,
+      p_bevindingen_gekozen: bevindingen,
+      p_acties_gekozen: acties,
     })
     setBesluitBezig(false)
     if (error) {
@@ -135,7 +152,9 @@ export default function InspectieFotoAi({
     }
     setOvergenomen(true)
     setSuggestie(null)
-    onOvergenomen(tekst)
+    // Alleen de toelichting bijwerken als er ook echt bevindingen zijn gekozen
+    // — acties-alleen raakt de toelichting niet (zie migratie 0059).
+    if (bevindingen.length > 0) onOvergenomen(bevindingen.join('\n'))
     onGewijzigd()
   }
 
@@ -148,7 +167,6 @@ export default function InspectieFotoAi({
     const { error } = await supabase.rpc('inspectie_ai_suggestie_besluit', {
       p_suggestie_id: suggestie.id,
       p_besluit: 'verworpen',
-      p_tekst: null,
     })
     setBesluitBezig(false)
     if (error) {
@@ -156,9 +174,12 @@ export default function InspectieFotoAi({
       return
     }
     setSuggestie(null)
-    setConceptTekst('')
     onGewijzigd()
   }
+
+  const magOvernemen = suggestie !== null
+    && (bevGekozen.size > 0 || actGekozen.size > 0)
+    && (bevGekozen.size === 0 || heeftResultaat)
 
   return (
     <div className="mt-2 rounded border border-ink/10 bg-surface/40 p-2 space-y-2">
@@ -225,7 +246,7 @@ export default function InspectieFotoAi({
       )}
 
       {suggestie && (
-        <div className="rounded border border-dashed border-accent/40 bg-white p-2 space-y-2">
+        <div className="rounded border border-dashed border-accent/40 bg-white p-2 space-y-3">
           {/* Het labeltje. Wie dit scherm later terugziet moet zonder uitleg
               zien dat dit voorwerk van een machine is, niet van een collega. */}
           <div className="flex flex-wrap items-center gap-2">
@@ -246,26 +267,67 @@ export default function InspectieFotoAi({
             </div>
           )}
 
-          <div>
-            <label className="text-[11px] font-medium text-ink/40 uppercase tracking-wider" htmlFor={`ai-concept-${foto.id}`}>
-              {t('aiConceptLabel')}
-            </label>
-            <textarea
-              id={`ai-concept-${foto.id}`}
-              value={conceptTekst}
-              onChange={e => setConceptTekst(e.target.value)}
-              rows={3}
-              className="w-full text-sm border border-ink/20 rounded px-3 py-2 mt-1 resize-none bg-white"
-            />
-          </div>
+          {suggestie.bevindingen.length > 0 && (
+            <fieldset>
+              <legend className="text-[11px] font-medium text-ink/40 uppercase tracking-wider mb-1">
+                {t('aiBevindingenLabel')}
+              </legend>
+              <ul className="space-y-1">
+                {suggestie.bevindingen.map((bv, i) => {
+                  const id = `ai-bev-${foto.id}-${i}`
+                  return (
+                    <li key={id} className="flex items-start gap-2">
+                      <input
+                        id={id}
+                        type="checkbox"
+                        checked={bevGekozen.has(i)}
+                        onChange={() => wissel(bevGekozen, setBevGekozen, i)}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
+                      />
+                      <label htmlFor={id} className="text-xs text-ink/70 cursor-pointer">{bv}</label>
+                    </li>
+                  )
+                })}
+              </ul>
+            </fieldset>
+          )}
 
-          {heeftToelichting && heeftResultaat && (
+          {suggestie.acties.length > 0 && (
+            <fieldset>
+              <legend className="text-[11px] font-medium text-ink/40 uppercase tracking-wider mb-1">
+                {t('aiActiesLabel')}
+              </legend>
+              <ul className="space-y-1">
+                {suggestie.acties.map((ac, i) => {
+                  const id = `ai-act-${foto.id}-${i}`
+                  return (
+                    <li key={id} className="flex items-start gap-2">
+                      <input
+                        id={id}
+                        type="checkbox"
+                        checked={actGekozen.has(i)}
+                        onChange={() => wissel(actGekozen, setActGekozen, i)}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
+                      />
+                      <label htmlFor={id} className="text-xs text-ink/70 cursor-pointer">{ac}</label>
+                    </li>
+                  )
+                })}
+              </ul>
+            </fieldset>
+          )}
+
+          {suggestie.bevindingen.length === 0 && suggestie.acties.length === 0 && (
+            <p className="text-xs text-ink/50">{t('aiGeenVoorstellen')}</p>
+          )}
+
+          {bevGekozen.size > 0 && heeftToelichting && heeftResultaat && (
             <p className="text-[11px] text-amber-800">{t('aiVervangtTekst')}</p>
           )}
 
           {/* Zonder gekozen resultaat is er geen toelichtingveld om in te landen.
-              Overnemen zou de tekst dan onzichtbaar opslaan — dus uit, mét uitleg. */}
-          {!heeftResultaat && (
+              Overnemen van bevindingen zou de tekst dan onzichtbaar opslaan. */}
+          {bevGekozen.size > 0 && !heeftResultaat && (
             <p className="text-[11px] text-amber-800">{t('aiEerstResultaat')}</p>
           )}
 
@@ -273,8 +335,8 @@ export default function InspectieFotoAi({
             <button
               type="button"
               onClick={overnemen}
-              disabled={besluitBezig || !heeftResultaat}
-              title={!heeftResultaat ? t('aiEerstResultaat') : undefined}
+              disabled={besluitBezig || !magOvernemen}
+              title={!magOvernemen ? t('aiNietsAangevinkt') : undefined}
               className="text-xs px-4 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
             >
               {t('aiOvernemen')}

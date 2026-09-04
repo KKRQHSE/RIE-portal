@@ -27,7 +27,10 @@ export type AiSuggestie = {
   bevinding_id: string
   foto_id: string | null
   beschrijving: string | null
-  concept: string | null
+  // Aanvinkbare voorstellen: wat de AI ziet als risico (bevindingen) en wat
+  // hij daartegen zou kunnen doen (acties) — twee gescheiden lijsten.
+  bevindingen: string[]
+  acties: string[]
   leverancier: string
   model: string
   status: AiSuggestieStatus

@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     for (const c of companies ?? []) namen.set(c.id as string, c.name as string)
   }
 
-  const samenvatting: Array<{ companyId: string; verstuurd: number; mislukt: number }> = []
+  const samenvatting: Array<{ companyId: string; verstuurd: number; mislukt: number; fout?: string }> = []
 
   for (const inst of instellingen ?? []) {
     const companyId = inst.company_id as string
@@ -69,8 +69,10 @@ export async function POST(request: Request) {
         p_alleen_ritme: true,
       })
       if (error) {
-        // Eén bedrijf faalt → overslaan, de rest gaat door.
-        samenvatting.push({ companyId, verstuurd, mislukt })
+        // Eén bedrijf faalt → overslaan, de rest gaat door — maar niet meer
+        // stil: dit moet zichtbaar anders zijn dan "niemand aan de beurt".
+        console.error('[heartbeat] RPC-fout bij bedrijf', companyId, error.message)
+        samenvatting.push({ companyId, verstuurd, mislukt, fout: error.message })
         continue
       }
       const kandidaten = (data ?? []) as Kandidaat[]
@@ -81,6 +83,7 @@ export async function POST(request: Request) {
         try {
           if (!k.email || !k.token) {
             mislukt++
+            console.warn('[heartbeat] kandidaat overgeslagen: geen e-mail/token', companyId, k.persoon_id)
             continue
           }
           const res = await stuurHerinnerMail({
@@ -92,6 +95,7 @@ export async function POST(request: Request) {
           })
           if (!res.ok) {
             mislukt++
+            console.warn('[heartbeat] verzending mislukt', companyId, k.persoon_id, res.fout)
             continue
           }
           await service.rpc('herinnering_loggen', {
@@ -101,12 +105,15 @@ export async function POST(request: Request) {
             p_email: k.email,
           })
           verstuurd++
-        } catch {
+        } catch (e) {
           mislukt++
+          console.error('[heartbeat] onverwachte fout bij kandidaat', companyId, k.persoon_id, e)
         }
       }
-    } catch {
-      // Onverwachte fout op bedrijfsniveau: niet de hele heartbeat stoppen.
+    } catch (e) {
+      // Onverwachte fout op bedrijfsniveau: niet de hele heartbeat stoppen,
+      // maar wel loggen — anders is dit bedrijf straks weer een stille nul.
+      console.error('[heartbeat] onverwachte fout op bedrijfsniveau', companyId, e)
     }
     samenvatting.push({ companyId, verstuurd, mislukt })
   }

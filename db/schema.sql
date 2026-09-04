@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-04T19:27:18.338Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-04T19:32:30.663Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -2906,18 +2906,18 @@ declare
   v_ritme text;
   v_interval interval;
 begin
-  -- Toegang: alleen beheerder van dit bedrijf of admin.
-  if not public.mag_bedrijf_beheren(p_company_id) then
+  -- Toegang: beheerder van dit bedrijf, admin, of de vertrouwde service-role
+  -- (de automatische heartbeat — die authenticeert al zelf met een gedeeld
+  -- geheim in de route, vóórdat deze RPC ooit wordt aangeroepen).
+  if not (public.mag_bedrijf_beheren(p_company_id) or auth.role() = 'service_role') then
     raise exception 'Geen toegang';
   end if;
 
-  -- Ritme van dit bedrijf ophalen (default 'uit' als er geen rij is).
   select coalesce(hi.ritme, 'uit') into v_ritme
   from public.herinner_instelling hi
   where hi.company_id = p_company_id;
   if v_ritme is null then v_ritme := 'uit'; end if;
 
-  -- Voor de heartbeat: bij ritme 'uit' geen enkele kandidaat.
   if p_alleen_ritme and v_ritme = 'uit' then
     return;
   end if;
@@ -2926,7 +2926,7 @@ begin
     when 'dagelijks'   then interval '1 day'
     when 'wekelijks'   then interval '7 days'
     when 'maandelijks' then interval '30 days'
-    else interval '1000 years'  -- 'uit': effectief nooit
+    else interval '1000 years'
   end;
 
   return query
@@ -2952,16 +2952,13 @@ begin
     and p.archived_at is null
     and p.email is not null
     and btrim(p.email) <> ''
-    -- minstens één openstaande actie
     and exists (
       select 1 from public.pva_items a
       where a.persoon_id = p.id
         and a.company_id = p_company_id
         and coalesce(a.status, 'Open') <> 'Afgerond'
     )
-    -- de harde rem: max 2 per 7 dagen
     and public.mag_herinneren(p.id)
-    -- voor de heartbeat: alleen wie volgens ritme aan de beurt is
     and (
       not p_alleen_ritme
       or not exists (

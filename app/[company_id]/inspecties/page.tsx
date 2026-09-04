@@ -8,6 +8,7 @@ import type {
   BibliotheekRegel,
   Functiegroep,
   NormRubriek,
+  DashboardOverzicht,
 } from '@/lib/types'
 
 export default async function InspectiesPage({
@@ -31,6 +32,7 @@ export default async function InspectiesPage({
     { data: regels },
     { data: functiegroepen },
     { data: norm },
+    { data: overzicht },
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
@@ -68,6 +70,9 @@ export default async function InspectiesPage({
       .order('volgorde', { ascending: true }),
     // Het centrale norm-overzicht voor dit bedrijf (koppeling + lokale afwijkingen).
     supabase.rpc('bedrijf_norm_overzicht', { p_company_id: company_id }),
+    // Zelfde overzicht-RPC als het dashboard, alleen voor de inspectie_doel-
+    // sectie (per-persoon voortgang) in de statuskop — geen nieuwe cijfers.
+    supabase.rpc('dashboard_overzicht', { p_company_id: company_id }),
     haalHuisstijl(company_id),
   ])
 
@@ -103,6 +108,7 @@ export default async function InspectiesPage({
       initialRegels={(regels ?? []) as BibliotheekRegel[]}
       functiegroepen={(functiegroepen ?? []) as Functiegroep[]}
       initialNorm={(norm ?? []) as NormRubriek[]}
+      inspectieDoel={(overzicht as DashboardOverzicht | null)?.inspectie_doel ?? null}
     />
   )
 }

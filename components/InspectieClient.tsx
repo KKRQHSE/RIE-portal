@@ -12,9 +12,12 @@ import type {
   InspectieStatus,
   Functiegroep,
   NormRubriek,
+  DashboardOverzicht,
 } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
+import ModuleStatuskop from './ModuleStatuskop'
+import Gauge from './Gauge'
 import InspectieUitvoeren from './InspectieUitvoeren'
 import NormBeheer from './NormBeheer'
 
@@ -25,6 +28,7 @@ type Props = {
   initialRegels: BibliotheekRegel[]
   functiegroepen?: Functiegroep[]
   initialNorm?: NormRubriek[]
+  inspectieDoel?: DashboardOverzicht['inspectie_doel'] | null
 }
 
 type View = 'inspecties' | 'norm' | 'sjablonen'
@@ -61,6 +65,7 @@ export default function InspectieClient({
   initialRegels,
   functiegroepen = [],
   initialNorm = [],
+  inspectieDoel = null,
 }: Props) {
   const supabase = createClient()
   const router = useRouter()
@@ -202,6 +207,30 @@ export default function InspectieClient({
           <h1 className="text-xl font-semibold text-ink">{company.name}</h1>
           <p className="text-sm text-ink/50 mt-0.5">Werkplekinspectie</p>
         </div>
+
+        {!open && inspectieDoel && (
+          <ModuleStatuskop
+            titel="Werkplekinspecties"
+            ring={inspectieDoel.totaal_doel > 0
+              ? { waarde: inspectieDoel.totaal_gedaan, totaal: inspectieDoel.totaal_doel, ringLabel: 'gedaan' }
+              : null}
+            cijfers={[{ label: 'sjablonen', waarde: initialSjablonen.length }]}
+            actie={{ label: 'Inspectie starten', href: '#inspectie-starten' }}
+          >
+            {/* Per-persoon voortgang tegen doel — zelfde mini-gauges als het
+                dashboard (DashboardClient), hier bovenaan de module zelf. */}
+            {inspectieDoel.personen.length > 0 && (
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {inspectieDoel.personen.map(p => (
+                  <div key={p.naam} className="flex items-center gap-1.5">
+                    <Gauge value={p.gedaan} total={p.doel} size={36} centerText={String(p.gedaan)} />
+                    <span className="text-xs text-ink/50 truncate max-w-[7rem]">{p.naam}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ModuleStatuskop>
+        )}
 
         {open ? (
           <InspectieUitvoeren
@@ -349,7 +378,7 @@ function Bibliotheek({
   const filterSelect = 'text-sm border border-ink/20 rounded px-2 py-2 min-h-[44px] bg-white'
 
   return (
-    <div className="space-y-4">
+    <div id="inspectie-starten" className="space-y-4 scroll-mt-20">
       {(() => {
         const heeftNorm = normPunten > 0
         const paden = (heeftNorm ? 1 : 0) + bruikbaar.length

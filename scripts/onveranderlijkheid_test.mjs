@@ -171,9 +171,13 @@ async function run() {
       ['bewijssoort', { bewijssoort: 'fysiek_aanwezig' }],
       ['tekst_snap', { tekst_snap: 'ONVTEST vervalste instructietekst' }],
       ['titel_snap', { titel_snap: 'ONVTEST vervalste titel' }],
-      ['persoon_id', { persoon_id: null }],
       ['company_id', { company_id: null }],
     ]
+    // persoon_id -> null staat sinds migratie 0061 bewust NIET meer in deze
+    // lijst: dat is nu een geldige overgang (de FK ON DELETE SET NULL zet 'm
+    // zo als de gekoppelde persoon verdwijnt, zie DEEL 5). Alle overige
+    // kolommen, inclusief persoon_id naar een ANDERE persoon zonder dat de
+    // oude weg is, blijven hier gewoon getoetst.
     for (const [kolom, patch] of pogingen) {
       const { error } = await admin.from('toolbox_deelname').update(patch).eq('id', id)
       check(`service_role kan ${kolom} NIET wijzigen`, !!error,
@@ -411,6 +415,39 @@ async function run() {
     check('FK ON DELETE SET NULL werkt nog op een afgeronde inspectie',
       naDelete?.persoon_id === null && naDelete?.conclusie === 'ONVTEST conclusie')
     await admin.from('personen').delete().eq('id', p2.id)
+  }
+
+  // --- migratie 0061: toolbox-bewijs mag niet meer meecascaden met de persoon ---
+  {
+    const { data: p3 } = await admin.from('personen')
+      .insert({ company_id: T.companyId, naam: 'ONVTEST toolbox-cascade', status: 'actief' })
+      .select('id').single()
+    const { data: deelname2, error: eDeel2 } = await admin.from('toolbox_deelname').insert({
+      company_id: T.companyId, persoon_id: p3.id,
+      titel_snap: 'ONVTEST toolbox cascade',
+      tekst_snap: 'ONVTEST instructietekst cascade',
+      bevestigde_naam: 'ONVTEST Bevroren Naam Cascade',
+      afgerond_op: new Date().toISOString(),
+      bewijssoort: 'digitaal',
+      naam_bevestigd: true,
+      handtekening: 'data:image/png;base64,ONVTESThandtekeningCascade',
+      handtekening_gezet_op: new Date().toISOString(),
+    }).select('id').single()
+    check('extra toolbox_deelname kon worden aangemaakt voor de cascade-test',
+      !eDeel2 && !!deelname2, eDeel2?.message)
+
+    if (deelname2) {
+      const { error: eDelPers } = await admin.from('personen').delete().eq('id', p3.id)
+      const { data: naDelete2 } = await admin.from('toolbox_deelname')
+        .select('id, persoon_id, bevestigde_naam, handtekening').eq('id', deelname2.id).maybeSingle()
+      check('persoon verwijderen laat het toolbox-bewijsstuk NIET meer verdwijnen (was: CASCADE, nu: SET NULL)',
+        !!naDelete2, eDelPers ? `persoon-delete geweigerd: ${eDelPers.message}` : `record na delete: ${JSON.stringify(naDelete2)}`)
+      check('de koppeling is losgelaten (persoon_id is null)',
+        naDelete2?.persoon_id === null)
+      check('de bevroren naam en handtekening op het overlevende bewijsstuk zijn ongewijzigd',
+        naDelete2?.bevestigde_naam === 'ONVTEST Bevroren Naam Cascade'
+        && naDelete2?.handtekening === 'data:image/png;base64,ONVTESThandtekeningCascade')
+    }
   }
 
   // --- account verwijderen mag historie.wie nog op NULL zetten ---

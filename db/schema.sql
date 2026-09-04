@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-04T15:45:55.345Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-04T18:36:52.077Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -583,7 +583,7 @@ CREATE TABLE public.toolbox_bron (
 CREATE TABLE public.toolbox_deelname (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
-  persoon_id uuid NOT NULL,
+  persoon_id uuid,
   toolbox_id uuid,
   bewijssoort text DEFAULT 'digitaal'::text NOT NULL,
   titel_snap text NOT NULL,
@@ -830,7 +830,7 @@ ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_persoon_id_fkey FOREIGN KE
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_rie_versie_id_fkey FOREIGN KEY (rie_versie_id) REFERENCES rie_versies(id);
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id);
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
-ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE CASCADE;
+ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE SET NULL;
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_sessie_id_fkey FOREIGN KEY (sessie_id) REFERENCES toolbox_sessie(id) ON DELETE CASCADE;
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_toolbox_id_fkey FOREIGN KEY (toolbox_id) REFERENCES centrale_toolbox(id) ON DELETE SET NULL;
 ALTER TABLE public.toolbox_sessie ADD CONSTRAINT toolbox_sessie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
@@ -5045,17 +5045,11 @@ AS $function$
 declare
   v_company uuid;
 begin
-  -- Alles behalve persoon_id moet identiek blijven. Kolomlijst-vrij, dus
-  -- toekomstige kolommen zijn automatisch beschermd.
   if to_jsonb(new) - 'persoon_id' is distinct from to_jsonb(old) - 'persoon_id' then
     raise exception 'Een afgerond toolbox-record is onveranderlijk';
   end if;
 
-  -- Alleen de koppeling mag verschuiven, en uitsluitend binnen hetzelfde bedrijf.
-  if new.persoon_id is null then
-    raise exception 'Een afgerond toolbox-record heeft altijd een persoon';
-  end if;
-  if new.persoon_id is distinct from old.persoon_id then
+  if new.persoon_id is distinct from old.persoon_id and new.persoon_id is not null then
     select company_id into v_company from personen where id = new.persoon_id;
     if v_company is null then
       raise exception 'Persoon niet gevonden';
@@ -5064,6 +5058,8 @@ begin
       raise exception 'Persoon hoort niet bij dit bedrijf';
     end if;
   end if;
+  -- new.persoon_id is null: toegestaan (de gekoppelde persoon is verwijderd;
+  -- het bewijsstuk blijft bevroren bestaan, alleen de koppeling valt weg).
 
   return new;
 end;
@@ -5243,7 +5239,7 @@ begin
         'opkomst', (select count(*) from toolbox_deelname d where d.sessie_id = s.id),
         'aanwezigen', (
           select coalesce(jsonb_agg(d.persoon_id), '[]'::jsonb)
-          from toolbox_deelname d where d.sessie_id = s.id
+          from toolbox_deelname d where d.sessie_id = s.id and d.persoon_id is not null
         )
       ) order by s.datum desc, s.created_at desc), '[]'::jsonb)
       from toolbox_sessie s where s.company_id = p_company_id

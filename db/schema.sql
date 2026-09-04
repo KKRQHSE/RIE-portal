@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-04T14:23:54.857Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-04T15:45:55.345Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -3458,6 +3458,13 @@ begin
 
     select punt_tekst_snap into v_punt from inspectie_bevinding where id = v_bevinding;
 
+    -- NIEUW (0060): een actie overnemen impliceert 'niet in orde'. Vóór de
+    -- resultaat-eis hieronder, zodat een gecombineerde bevinding+actie op een
+    -- nog leeg punt in één keer werkt.
+    if array_length(v_acties, 1) > 0 then
+      update inspectie_bevinding set resultaat = 'niet_in_orde' where id = v_bevinding;
+    end if;
+
     if array_length(v_bevindingen, 1) > 0 then
       -- Zonder resultaat rendert het invulscherm geen toelichtingveld (0051):
       -- alleen relevant als er echt iets naar opmerking gaat.
@@ -3486,7 +3493,8 @@ begin
 
       insert into inspectie_historie (company_id, inspectie_id, wie, wanneer, wijziging)
       values (v_company, v_inspectie, auth.uid(), now(),
-              'AI-actiesuggestie(s) overgenomen als actie bij: ' || coalesce(v_punt, ''));
+              'AI-actiesuggestie(s) overgenomen als actie bij: ' || coalesce(v_punt, '')
+                || ' (oordeel automatisch op "niet in orde" gezet)');
     end if;
   end if;
 

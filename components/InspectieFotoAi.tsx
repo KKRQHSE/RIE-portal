@@ -48,7 +48,11 @@ type Props = {
   // het ook (0051). Acties-alleen raken de toelichting niet en blijven vrij.
   heeftResultaat: boolean
   t: Vertaler
-  onOvergenomen: (tekst: string) => void
+  // opmerking: null als er geen bevindingen zijn aangevinkt (dan blijft de
+  // toelichting ongemoeid). actieOvergenomen: de server (migratie 0060) zet
+  // het resultaat dan automatisch op 'niet_in_orde' — dit spiegelt dat lokaal
+  // bij, zodat het scherm niet op een herlaadbeurt hoeft te wachten.
+  onOvergenomen: (patch: { opmerking: string | null; actieOvergenomen: boolean }) => void
   onGewijzigd: () => void
 }
 
@@ -139,7 +143,10 @@ export default function InspectieFotoAi({
       setMelding({ soort: 'fout', tekst: t('aiNietsAangevinkt') })
       return
     }
-    if (bevindingen.length > 0 && !heeftResultaat) return
+    // Een resultaat is alleen hard vereist als er GEEN actie mee overgenomen
+    // wordt: de server zet het resultaat op 'niet_in_orde' zodra er een actie
+    // bij zit (migratie 0060), dus dat dekt de bevinding dan mee.
+    if (bevindingen.length > 0 && !heeftResultaat && acties.length === 0) return
 
     setBesluitBezig(true)
     setMelding(null)
@@ -156,9 +163,13 @@ export default function InspectieFotoAi({
     }
     setOvergenomen(true)
     setSuggestie(null)
-    // Alleen de toelichting bijwerken als er ook echt bevindingen zijn gekozen
-    // — acties-alleen raakt de toelichting niet (zie migratie 0059).
-    if (bevindingen.length > 0) onOvergenomen(bevindingen.join('\n'))
+    // opmerking blijft null als er geen bevindingen zijn gekozen — acties-
+    // alleen raakt de toelichting niet (migratie 0059). actieOvergenomen
+    // spiegelt de automatische 'niet_in_orde' van de server bij (0060).
+    onOvergenomen({
+      opmerking: bevindingen.length > 0 ? bevindingen.join('\n') : null,
+      actieOvergenomen: acties.length > 0,
+    })
     onGewijzigd()
   }
 
@@ -181,9 +192,11 @@ export default function InspectieFotoAi({
     onGewijzigd()
   }
 
+  // Een aangevinkte actie zet het resultaat automatisch (0060), dus dekt dan
+  // ook de resultaat-eis voor een tegelijk aangevinkte bevinding.
   const magOvernemen = suggestie !== null
     && (bevGekozen.size > 0 || actGekozen.size > 0)
-    && (bevGekozen.size === 0 || heeftResultaat)
+    && (bevGekozen.size === 0 || heeftResultaat || actGekozen.size > 0)
 
   return (
     <div className="mt-2 rounded border border-ink/10 bg-surface/40 p-2 space-y-2">
@@ -346,8 +359,9 @@ export default function InspectieFotoAi({
           )}
 
           {/* Zonder gekozen resultaat is er geen toelichtingveld om in te landen.
-              Overnemen van bevindingen zou de tekst dan onzichtbaar opslaan. */}
-          {bevGekozen.size > 0 && !heeftResultaat && (
+              Overnemen van bevindingen zou de tekst dan onzichtbaar opslaan —
+              tenzij er ook een actie is aangevinkt: die zet het resultaat zelf. */}
+          {bevGekozen.size > 0 && !heeftResultaat && actGekozen.size === 0 && (
             <p className="text-[11px] text-amber-800">{t('aiEerstResultaat')}</p>
           )}
 

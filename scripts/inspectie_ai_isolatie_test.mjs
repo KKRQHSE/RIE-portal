@@ -183,6 +183,12 @@ async function leesOpmerking(bevindingId) {
   return data?.opmerking ?? null
 }
 
+async function leesResultaat(bevindingId) {
+  const { data } = await admin
+    .from('inspectie_bevinding').select('resultaat').eq('id', bevindingId).single()
+  return data?.resultaat ?? null
+}
+
 async function run() {
   const A = await maakBedrijf('A')
   const B = await maakBedrijf('B')
@@ -322,6 +328,14 @@ async function run() {
     check('de toelichting bevat exact de aangevinkte bevinding', opm === AI_BEVINDING, `opmerking=${JSON.stringify(opm)}`)
   }
   {
+    // A.bevindingId begon als 'in_orde' (testopzet); een meegenomen actie hoort
+    // dat te overschrijven naar 'niet_in_orde', ook al stond er al iets anders
+    // (migratie 0060 — "er is een actie nodig" kan niet naast "in orde" bestaan).
+    const resultaat = await leesResultaat(A.bevindingId)
+    check('een meegenomen actie zet het resultaat automatisch op niet_in_orde (ook over een bestaand resultaat heen)',
+      resultaat === 'niet_in_orde', `resultaat=${resultaat}`)
+  }
+  {
     const { data } = await admin
       .from('inspectie_ai_suggestie').select('ai_bevindingen, ai_acties, besluit_tekst, status, besloten_op')
       .eq('id', suggestieA).single()
@@ -410,6 +424,43 @@ async function run() {
       const { data: acties } = await admin.from('pva_items')
         .select('id').eq('bron_type', 'inspectie_bevinding').eq('bron_id', bevZonder.id)
       check('de actie is aangemaakt, ook zonder resultaat op het punt', (acties?.length ?? 0) === 1)
+      const resultaat = await leesResultaat(bevZonder.id)
+      check('een actie-alleen zet het resultaat ook automatisch op niet_in_orde (migratie 0060)',
+        resultaat === 'niet_in_orde', `resultaat=${resultaat}`)
+    }
+    {
+      // NIEUW (0060): bevinding + actie SAMEN overnemen op een punt dat nog
+      // helemaal geen resultaat had, moet in één keer lukken — de actie zet
+      // het resultaat vóórdat de resultaat-eis voor de bevinding gecontroleerd
+      // wordt. Vóór migratie 0060 was dit exact het geval dat 0051 weigerde.
+      const { data: bevSamen } = await admin.from('inspectie_bevinding').insert({
+        company_id: A.companyId, inspectie_id: A.inspectieId,
+        punt_tekst_snap: 'AITEST punt samen zonder resultaat',
+        resultaat: null, afhandeling: 'geen',
+      }).select('id').single()
+      const { data: fotoSamen } = await admin.from('inspectie_foto').insert({
+        inspectie_id: A.inspectieId, bevinding_id: bevSamen.id, company_id: A.companyId,
+        storage_pad: `${A.companyId}/${A.inspectieId}/aitest_samen.jpg`,
+        bestandsnaam: 'aitest_samen.jpg', type: 'image/jpeg', grootte: 1234,
+      }).select('id').single()
+      const BEV_SAMEN = 'AITEST concept samen'
+      const ACT_SAMEN = 'AITEST actie samen'
+      const { data: sugSamen } = await clientA.rpc('inspectie_ai_suggestie_opslaan', {
+        p_foto_id: fotoSamen.id, p_beschrijving: 'AITEST',
+        p_bevindingen: [BEV_SAMEN], p_acties: [ACT_SAMEN],
+        p_leverancier: 'groq', p_model: 'aitest-model', p_toestemming: true,
+      })
+      const { error: eSamen } = await clientA.rpc('inspectie_ai_suggestie_besluit', {
+        p_suggestie_id: sugSamen, p_besluit: 'overgenomen',
+        p_bevindingen_gekozen: [BEV_SAMEN], p_acties_gekozen: [ACT_SAMEN],
+      })
+      check('bevinding + actie samen overnemen op een blanco punt lukt in één keer',
+        !eSamen, eSamen?.message?.slice(0, 60))
+      const opmSamen = await leesOpmerking(bevSamen.id)
+      const resultaatSamen = await leesResultaat(bevSamen.id)
+      check('de toelichting én het automatische resultaat staan allebei goed',
+        opmSamen === BEV_SAMEN && resultaatSamen === 'niet_in_orde',
+        `opmerking=${JSON.stringify(opmSamen)} resultaat=${resultaatSamen}`)
     }
     {
       // En zodra er een resultaat staat, lukt overnemen van een bevinding gewoon.
@@ -424,6 +475,12 @@ async function run() {
       const opm = await leesOpmerking(bevZonder.id)
       check('met een resultaat lukt overnemen wél', !eO && opm === 'AITEST concept 2',
         eO?.message?.slice(0, 60) ?? `opmerking=${JSON.stringify(opm)}`)
+
+      // Geen actie aangevinkt: het resultaat blijft precies wat het al was
+      // ('in_orde', hierboven expliciet gezet) — de inspecteur kiest zelf.
+      const resultaatNa = await leesResultaat(bevZonder.id)
+      check('zonder aangevinkte actie blijft het resultaat ongemoeid',
+        resultaatNa === 'in_orde', `resultaat=${resultaatNa}`)
     }
   }
 

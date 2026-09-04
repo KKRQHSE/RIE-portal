@@ -365,12 +365,18 @@ function BevindingRow({
   // aan de eerste versie van deze toelichting heeft meegeschreven.
   const heeftAiVoorwerk = suggesties.some(s => s.status === 'overgenomen')
 
-  // De RPC heeft de toelichting al weggeschreven; hier alleen het scherm
-  // bijtrekken, zodat het tekstveld en de bevinding weer gelijk lopen en de
-  // blur-autosave niet dezelfde tekst nóg eens opslaat.
-  function neemAiConceptOver(tekst: string) {
-    setOpmerking(tekst)
-    onPatch({ opmerking: tekst })
+  // De RPC heeft de toelichting (en bij een actie: het resultaat, migratie
+  // 0060) al weggeschreven; hier alleen het scherm bijtrekken, zodat het
+  // tekstveld en de bevinding weer gelijk lopen en de blur-autosave niet
+  // dezelfde tekst nóg eens opslaat.
+  function neemAiConceptOver(patch: { opmerking: string | null; actieOvergenomen: boolean }) {
+    const updates: Partial<InspectieBevinding> = {}
+    if (patch.opmerking !== null) {
+      setOpmerking(patch.opmerking)
+      updates.opmerking = patch.opmerking
+    }
+    if (patch.actieOvergenomen) updates.resultaat = 'niet_in_orde'
+    onPatch(updates)
   }
 
   // Kale schrijfactie naar de DB. Zet de knop-busy NIET zelf; de aanroeper bepaalt
@@ -610,7 +616,7 @@ function FotoBlok({
   aiStatus?: AiLeverancierStatus | null
   suggesties?: AiSuggestie[]
   onSuggestiesGewijzigd?: () => void
-  onAiOvergenomen?: (tekst: string) => void
+  onAiOvergenomen?: (patch: { opmerking: string | null; actieOvergenomen: boolean }) => void
   heeftToelichting?: boolean
   heeftResultaat?: boolean
 }) {

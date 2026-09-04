@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Hanken_Grotesk, JetBrains_Mono, Inter, Source_Serif_4, IBM_Plex_Sans } from 'next/font/google'
 import './globals.css'
 
@@ -37,6 +37,15 @@ const ibmPlex = IBM_Plex_Sans({
 export const metadata: Metadata = {
   title: 'RI&E Portal',
   description: 'Plan van Aanpak — QVOX',
+}
+
+// viewport-fit: cover ontgrendelt env(safe-area-inset-*) — zonder deze regel
+// blijven die variabelen op 0 staan en heeft een vaste onderbalk geen weet van
+// de systeembalk/home-indicator.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

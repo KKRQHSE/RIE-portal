@@ -1,0 +1,81 @@
+[
+  {
+    "tablename": "centrale_audit_vca_paragraaf",
+    "policyname": "centrale_audit_vca_adm",
+    "cmd": "ALL",
+    "roles": "{public}"
+  },
+  {
+    "tablename": "centrale_rubriek",
+    "policyname": "centrale_rubriek_adm",
+    "cmd": "ALL",
+    "roles": "{public}"
+  },
+  {
+    "tablename": "centrale_toolbox",
+    "policyname": "centrale_toolbox_adm",
+    "cmd": "ALL",
+    "roles": "{public}"
+  },
+  {
+    "tablename": "centrale_toolbox_vraag",
+    "policyname": "centrale_toolbox_vraag_adm",
+    "cmd": "ALL",
+    "roles": "{public}"
+  },
+  {
+    "tablename": "centrale_vraag",
+    "policyname": "centrale_vraag_adm",
+    "cmd": "ALL",
+    "roles": "{public}"
+  },
+  {
+    "tablename": "companies",
+    "policyname": "companies_admin_update",
+    "cmd": "UPDATE",
+    "roles": "{public}"
+  },
+  {
+    "tablename": "incident_basis_oorzaak",
+    "policyname": "incident_basis_oorzaak_adm",
+    "cmd": "ALL",
+    "roles": "{public}"
+  },
+  {
+    "tablename": "incident_directe_oorzaak",
+    "policyname": "incident_directe_oorzaak_adm",
+    "cmd": "ALL",
+    "roles": "{public}"
+  },
+  {
+    "tablename": "incident_gevolg_soort",
+    "policyname": "incident_gevolg_soort_adm",
+    "cmd": "ALL",
+    "roles": "{public}"
+  },
+  {
+    "tablename": "merken",
+    "policyname": "merken_admin_all",
+    "cmd": "ALL",
+    "roles": "{public}"
+  },
+  {
+    "tablename": "personen",
+    "policyname": "personen_write",
+    "cmd": "ALL",
+    "roles": "{public}"
+  },
+  {
+    "tablename": "pva_items",
+    "policyname": "pva_update",
+    "cmd": "UPDATE",
+    "roles": "{public}"
+  },
+  {
+    "tablename": "toolbox_bron",
+    "policyname": "toolbox_bron_adm",
+    "cmd": "ALL",
+    "roles": "{public}"
+  }
+]
+OK

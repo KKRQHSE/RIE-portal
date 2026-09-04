@@ -1,0 +1,25 @@
+--- Stap 1: publieke signup met role=admin ---
+signup http status: 200
+user-id aanwezig: true
+session/access_token direct in signup-respons aanwezig: false (→ confirm-email staat AAN, of anders geconfigureerd: geen directe sessie)
+user.confirmed_at / email_confirmed_at in respons: {}
+
+--- Stap 2: rol in public.users (service-role read, ter controle) ---
+public.users rij: [{"id":"3a7d27e7-b06a-4b23-9a54-4c107c8aee58","role":"client","company_id":null}]
+
+--- Stap 3a: e-mail bevestigen via service-role (simuleert het klikken op de bevestigingslink) ---
+force-confirm gelukt: true 
+
+--- Stap 3b: authenticeren als deze net aangemaakte gebruiker (echte sessie, geen service-role) ---
+signInWithPassword lukt: true 
+JWT verkregen: true
+
+--- Stap 4: met dit ECHTE JWT een admin-only actie proberen ---
+personen_samenvoegen (admin-only RPC) resultaat: GEWEIGERD: Alleen een beheerder mag personen samenvoegen
+SELECT op bedrijf_modules (RLS, moet leeg zijn): 0 rijen
+dashboard_admin_overzicht (admin-only RPC) resultaat: GEWEIGERD: Alleen voor beheerders
+
+--- Opruimen ---
+auth-user delete status: 200
+public.users delete status: 204
+resterende rijen na opruimen (moet [] zijn): []

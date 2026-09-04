@@ -93,7 +93,7 @@ async function publiekeSignup(data) {
   })
   const userId = body?.id ?? body?.user?.id
   if (userId) createdUserIds.push(userId)
-  return { status, userId, email }
+  return { status, userId, email, password }
 }
 
 async function publicUsersRij(id) {
@@ -130,7 +130,7 @@ async function opruimen() {
 async function run() {
   // --- Aanval 1: role='admin' meegeven bij signup ---
   {
-    const { status, userId } = await publiekeSignup({ role: 'admin' })
+    const { status, userId, email: signupEmail, password: signupPassword } = await publiekeSignup({ role: 'admin' })
     check('publieke signup met role=admin lukt (verwacht: account ontstaat gewoon)', status === 200, `status ${status}`)
     if (userId) {
       const rij = await publicUsersRij(userId)
@@ -142,6 +142,51 @@ async function run() {
         rij?.company_id === null, `company_id=${rij?.company_id}`)
     } else {
       check('kon de nieuwe rij niet controleren — signup gaf geen user-id terug', false)
+    }
+
+    // --- Ronde 2, punt 1: niet alleen de DB-rij, maar de volledige keten.
+    // Kan de aanvaller ook echt INLOGGEN en HANDELEN als het account? ---
+    if (userId) {
+      const { status: confirmStatus } = await restApi(`/auth/v1/admin/users/${userId}`, {
+        method: 'PUT',
+        headers: { apikey: SERVICE, Authorization: `Bearer ${SERVICE}` },
+        body: JSON.stringify({ email_confirm: true }),
+      })
+      check('e-mail forceren op bevestigd lukt (simuleert het klikken op de bevestigingslink)',
+        confirmStatus === 200, `status ${confirmStatus}`)
+
+      const { status: loginStatus, body: loginBody } = await restApi('/auth/v1/token?grant_type=password', {
+        method: 'POST',
+        headers: { apikey: ANON },
+        body: JSON.stringify({ email: signupEmail, password: signupPassword }),
+      })
+      const jwt = loginBody?.access_token
+      check('na e-mailbevestiging kan de aanvaller echt inloggen en een JWT krijgen',
+        loginStatus === 200 && !!jwt, `status ${loginStatus}`)
+
+      if (jwt) {
+        const { status: mergeStatus, body: mergeBody } = await restApi('/rest/v1/rpc/personen_samenvoegen', {
+          method: 'POST',
+          headers: { apikey: ANON, Authorization: `Bearer ${jwt}` },
+          body: JSON.stringify({ p_doel_id: '00000000-0000-0000-0000-000000000000', p_bron_id: '00000000-0000-0000-0000-000000000000' }),
+        })
+        check('met dat ECHTE JWT wordt een admin-only RPC (personen_samenvoegen) geweigerd',
+          mergeStatus >= 400, `status ${mergeStatus} — ${mergeBody?.message ?? JSON.stringify(mergeBody)}`)
+
+        const { status: dashStatus, body: dashBody } = await restApi('/rest/v1/rpc/dashboard_admin_overzicht', {
+          method: 'POST',
+          headers: { apikey: ANON, Authorization: `Bearer ${jwt}` },
+          body: JSON.stringify({}),
+        })
+        check('met dat ECHTE JWT wordt een admin-only RPC (dashboard_admin_overzicht) geweigerd',
+          dashStatus >= 400, `status ${dashStatus} — ${dashBody?.message ?? JSON.stringify(dashBody)}`)
+
+        const { status: selStatus, body: selBody } = await restApi('/rest/v1/bedrijf_modules?select=company_id&limit=5', {
+          headers: { apikey: ANON, Authorization: `Bearer ${jwt}` },
+        })
+        check('met dat ECHTE JWT levert een gewone SELECT (RLS) niets op (geen bedrijf gekoppeld)',
+          selStatus === 200 && Array.isArray(selBody) && selBody.length === 0, `status ${selStatus}, ${Array.isArray(selBody) ? selBody.length : '?'} rijen`)
+      }
     }
   }
 

@@ -9,7 +9,7 @@ export default function GeenToegang() {
           Je account is wel ingelogd, maar nog niet gekoppeld aan een bedrijf.
           Neem contact op met de beheerder.
         </p>
-        <LogoutButton className="text-sm text-accent hover:underline" />
+        <LogoutButton className="btn text-sm text-accent hover:underline" />
       </div>
     </main>
   )

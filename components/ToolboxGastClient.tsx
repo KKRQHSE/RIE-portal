@@ -101,7 +101,7 @@ export default function ToolboxGastClient({
             {toolboxen.length === 0 && <p className="text-center text-ink/40 py-10 text-sm">{t('geenToolboxen')}</p>}
             {toolboxen.map(tb => (
               <button key={tb.toolbox_id} onClick={() => openToolbox(tb)}
-                className="w-full text-left glass-tile glass-tile-hover rounded-2xl p-4">
+                className="btn w-full text-left glass-tile glass-tile-hover rounded-2xl p-4">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-medium text-ink">{tb.titel}</span>
                   {tb.afgerond_dit_jaar

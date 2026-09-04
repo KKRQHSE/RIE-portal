@@ -149,7 +149,7 @@ export default function IncidentBeheer({
               <div className="space-y-2">
                 {zichtbaar.map(i => (
                   <button key={i.id} onClick={() => setOpenId(i.id)}
-                    className="w-full text-left glass-tile glass-tile-hover rounded-2xl p-4">
+                    className="btn w-full text-left glass-tile glass-tile-hover rounded-2xl p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-ink truncate">{i.omschrijving}</p>
@@ -224,7 +224,7 @@ function IncidentDashboard({
         </div>
         {(['open', 'in_onderzoek', 'afgehandeld'] as const).map(s => (
           <button key={s} onClick={() => klik('status', s)}
-            className={`text-left bg-white rounded-lg shadow-sm p-3 border-2 transition-colors ${actief('status', s) ? 'border-accent' : 'border-transparent hover:border-ink/10'}`}
+            className={`btn text-left bg-white rounded-lg shadow-sm p-3 border-2 transition-colors ${actief('status', s) ? 'border-accent' : 'border-transparent hover:border-ink/10'}`}
             style={actief('status', s) ? { borderColor: 'var(--color-accent)' } : undefined}>
             <div className={`text-2xl font-semibold ${statusKleur[s]}`}>{statusTelling(s)}</div>
             <div className="text-xs text-ink/50 mt-0.5">{STATUS_LABEL[s]}</div>

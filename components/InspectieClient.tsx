@@ -497,7 +497,7 @@ function BibliotheekRij({ regel, onOpen }: { regel: BibliotheekRegel; onOpen: ()
   return (
     <button
       onClick={onOpen}
-      className="w-full glass-tile glass-tile-hover rounded-2xl p-4 text-left"
+      className="btn w-full glass-tile glass-tile-hover rounded-2xl p-4 text-left"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">

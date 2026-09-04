@@ -35,6 +35,7 @@ const TESTS = [
   { naam: 'heartbeat_rpc_test.mjs',                 soort: 'database' },
   { naam: 'upload_validatie_test.mjs',              soort: 'database' },
   { naam: 'audit_log_test.mjs',                     soort: 'database' },
+  { naam: 'token_flows_test.mjs',                   soort: 'database' },
   { naam: 'anon_execute_audit_test.mjs',            soort: 'database' },
   { naam: 'onveranderlijkheid_test.mjs',            soort: 'database' },
   { naam: 'nachttest_rls.mjs',                      soort: 'database' },

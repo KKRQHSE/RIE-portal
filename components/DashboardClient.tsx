@@ -258,20 +258,25 @@ export default function DashboardClient({
             </div>
           </Tegel>
 
-          {/* RI&E-geldigheid */}
+          {/* RI&E-geldigheid — zelfde ring als de statuskop bovenaan de RI&E-
+              module zelf (pr.afgerond/pr.totaal, dashboard_pva_rie): één
+              consistent patroon, geen nieuwe cijfers verzonnen. */}
           <Tegel titel="RI&E" href={`/${cid}/rie`}>
             {rie ? (
-              <div>
-                <p className="text-sm text-ink">
-                  Versie {rie.versie} · <span className="capitalize">{rie.status}</span>
-                </p>
-                <p className="text-sm text-ink/60 mt-1">Laatste toetsing: {datumNL(rie.toets_datum)}</p>
-                <p className={`text-sm mt-1 ${rie.verloopt_binnenkort ? 'text-amber-600 font-medium' : 'text-ink/50'}`}>
-                  {rie.geldig_tot ? `Geldig tot ${datumNL(rie.geldig_tot)}` : 'Geen einddatum vastgelegd'}
-                </p>
-                {rie.verloopt_binnenkort && (
-                  <p className="text-xs text-amber-600 mt-1">Verloopt binnenkort — hertoets inplannen.</p>
-                )}
+              <div className="flex items-center gap-3">
+                {pr.totaal > 0 && <Gauge value={pr.afgerond} total={pr.totaal} size={56} />}
+                <div className="min-w-0">
+                  <p className="text-sm text-ink">
+                    Versie {rie.versie} · <span className="capitalize">{rie.status}</span>
+                  </p>
+                  <p className="text-sm text-ink/60 mt-1">Laatste toetsing: {datumNL(rie.toets_datum)}</p>
+                  <p className={`text-sm mt-1 ${rie.verloopt_binnenkort ? 'text-amber-600 font-medium' : 'text-ink/50'}`}>
+                    {rie.geldig_tot ? `Geldig tot ${datumNL(rie.geldig_tot)}` : 'Geen einddatum vastgelegd'}
+                  </p>
+                  {rie.verloopt_binnenkort && (
+                    <p className="text-xs text-amber-600 mt-1">Verloopt binnenkort — hertoets inplannen.</p>
+                  )}
+                </div>
               </div>
             ) : (
               <p className="text-sm text-ink/40">Nog geen getoetste RI&amp;E-versie vastgelegd.</p>

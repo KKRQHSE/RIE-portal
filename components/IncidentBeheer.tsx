@@ -12,6 +12,7 @@ import {
   type IncidentFotoItem,
 } from '@/lib/incident'
 import HuisstijlLogo from './HuisstijlLogo'
+import ModuleStatuskop from './ModuleStatuskop'
 
 type Meldlink = { token: string; ingetrokken: boolean }
 
@@ -66,6 +67,12 @@ export default function IncidentBeheer({
   })()
   const inPeriode = (i: Incident) => !periodeVanaf || i.datum >= periodeVanaf
   const periodeIncidenten = incidenten.filter(inPeriode)
+
+  // Statuskop: aantallen naar status, altijd over alle meldingen (niet de
+  // periodeselectie hieronder) — "hoe staat het ervoor" in één oogopslag.
+  const openTotaal = incidenten.filter(i => i.status === 'open').length
+  const onderzoekTotaal = incidenten.filter(i => i.status === 'in_onderzoek').length
+  const afgehandeldTotaal = incidenten.filter(i => i.status === 'afgehandeld').length
   const zichtbaar = periodeIncidenten.filter(i =>
     !filter
       ? true
@@ -82,6 +89,18 @@ export default function IncidentBeheer({
           <h1 className="text-xl font-semibold text-ink">{company.name}</h1>
           <p className="text-sm text-ink/50 mt-0.5">Incidenten &amp; ongevallen</p>
         </div>
+
+        {!open && (
+          <ModuleStatuskop
+            titel="Incidenten"
+            ring={incidenten.length > 0 ? { waarde: afgehandeldTotaal, totaal: incidenten.length, ringLabel: 'afgehandeld' } : null}
+            cijfers={[
+              { label: 'open', waarde: openTotaal, kleur: openTotaal > 0 ? 'text-amber-600' : 'text-ink' },
+              { label: 'in onderzoek', waarde: onderzoekTotaal },
+            ]}
+            actie={{ label: 'Nieuwe melding / meldlink', href: '#meldlink' }}
+          />
+        )}
 
         {open ? (
           <IncidentDetail
@@ -335,7 +354,7 @@ function MeldlinkPaneel({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4">
+    <div id="meldlink" className="bg-white rounded-lg shadow-sm p-4 scroll-mt-20">
       <h2 className="text-sm font-semibold text-ink mb-1">Meldlink &amp; QR</h2>
       <p className="text-xs text-ink/50 mb-3">
         De vaste link waarmee iedereen op de werkvloer — zonder in te loggen — een melding maakt. Hang hem op of deel de QR.

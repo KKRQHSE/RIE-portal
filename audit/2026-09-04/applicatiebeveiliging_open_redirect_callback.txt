@@ -1,0 +1,41 @@
+Bestand: app/auth/callback/route.ts, regel 20-21:
+
+  if (next) {
+    return NextResponse.redirect(`${origin}${next}`)
+  }
+
+`next` komt ongevalideerd uit searchParams.get('next'). Test met de ingebouwde Node/WHATWG
+URL-parser (dezelfde parser die browsers gebruiken) — commando:
+
+  node -e "
+  const origin = 'https://rie-portal.vercel.app';
+  const tests = ['@evil.com/x', '//evil.com', '/set-wachtwoord', '@evil.com:1234/x'];
+  for (const next of tests) {
+    const combined = origin + next;
+    try {
+      const u = new URL(combined);
+      console.log(JSON.stringify(next), '->', u.href, '| host:', u.host);
+    } catch (e) {
+      console.log(JSON.stringify(next), '-> PARSE ERROR:', e.message);
+    }
+  }
+  "
+
+Uitkomst (BEWEZEN, echt gedraaid):
+  "@evil.com/x"        -> https://rie-portal.vercel.app@evil.com/x        | host: evil.com
+  "//evil.com"         -> https://rie-portal.vercel.app//evil.com         | host: rie-portal.vercel.app
+  "/set-wachtwoord"    -> https://rie-portal.vercel.app/set-wachtwoord    | host: rie-portal.vercel.app
+  "@evil.com:1234/x"   -> https://rie-portal.vercel.app@evil.com:1234/x   | host: evil.com:1234
+
+Verklaring: "origin + next" met next beginnend op '@' wordt door de URL-parser gelezen als
+userinfo@host-syntax (RFC 3986) — "rie-portal.vercel.app" wordt dan als (genegeerde) gebruikersnaam
+gezien, en "evil.com" als het echte doelhost. next="//evil.com" is WEL veilig gebleken (blijft op
+eigen origin) — het risico zit specifiek in een next-waarde die met '@' begint (of een ander
+URL-metateken dat de host-grens verlegt).
+
+Niet live geëxploiteerd: vereist een geldige `code`-parameter (uit een echte magic-link/
+wachtwoord-reset-mail) om voorbij de eerste check in de route te komen — geen echte e-mail
+aangevraagd op een bestaand account tijdens dit onderzoek. Mogelijk (deels) gemitigeerd door
+Supabase's eigen "Redirect URLs"-allowlist in de Auth-projectinstellingen — niet vanuit hier te
+verifiëren (geen Management-API-token in .env.local, zelfde beperking als eerder in ronde 2
+gedocumenteerd bij "Invite-instellingen").

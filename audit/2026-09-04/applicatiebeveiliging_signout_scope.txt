@@ -1,0 +1,15 @@
+Bron: node_modules/@supabase/auth-js/dist/main/GoTrueClient.js (regel 3246-3290), versie zoals
+geïnstalleerd (@supabase/supabase-js ^2.108.1 -> @supabase/auth-js).
+
+    * **Warning:** the default `scope` is `'global'`. This signs the user out of
+    * **every device they are currently signed in on**, not just the current
+    * tab/session. If you only want to sign the user out of the current session
+    * (the behavior most other auth libraries default to), pass
+    * `{ scope: 'local' }` explicitly.
+    ...
+    async signOut(options = { scope: 'global' }) { ... }
+    async _signOut({ scope } = { scope: 'global' }) { ... }
+
+components/LogoutButton.tsx roept aan als: `await supabase.auth.signOut()` — GEEN options meegegeven.
+Dus scope='global': de refresh-token wordt server-side ingetrokken op Supabase's Auth-server, niet
+alleen lokaal cookies gewist. Positieve bevinding — echte server-side sessie-revocatie bij uitloggen.

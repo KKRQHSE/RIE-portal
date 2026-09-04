@@ -1,0 +1,18 @@
+Bron: node_modules/@supabase/ssr/dist/main/utils/constants.js (versie zoals geïnstalleerd, package.json @supabase/ssr ^0.12.0)
+App-code (lib/supabase/server.ts, lib/supabase/client.ts, proxy.ts) geeft GEEN cookieOptions mee aan
+createServerClient/createBrowserClient — dus onderstaande defaults gelden ongewijzigd.
+
+exports.DEFAULT_COOKIE_OPTIONS = {
+    path: "/",
+    sameSite: "lax",
+    httpOnly: false,
+    maxAge: 400 * 24 * 60 * 60,   // 400 dagen
+};
+
+Geen "secure"-sleutel aanwezig in dit object, en nergens in de drie call-sites (server.ts/client.ts/
+proxy.ts) wordt secure alsnog expliciet gezet. Cookie krijgt dus geen expliciete Secure-attribuut.
+
+grep-bevestiging dat DEFAULT_COOKIE_OPTIONS nergens met secure:true wordt overschreven:
+  node_modules/@supabase/ssr/dist/main/clearAuthCookiesAtScopes.js:53
+  node_modules/@supabase/ssr/dist/main/cookies.js:198,203,205,251,386,391,393
+  (alle acht plekken spreaden alleen ...DEFAULT_COOKIE_OPTIONS, geen van alle voegt secure toe)

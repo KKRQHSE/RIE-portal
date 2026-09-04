@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
@@ -8,7 +8,7 @@ import type { Company, Persoon, PvaItem } from '@/lib/types'
 import { BRON_FILTERS, type BronSoort, type Herkomst } from '@/lib/actie-herkomst'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
-import Gauge from './Gauge'
+import ModuleStatuskop from './ModuleStatuskop'
 import Toast from './Toast'
 
 const STATUS_OPTS_BEWERK = ['Open', 'In behandeling', 'Afgerond']
@@ -111,6 +111,24 @@ export default function ActielijstClient({
     return true
   })
 
+  // Scroll+highlight naar #actie-rij-<id> (statuskop-knop "belangrijkste
+  // actie"), zelfde patroon als PvaClient/InspectieRapport. Alleen bij de
+  // standaardfilters aanwezig; een handmatig ingestelde filter kan de rij
+  // eruit gefilterd hebben, dan vindt hij het element simpelweg niet.
+  const didScroll = useRef(false)
+  useEffect(() => {
+    if (didScroll.current || zichtbaar.length === 0) return
+    const m = window.location.hash.match(/^#actie-rij-(.+)$/)
+    if (!m) return
+    didScroll.current = true
+    const el = document.getElementById(`actie-rij-${decodeURIComponent(m[1])}`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.classList.add('rie-flash')
+    const t = setTimeout(() => el.classList.remove('rie-flash'), 2000)
+    return () => clearTimeout(t)
+  }, [zichtbaar])
+
   async function voegLosToe(e: React.FormEvent) {
     e.preventDefault()
     if (!onderwerp.trim() || bezig) return
@@ -158,6 +176,21 @@ export default function ActielijstClient({
 
   const afgerondTotaal = rijen.filter(r => r.item.status === 'Afgerond').length
 
+  // Statuskop-cijfers + "belangrijkste openstaande" voor de primaire knop —
+  // zelfde aanpak als PvaClient, hier over alle bronnen samen.
+  const openRijen = rijen.filter(r => r.item.status !== 'Afgerond')
+  const vandaagIso = new Date().toISOString().slice(0, 10)
+  const overTermijnRijen = openRijen
+    .filter(r => r.item.termijn_datum && r.item.termijn_datum < vandaagIso)
+    .sort((a, b) => (a.item.termijn_datum ?? '').localeCompare(b.item.termijn_datum ?? ''))
+  const belangrijksteRij = overTermijnRijen[0]
+    ?? openRijen.find(r => r.item.prio === 'Hoog')
+    ?? openRijen[0]
+    ?? null
+  const primaireActieLijst = belangrijksteRij
+    ? { label: `Belangrijkste actie openen (#${belangrijksteRij.item.nr})`, href: `#actie-rij-${belangrijksteRij.item.id}` }
+    : { label: '+ Losse actie toevoegen', href: '#voeg-losse-actie-toe' }
+
   return (
     <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-3xl mx-auto px-4 py-8">
@@ -173,13 +206,16 @@ export default function ActielijstClient({
         </div>
 
         {/* Voortgang van alle acties (los van het Plan van Aanpak RI&E). */}
-        <div className="glass-tile rounded-2xl p-4 mb-4 flex items-center gap-4">
-          <Gauge value={afgerondTotaal} total={rijen.length} size={72} />
-          <div>
-            <p className="text-sm font-medium text-ink">{afgerondTotaal} van {rijen.length} acties afgerond</p>
-            <p className="text-xs text-ink/40 mt-0.5">alle bronnen samen</p>
-          </div>
-        </div>
+        <ModuleStatuskop
+          titel="Centrale actielijst"
+          ondertitel="alle bronnen samen"
+          ring={rijen.length > 0 ? { waarde: afgerondTotaal, totaal: rijen.length, ringLabel: 'afgerond' } : null}
+          cijfers={[
+            { label: 'open', waarde: openRijen.length },
+            { label: 'over termijn', waarde: overTermijnRijen.length, kleur: overTermijnRijen.length > 0 ? 'text-red-600' : 'text-ink' },
+          ]}
+          actie={primaireActieLijst}
+        />
 
         {/* Filters */}
         <div className="space-y-3 mb-4">
@@ -213,6 +249,7 @@ export default function ActielijstClient({
           <div className="mb-5">
             {!formOpen ? (
               <button
+                id="voeg-losse-actie-toe"
                 type="button"
                 onClick={() => setFormOpen(true)}
                 className="btn btn-accent text-sm px-4 py-2 min-h-[44px] inline-flex items-center gap-2 rounded-full bg-accent text-white"
@@ -300,7 +337,8 @@ export default function ActielijstClient({
           {zichtbaar.map(({ item, herkomst }) => (
             <div
               key={item.id}
-              className="glass-tile rounded-2xl p-4 transition-[box-shadow,border-color] duration-150 ease-out hover:shadow-lg hover:border-accent/25"
+              id={`actie-rij-${item.id}`}
+              className="glass-tile rounded-2xl p-4 scroll-mt-20 transition-[box-shadow,border-color] duration-150 ease-out hover:shadow-lg hover:border-accent/25"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">

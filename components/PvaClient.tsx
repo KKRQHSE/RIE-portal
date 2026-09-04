@@ -5,7 +5,7 @@ import Link from 'next/link'
 import type { PvaItem, Company, Persoon } from '@/lib/types'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import PvaCard from './PvaCard'
-import Gauge from './Gauge'
+import ModuleStatuskop from './ModuleStatuskop'
 import FilterBar from './FilterBar'
 import LogoutButton from './LogoutButton'
 import NaamVragen from './NaamVragen'
@@ -58,6 +58,22 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
   const afgerond = items.filter(i => i.status === 'Afgerond').length
   const hoogOpen = items.filter(i => i.prio === 'Hoog' && i.status !== 'Afgerond').length
 
+  // Statuskop-cijfers + "belangrijkste openstaande" voor de primaire knop:
+  // eerst het langst over de termijn, anders de eerste hoge prio, anders de
+  // eerste openstaande — allemaal al aanwezige velden, niets nieuws opgehaald.
+  const openItems = items.filter(i => i.status !== 'Afgerond')
+  const vandaag = new Date().toISOString().slice(0, 10)
+  const overTermijnItems = openItems
+    .filter(i => i.termijn_datum && i.termijn_datum < vandaag)
+    .sort((a, b) => (a.termijn_datum ?? '').localeCompare(b.termijn_datum ?? ''))
+  const belangrijkste = overTermijnItems[0]
+    ?? openItems.find(i => i.prio === 'Hoog')
+    ?? openItems[0]
+    ?? null
+  const primaireActie = belangrijkste
+    ? { label: `Belangrijkste actie openen (#${belangrijkste.nr})`, href: `/${company.id}/pva#actie-${belangrijkste.nr}` }
+    : { label: 'Naar centrale actielijst', href: `/${company.id}/actielijst` }
+
   // Actiehouders met openstaande acties (voor de handmatige herinnering-keuze).
   // De eigenlijke verzendbaarheid (e-mail, geldige link, rem) bepaalt de server.
   const openPerPersoon = new Map<string, number>()
@@ -104,17 +120,16 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
           )}
         </div>
 
-        {/* Overzicht: voortgang + openstaande acties bovenaan */}
-        <div className="glass-tile rounded-2xl p-5 mb-6 flex flex-wrap items-center gap-5">
-          <Gauge value={afgerond} total={items.length} />
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-ink">{afgerond} van {items.length} acties afgerond</p>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs">
-              <span className="text-ink/60">{items.length - afgerond} open</span>
-              {hoogOpen > 0 && <span className="text-red-600 font-medium">{hoogOpen} hoog nog open</span>}
-            </div>
-          </div>
-        </div>
+        <ModuleStatuskop
+          titel="Plan van Aanpak RI&E"
+          ondertitel={hoogOpen > 0 ? `${hoogOpen} met hoge prioriteit nog open` : undefined}
+          ring={items.length > 0 ? { waarde: afgerond, totaal: items.length, ringLabel: 'afgerond' } : null}
+          cijfers={[
+            { label: 'open', waarde: openItems.length },
+            { label: 'over termijn', waarde: overTermijnItems.length, kleur: overTermijnItems.length > 0 ? 'text-red-600' : 'text-ink' },
+          ]}
+          actie={primaireActie}
+        />
 
         {magBeheren && (
           <HerinnerBeheer

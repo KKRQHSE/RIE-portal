@@ -45,11 +45,23 @@ export function bepaalHerkomst(
   item: PvaItem,
   companyId: string,
   incidentPerActie: Map<string, IncidentRef>,
+  // bron_id bij bron_type='inspectie_bevinding' is het bevinding_id, geen
+  // inspectie_id — zonder deze kaart (bevinding_id -> inspectie_id) is er geen
+  // route naar de specifieke inspectie te bouwen en viel de link terug op de
+  // algemene lijst (de doorklik-bug: de herkomstchip kwam nooit bij de bron uit).
+  inspectiePerBevinding: Map<string, string> = new Map(),
 ): Herkomst {
   const bt = item.bron_type ?? null
 
   if (bt === 'inspectie_bevinding') {
-    return { soort: 'inspectie', label: 'uit werkplekinspectie', href: `/${companyId}/inspecties` }
+    const inspectieId = item.bron_id ? inspectiePerBevinding.get(item.bron_id) : undefined
+    return {
+      soort: 'inspectie',
+      label: 'uit werkplekinspectie',
+      href: inspectieId
+        ? `/${companyId}/inspecties/${inspectieId}#bevinding-${item.bron_id}`
+        : `/${companyId}/inspecties`,
+    }
   }
   if (bt === 'audit_bevinding') {
     // bron_id = het audit-id → klikbare herkomst terug naar de bronaudit.

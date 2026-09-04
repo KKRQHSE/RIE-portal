@@ -44,9 +44,30 @@ export default async function ActielijstPage({
     }
   }
 
+  // bevinding_id -> inspectie_id, alleen voor de acties die er echt uit
+  // voortkomen. bron_id bij bron_type='inspectie_bevinding' is het
+  // bevinding_id; zonder deze opzoeking kan bepaalHerkomst niet naar de
+  // specifieke inspectie doorlinken (zie de toelichting daar).
+  const inspectiePerBevinding = new Map<string, string>()
+  const bevindingIds = ((items ?? []) as PvaItem[])
+    .filter(i => i.bron_type === 'inspectie_bevinding' && i.bron_id)
+    .map(i => i.bron_id as string)
+  if (bevindingIds.length > 0) {
+    const { data: bevindingen } = await supabase
+      .from('inspectie_bevinding')
+      .select('id, inspectie_id')
+      .in('id', bevindingIds)
+    for (const b of bevindingen ?? []) {
+      inspectiePerBevinding.set(b.id as string, b.inspectie_id as string)
+    }
+  }
+
   // Sorteer op nummer als integer (nr is text, bijv. "1".."20").
   const sorted = ((items ?? []) as PvaItem[]).sort((a, b) => parseInt(a.nr) - parseInt(b.nr))
-  const rijen = sorted.map(item => ({ item, herkomst: bepaalHerkomst(item, company_id, incidentPerActie) }))
+  const rijen = sorted.map(item => ({
+    item,
+    herkomst: bepaalHerkomst(item, company_id, incidentPerActie, inspectiePerBevinding),
+  }))
 
   const personen: Persoon[] = magBeheren ? await haalPersonen(supabase, company_id, null) : []
 

@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import type {
@@ -81,6 +82,23 @@ export default function InspectieRapport({ companyId, rapport, huisstijl = VEILI
   const datum = rapport.uitgevoerd_op ?? rapport.aangemaakt_op
   const isAfgerond = rapport.status === 'afgerond'
 
+  // Doorklik vanuit de centrale actielijst (lib/actie-herkomst.ts) komt hier
+  // aan als #bevinding-<id>. Zelfde patroon als PvaClient: scroll + kort
+  // oplichten, en pas nadat de bevindingen gerenderd zijn.
+  const didScroll = useRef(false)
+  useEffect(() => {
+    if (didScroll.current || rapport.bevindingen.length === 0) return
+    const m = window.location.hash.match(/^#bevinding-(.+)$/)
+    if (!m) return
+    didScroll.current = true
+    const el = document.getElementById(`bevinding-${decodeURIComponent(m[1])}`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.classList.add('rie-flash')
+    const t = setTimeout(() => el.classList.remove('rie-flash'), 2000)
+    return () => clearTimeout(t)
+  }, [rapport.bevindingen])
+
   return (
     <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-3xl mx-auto px-4 py-8">
@@ -149,7 +167,7 @@ export default function InspectieRapport({ companyId, rapport, huisstijl = VEILI
                     {b.rubriek_naam_snap}
                   </h3>
                 )}
-              <article className="bg-white rounded-lg shadow-sm p-4 rapport-card">
+              <article id={`bevinding-${b.id}`} className="bg-white rounded-lg shadow-sm p-4 rapport-card scroll-mt-20">
                 <div className="flex items-start gap-3">
                   <span className="font-mono text-xs text-ink/40 mt-1 shrink-0">{i + 1}</span>
                   <div className="flex-1 min-w-0">

@@ -77,12 +77,14 @@ export default async function InspectiesPage({
   ])
 
   if (!profile) redirect('/login')
-  // Klant mag alleen eigen bedrijf; admin alles.
+  // Klant/teamleider mag alleen eigen bedrijf; admin alles.
   if (profile.role !== 'admin' && profile.company_id !== company_id) notFound()
   const magBeheren =
     profile.role === 'admin' ||
     (profile.role === 'client' && profile.company_id === company_id)
-  if (!magBeheren) notFound()
+  const magWerken =
+    magBeheren || (profile.role === 'teamleider' && profile.company_id === company_id)
+  if (!magWerken) notFound()
   if (!moduleRij) notFound()
   if (!company) notFound()
 
@@ -109,6 +111,7 @@ export default async function InspectiesPage({
       functiegroepen={(functiegroepen ?? []) as Functiegroep[]}
       initialNorm={(norm ?? []) as NormRubriek[]}
       inspectieDoel={(overzicht as DashboardOverzicht | null)?.inspectie_doel ?? null}
+      magBeheren={magBeheren}
     />
   )
 }

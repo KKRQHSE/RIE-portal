@@ -31,7 +31,7 @@ export default async function PvaPage({
       haalHuisstijl(company_id),
     ])
 
-  // Klant mag alleen eigen bedrijf zien; admin alles
+  // Klant/teamleider mag alleen eigen bedrijf zien; admin alles
   if (!profile) redirect('/login')
   if (profile.role !== 'admin' && profile.company_id !== company_id) notFound()
   if (!company) notFound()
@@ -45,18 +45,22 @@ export default async function PvaPage({
   const magBeheren =
     profile.role === 'admin' ||
     (profile.role === 'client' && profile.company_id === company_id)
+  // Teamleider: status + opmerking zetten op elke actie, geen beheer.
+  const magStatus =
+    magBeheren || (profile.role === 'teamleider' && profile.company_id === company_id)
 
   const heeftNaam = !!profile.naam?.trim()
   // Alleen de client (KAM) is actiehouder; de admin is systeembeheerder en
   // hoort niet in het adresboek/de dropdown — dus geen koppeling/naamvraag.
   const isClient = profile.role === 'client'
 
-  // Beheerdata (personen incl. KAM-koppeling, ritme, module) tegelijk en alleen
-  // voor wie mag beheren. haalPersonen koppelt de KAM alleen als hij nog ontbreekt.
+  // Personen-lijst ook voor teamleider nodig (alleen om de naam van de
+  // verantwoordelijke te tonen — teamleider wijzigt hem niet). herinner_
+  // instelling/module-check blijven puur beheerderswerk.
   let personen: Persoon[] = []
   let ritme: Ritme = 'uit'
   let toonInspecties = false
-  if (magBeheren) {
+  if (magStatus) {
     const [personenLijst, { data: instelling }, { data: inspectieModule }] =
       await Promise.all([
         haalPersonen(supabase, company_id, isClient && heeftNaam ? user.email ?? null : null),
@@ -84,6 +88,7 @@ export default async function PvaPage({
       company={company}
       initialItems={sorted}
       magBeheren={magBeheren}
+      magStatus={magStatus}
       personen={personen}
       huisstijl={huisstijl}
       toonNaamVragen={isClient && !heeftNaam}

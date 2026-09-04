@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-04T19:32:30.663Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-04T19:53:01.150Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -979,7 +979,7 @@ CREATE POLICY bedrijf_doelstelling_sel ON public.bedrijf_doelstelling AS PERMISS
 CREATE POLICY bedrijf_inspectie_doel_sel ON public.bedrijf_inspectie_doel AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_werken(company_id));
 CREATE POLICY bedrijf_modules_sel ON public.bedrijf_modules AS PERMISSIVE FOR SELECT TO public
-  USING (mag_bedrijf_beheren(company_id));
+  USING (mag_bedrijf_werken(company_id));
 CREATE POLICY bedrijf_rubriek_sel ON public.bedrijf_rubriek AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_toolbox_sel ON public.bedrijf_toolbox AS PERMISSIVE FOR SELECT TO public
@@ -1557,7 +1557,7 @@ AS $function$
 declare
   v jsonb;
 begin
-  if not mag_bedrijf_beheren(p_company_id) then
+  if not mag_bedrijf_werken(p_company_id) then
     raise exception 'Geen toegang tot dit bedrijf';
   end if;
 
@@ -1629,11 +1629,15 @@ CREATE OR REPLACE FUNCTION public.bedrijf_toolbox_overzicht(p_company_id uuid)
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare v jsonb;
+declare
+  v jsonb;
 begin
-  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not mag_bedrijf_werken(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
 
-  select coalesce(jsonb_agg(row order by volg, tid), '[]'::jsonb) into v
+  select coalesce(jsonb_agg(row order by volg, tid), '[]'::jsonb)
+  into v
   from (
     select t.volgorde as volg, t.id as tid, jsonb_build_object(
       'toolbox_id',        t.id,
@@ -2252,7 +2256,7 @@ declare
   v_jaar int := extract(year from current_date)::int;
   v jsonb;
 begin
-  if not mag_bedrijf_beheren(p_company_id) then
+  if not mag_bedrijf_werken(p_company_id) then
     raise exception 'Geen toegang tot dit bedrijf';
   end if;
 
@@ -2363,7 +2367,7 @@ begin
       )
     ),
 
-    -- Incidenten: aantallen naar status en naar gevolg.
+    -- Incidenten: aantallen naar status en naar gevolg (géén medische velden).
     'incidenten', (
       select jsonb_build_object(
         'totaal', count(*),
@@ -2409,8 +2413,9 @@ begin
       ) s
     ),
 
-    -- Handmatige bedrijfsvoering-velden (null als er nog niets is ingevuld).
-    'instellingen', (
+    -- Handmatige bedrijfsvoering-velden — NOOIT voor teamleider (klachten/
+    -- tevredenheid/audit-status/doelstelling-tekst/ISO-taken/IF-getal).
+    'instellingen', case when is_teamleider() then null else (
       select case when di.company_id is null then null else jsonb_build_object(
         'klachten_aantal',           di.klachten_aantal,
         'tevredenheid_score',        di.tevredenheid_score,
@@ -2424,7 +2429,7 @@ begin
         'updated_at',                di.updated_at
       ) end
       from bedrijf_dashboard_instelling di where di.company_id = p_company_id
-    )
+    ) end
   ) into v;
 
   return v;
@@ -2438,7 +2443,7 @@ CREATE OR REPLACE FUNCTION public.dashboard_pva_rie(p_company_id uuid)
 AS $function$
 declare v jsonb;
 begin
-  if not mag_bedrijf_beheren(p_company_id) then
+  if not mag_bedrijf_werken(p_company_id) then
     raise exception 'Geen toegang tot dit bedrijf';
   end if;
 
@@ -5371,6 +5376,7 @@ begin
         'onderwerp', s.onderwerp,
         'notitie',   s.notitie,
         'toolbox_id', s.toolbox_id,
+        'aangemaakt_door', s.aangemaakt_door,
         'opkomst', (select count(*) from toolbox_deelname d where d.sessie_id = s.id),
         'aanwezigen', (
           select coalesce(jsonb_agg(d.persoon_id), '[]'::jsonb)

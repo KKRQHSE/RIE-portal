@@ -35,6 +35,8 @@ export default async function ActielijstPage({
 
   const magBeheren =
     profile.role === 'admin' || (profile.role === 'client' && profile.company_id === company_id)
+  const magStatus =
+    magBeheren || (profile.role === 'teamleider' && profile.company_id === company_id)
 
   // Actie-id → incident, voor het afleiden en linken van incident-herkomst.
   const incidentPerActie = new Map<string, IncidentRef>()
@@ -69,7 +71,9 @@ export default async function ActielijstPage({
     herkomst: bepaalHerkomst(item, company_id, incidentPerActie, inspectiePerBevinding),
   }))
 
-  const personen: Persoon[] = magBeheren ? await haalPersonen(supabase, company_id, null) : []
+  // Ook teamleider ziet de personenlijst (alleen om namen te tonen — hij
+  // wijzigt niets aan personen zelf, dat blijft apart afgeschermd).
+  const personen: Persoon[] = magStatus ? await haalPersonen(supabase, company_id, null) : []
 
   return (
     <ActielijstClient

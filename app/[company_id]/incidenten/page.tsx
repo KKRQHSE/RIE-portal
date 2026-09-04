@@ -31,8 +31,9 @@ export default async function IncidentenPage({
       .eq('company_id', company_id).eq('module', 'incidenten')
       .eq('module_status', 'actief').eq('actief', true).maybeSingle(),
     supabase.from('companies').select('id, name').eq('id', company_id).single(),
-    supabase.from('incident').select('*').eq('company_id', company_id)
-      .order('aangemaakt_op', { ascending: false }),
+    // incident_overzicht i.p.v. rechtstreeks .from('incident'): dezelfde RPC
+    // voor elke rol, maskeert de medische velden server-side voor teamleider.
+    supabase.rpc('incident_overzicht', { p_company_id: company_id }),
     supabase.from('incident_meldlink').select('token, ingetrokken')
       .eq('company_id', company_id).maybeSingle(),
     supabase.from('incident_directe_oorzaak').select('code, omschrijving').order('code', { ascending: true }),
@@ -43,7 +44,8 @@ export default async function IncidentenPage({
 
   if (!profile) redirect('/login')
   const magBeheren = profile.role === 'admin' || (profile.role === 'client' && profile.company_id === company_id)
-  if (!magBeheren) notFound()
+  const magWerken = magBeheren || (profile.role === 'teamleider' && profile.company_id === company_id)
+  if (!magWerken) notFound()
   if (!moduleRij) notFound()
   if (!company) notFound()
 
@@ -56,6 +58,7 @@ export default async function IncidentenPage({
       directeOorzaken={(directe ?? []) as OorzaakOptie[]}
       basisOorzaken={(basis ?? []) as OorzaakOptie[]}
       gevolgOpties={(gevolg ?? []) as GevolgOptie[]}
+      magMedisch={magBeheren}
     />
   )
 }

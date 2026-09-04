@@ -20,7 +20,9 @@ type Props = {
   // data) — dan geen ring tonen in plaats van een misleidende 0%.
   ring: { waarde: number; totaal: number; ringLabel?: string } | null
   cijfers: StatuskopCijfer[]
-  actie: { label: string; href: string }
+  // Optioneel: niet elke rol heeft hier een zinnige primaire actie (bv.
+  // teamleider bij incidenten, die geen meldlink beheert).
+  actie?: { label: string; href: string }
   // Optionele module-eigen aanvulling die niet in "ring + cijfers" past, bv.
   // de per-persoon voortgang bij Inspecties (dezelfde mini-gauges als het
   // dashboard). De rest van het patroon (titel/ring/cijfers/knop) blijft
@@ -49,12 +51,14 @@ export default function ModuleStatuskop({ titel, ondertitel, ring, cijfers, acti
           )}
         </div>
 
-        <Link
-          href={actie.href}
-          className="btn btn-accent shrink-0 text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium"
-        >
-          {actie.label}
-        </Link>
+        {actie && (
+          <Link
+            href={actie.href}
+            className="btn btn-accent shrink-0 text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium"
+          >
+            {actie.label}
+          </Link>
+        )}
       </div>
 
       {children && <div className="mt-3 pt-3 border-t border-ink/10">{children}</div>}

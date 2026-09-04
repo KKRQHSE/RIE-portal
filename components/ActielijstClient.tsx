@@ -157,15 +157,17 @@ export default function ActielijstClient({
     setToast('Actie toegevoegd')
   }
 
-  // Status inline bijwerken (RLS: pva_update staat eigen-bedrijf toe). Optimistisch;
-  // bij fout terugdraaien naar de oude status. Hier landen ook de niet-RI&E-acties
-  // die niet meer op /pva staan, dus die blijven zo beheerbaar.
+  // Status inline bijwerken via de smalle RPC (pva_items heeft geen UPDATE-grant
+  // voor de authenticated-rol — een rechtstreekse table-update weigert altijd,
+  // los van rol/RLS). Optimistisch; bij fout terugdraaien naar de oude status.
+  // Hier landen ook de niet-RI&E-acties die niet meer op /pva staan, dus die
+  // blijven zo beheerbaar — ook voor teamleider (elke actie, smalle RPC).
   async function zetStatus(id: string, status: string) {
     const oud = rijen.find(r => r.item.id === id)?.item.status
     setRijen(prev => prev.map(r => (r.item.id === id ? { ...r, item: { ...r.item, status } } : r)))
     setFout(null)
     const supabase = createClient()
-    const { error } = await supabase.from('pva_items').update({ status }).eq('id', id)
+    const { error } = await supabase.rpc('actie_status_zetten', { p_actie_id: id, p_status: status })
     if (error) {
       setFout(error.message)
       if (oud) setRijen(prev => prev.map(r => (r.item.id === id ? { ...r, item: { ...r.item, status: oud } } : r)))

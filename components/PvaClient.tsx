@@ -16,6 +16,7 @@ type Props = {
   company: Company
   initialItems: PvaItem[]
   magBeheren?: boolean
+  magStatus?: boolean
   personen?: Persoon[]
   huisstijl?: HuisstijlView
   toonNaamVragen?: boolean
@@ -23,7 +24,7 @@ type Props = {
   toonInspecties?: boolean
 }
 
-export default function PvaClient({ company, initialItems, magBeheren = false, personen = [], huisstijl = VEILIGE_HUISSTIJL, toonNaamVragen = false, ritme = 'uit' }: Props) {
+export default function PvaClient({ company, initialItems, magBeheren = false, magStatus = false, personen = [], huisstijl = VEILIGE_HUISSTIJL, toonNaamVragen = false, ritme = 'uit' }: Props) {
   const [items, setItems] = useState<PvaItem[]>(initialItems)
   const [filterStatus, setFilterStatus] = useState('Alle')
   const [filterPrio, setFilterPrio] = useState('Alle')
@@ -155,6 +156,7 @@ export default function PvaClient({ company, initialItems, magBeheren = false, p
               onUpdate={handleUpdate}
               personen={personen}
               magBeheren={magBeheren}
+              magStatus={magStatus}
             />
           ))}
           {filtered.length === 0 && (

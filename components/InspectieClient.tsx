@@ -29,6 +29,8 @@ type Props = {
   functiegroepen?: Functiegroep[]
   initialNorm?: NormRubriek[]
   inspectieDoel?: DashboardOverzicht['inspectie_doel'] | null
+  // Teamleider start/vult in/rondt af, maar beheert geen sjablonen/normkoppeling.
+  magBeheren?: boolean
 }
 
 type View = 'inspecties' | 'norm' | 'sjablonen'
@@ -66,6 +68,7 @@ export default function InspectieClient({
   functiegroepen = [],
   initialNorm = [],
   inspectieDoel = null,
+  magBeheren = false,
 }: Props) {
   const supabase = createClient()
   const router = useRouter()
@@ -241,42 +244,45 @@ export default function InspectieClient({
           />
         ) : (
           <>
-            {/* Interne tabs */}
-            <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => setView('inspecties')}
-                className={`btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors
-                  ${view === 'inspecties' ? 'bg-accent text-white border-accent' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}
-              >
-                Inspecties
-              </button>
-              <button
-                onClick={() => setView('norm')}
-                className={`btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center gap-2 rounded-full border transition-colors
-                  ${view === 'norm' ? 'bg-accent text-white border-accent' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}
-              >
-                Norm
-                {normSignalen > 0 && (
-                  <span
-                    className={`text-xs font-semibold px-1.5 py-0.5 rounded-full tabular-nums ${view === 'norm' ? 'bg-white/25 text-white' : 'bg-blue-100 text-blue-700'}`}
-                    title="Afwijkende punten waar de centrale norm is bijgewerkt"
-                  >
-                    {normSignalen}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setView('sjablonen')}
-                className={`btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors
-                  ${view === 'sjablonen' ? 'bg-accent text-white border-accent' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}
-              >
-                Eigen sjablonen
-              </button>
-            </div>
+            {/* Interne tabs — Norm-beheer/Eigen sjablonen zijn beheerderswerk;
+                teamleider ziet alleen de inspecties-tab (geen tabstrip nodig). */}
+            {magBeheren && (
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setView('inspecties')}
+                  className={`btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors
+                    ${view === 'inspecties' ? 'bg-accent text-white border-accent' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}
+                >
+                  Inspecties
+                </button>
+                <button
+                  onClick={() => setView('norm')}
+                  className={`btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center gap-2 rounded-full border transition-colors
+                    ${view === 'norm' ? 'bg-accent text-white border-accent' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}
+                >
+                  Norm
+                  {normSignalen > 0 && (
+                    <span
+                      className={`text-xs font-semibold px-1.5 py-0.5 rounded-full tabular-nums ${view === 'norm' ? 'bg-white/25 text-white' : 'bg-blue-100 text-blue-700'}`}
+                      title="Afwijkende punten waar de centrale norm is bijgewerkt"
+                    >
+                      {normSignalen}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setView('sjablonen')}
+                  className={`btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors
+                    ${view === 'sjablonen' ? 'bg-accent text-white border-accent' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}
+                >
+                  Eigen sjablonen
+                </button>
+              </div>
+            )}
 
             {fout && <p className="text-sm text-red-600 mb-3">{fout}</p>}
 
-            {view === 'inspecties' ? (
+            {!magBeheren || view === 'inspecties' ? (
               <Bibliotheek
                 sjablonen={sjablonen}
                 regels={regels}

@@ -49,6 +49,10 @@ type Props = {
   onUpdate: (id: string, updates: Partial<PvaItem>) => void
   personen?: Persoon[]
   magBeheren?: boolean
+  // Teamleider: status + opmerking zetten via de smalle RPC, geschiedenis
+  // inzien — geen concept-workflow, geen verantwoordelijke wijzigen, geen
+  // doorgeven. Los van magBeheren, dat de volledige beheer-workflow opent.
+  magStatus?: boolean
 }
 
 type Paneel = null | 'vrijgeven' | 'terugsturen'
@@ -59,6 +63,7 @@ export default function PvaCard({
   onUpdate,
   personen = [],
   magBeheren = false,
+  magStatus = false,
 }: Props) {
   const [open, setOpen] = useState(false)
   // Is deze kaart ooit opengeklapt geweest? Zo ja, dan blijft de onderkant
@@ -117,7 +122,19 @@ export default function PvaCard({
 
   function blurOpm() {
     onUpdate(item.id, { opm })
-    save({ opm })
+    // Teamleider heeft geen rechtstreekse UPDATE-toegang tot pva_items (alleen
+    // via de smalle status-RPC) — dus loopt de opmerking ook via die RPC, met
+    // de huidige status ongewijzigd mee.
+    if (magStatus && !magBeheren) {
+      callJson('actie_status_zetten', { p_actie_id: item.id, p_status: item.status, p_opm: opm })
+    } else {
+      save({ opm })
+    }
+  }
+
+  async function zetStatus(val: string) {
+    if (!val || val === item.status) return
+    await callJson('actie_status_zetten', { p_actie_id: item.id, p_status: val, p_opm: opm || null })
   }
 
   // Loggende RPC: geeft het volledige bijgewerkte item terug (jsonb of al geparsed).
@@ -258,7 +275,18 @@ export default function PvaCard({
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-3">
             <div>
               <p className={veldLabel}>Status</p>
-              <span className={statusBadge}>{item.status}</span>
+              {magStatus && !magBeheren ? (
+                <select
+                  value={item.status}
+                  onChange={e => zetStatus(e.target.value)}
+                  disabled={bezig}
+                  className="w-full text-sm border border-ink/20 rounded px-3 py-2 min-h-[40px] bg-white"
+                >
+                  {STATUS_OPTS.map(s => <option key={s}>{s}</option>)}
+                </select>
+              ) : (
+                <span className={statusBadge}>{item.status}</span>
+              )}
             </div>
             <div>
               <p className={veldLabel}>Prioriteit</p>
@@ -314,8 +342,45 @@ export default function PvaCard({
           {/* Bewijs */}
           <div>
             <p className={veldLabel}>Bewijs</p>
-            <BewijsBlok modus="beheerder" actieId={item.id} />
+            <BewijsBlok modus="beheerder" actieId={item.id} magBewijsBeheren={magBeheren} />
           </div>
+
+          {/* Teamleider: alleen geschiedenis inzien, geen concept-workflow/doorgeven. */}
+          {!magBeheren && magStatus && (
+            <div className="border-t border-surface pt-3 space-y-2">
+              <button
+                onClick={toggleHistorie}
+                className="btn text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/50 hover:border-ink/40 transition-colors"
+              >
+                Geschiedenis {histOpen ? '▲' : '▼'}
+              </button>
+              {fout && <p className="text-xs text-red-600">{fout}</p>}
+              {histOpen && (
+                <div className="rounded border border-surface bg-surface/40 p-3">
+                  {histBezig && <p className="text-xs text-ink/40">Laden…</p>}
+                  {!histBezig && historie && historie.length === 0 && (
+                    <p className="text-xs text-ink/40">Nog geen geschiedenis.</p>
+                  )}
+                  {!histBezig && historie && historie.length > 0 && (
+                    <ul className="space-y-2">
+                      {historie.map((h, i) => (
+                        <li key={i} className="text-xs text-ink/60 border-l-2 border-ink/10 pl-2">
+                          <span className="font-medium text-ink/80">{h.actor_naam ?? 'Onbekend'}</span>
+                          {h.actor_type ? <span className="text-ink/40"> ({h.actor_type})</span> : null}
+                          {' — '}{gebeurtenisLabel(h.gebeurtenis)}
+                          {(h.van_status || h.naar_status) && (
+                            <span className="text-ink/50"> · {h.van_status ?? '—'} → {h.naar_status ?? '—'}</span>
+                          )}
+                          <span className="text-ink/40"> · {formatDatum(h.created_at)}</span>
+                          {h.opmerking && <p className="text-ink/50 mt-0.5">{h.opmerking}</p>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Beheer-workflow (concept voorstellen / vrijgeven / terugsturen / geschiedenis / doorgeven) */}
           {magBeheren && (

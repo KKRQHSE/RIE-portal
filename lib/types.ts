@@ -535,6 +535,7 @@ export type ToolboxSessieRegel = {
   onderwerp: string
   notitie: string | null
   toolbox_id: string | null
+  aangemaakt_door: string | null   // user-id — bepaalt of teamleider mag verwijderen
   opkomst: number
   aanwezigen: string[]   // persoon_ids die aanwezig waren
 }

@@ -14,12 +14,17 @@ type Props = {
   actieId: string
   /** Vereist bij modus 'gast'. */
   token?: string
+  // Bij modus 'beheerder': mag deze ingelogde gebruiker uploaden/verwijderen?
+  // Teamleider ziet bewijs wel (bewijs_lijst leest hij), maar bewijs_registreren/
+  // _verwijderen blijven KAM/admin-only — dus geen upload-/verwijderknop tonen
+  // die toch zou weigeren. Default true: bestaand gedrag voor KAM/admin.
+  magBewijsBeheren?: boolean
 }
 
 // Combineert upload + lijst voor één actie en houdt de lijst actueel: na een
 // upload (of verwijderen door de beheerder) wordt de lijst opnieuw opgehaald via
 // de signed-download-route. Alle Storage-toegang loopt via de server-routes.
-export default function BewijsBlok({ modus, actieId, token }: Props) {
+export default function BewijsBlok({ modus, actieId, token, magBewijsBeheren = true }: Props) {
   const [bewijzen, setBewijzen] = useState<BewijsItem[]>([])
   const [laden, setLaden] = useState(true)
   const [fout, setFout] = useState<string | null>(null)
@@ -72,14 +77,16 @@ export default function BewijsBlok({ modus, actieId, token }: Props) {
     setBewijzen(prev => prev.filter(b => b.id !== id))
   }
 
+  const magBeheren = modus === 'gast' || magBewijsBeheren
+
   return (
     <div className="space-y-2">
-      <BewijsUpload modus={modus} actieId={actieId} token={token} onUploaded={laad} />
+      {magBeheren && <BewijsUpload modus={modus} actieId={actieId} token={token} onUploaded={laad} />}
       {fout && <p className="text-xs text-red-600">{fout}</p>}
       <BewijsLijst
         bewijzen={bewijzen}
         laden={laden}
-        magVerwijderen={modus === 'beheerder'}
+        magVerwijderen={modus === 'beheerder' && magBewijsBeheren}
         verwijderBezigId={verwijderBezigId}
         onVerwijder={verwijder}
         onBeeldFout={herstelBeeld}

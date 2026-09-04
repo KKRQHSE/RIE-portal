@@ -12,12 +12,15 @@ type Props = {
   companyNaam: string
   items: NavItem[]
   huisstijl?: HuisstijlView
+  // Waar het bedrijfslogo/-naam naartoe linkt. Niet iedereen mag naar /dashboard
+  // (bv. teamleider) — de aanroeper bepaalt de juiste landingsplek.
+  homeHref: string
 }
 
 // Vaste, altijd zichtbare bovenbalk met de modules van het bedrijf + broodkruimel.
 // Vanaf elke module direct naar elke andere; op mobiel ingeklapt tot een menuknop.
 export default function CompanyTopBar({
-  companyId, companyNaam, items, huisstijl = VEILIGE_HUISSTIJL,
+  companyId, companyNaam, items, huisstijl = VEILIGE_HUISSTIJL, homeHref,
 }: Props) {
   const pathname = usePathname() ?? ''
   const [open, setOpen] = useState(false)
@@ -42,7 +45,7 @@ export default function CompanyTopBar({
       <div className="max-w-5xl mx-auto px-4">
         {/* Bovenrij: merk/bedrijf + navigatie (desktop) of menuknop (mobiel) */}
         <div className="flex items-center justify-between gap-3 h-14">
-          <Link href={`/${companyId}/dashboard`} className="font-semibold text-ink truncate">
+          <Link href={homeHref} className="font-semibold text-ink truncate">
             {companyNaam}
           </Link>
 
@@ -71,7 +74,7 @@ export default function CompanyTopBar({
         <div className="pb-2 -mt-1 text-xs text-ink/45">
           <span>{companyNaam}</span>
           <span className="mx-1.5" aria-hidden>›</span>
-          <span className="text-ink/70">{actief?.label ?? 'Dashboard'}</span>
+          <span className="text-ink/70">{actief?.label ?? items[0]?.label ?? 'Overzicht'}</span>
         </div>
       </div>
 

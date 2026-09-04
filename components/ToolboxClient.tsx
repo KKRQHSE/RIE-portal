@@ -18,7 +18,8 @@ const WAARSCHUWING =
   'terugzet naar centraal.'
 
 export default function ToolboxClient({
-  company, huisstijl = VEILIGE_HUISSTIJL, initialOverzicht, sessies, isAdmin = false, bronnen = [],
+  company, huisstijl = VEILIGE_HUISSTIJL, initialOverzicht, sessies, isAdmin = false,
+  magSessiesBeheren = false, huidigeGebruikerId = null, bronnen = [],
 }: {
   company: Company
   huisstijl?: HuisstijlView
@@ -27,6 +28,10 @@ export default function ToolboxClient({
   // Koppelen/beheren en bewijs&export zijn beheerwerk: alleen voor de admin.
   // De klant (KAM) ziet enkel het maandoverzicht.
   isAdmin?: boolean
+  // Admin/KAM mag elke sessie verwijderen; teamleider alleen eigen sessies
+  // (aangemaakt_door === huidigeGebruikerId) — zie ToolboxMaandoverzicht.
+  magSessiesBeheren?: boolean
+  huidigeGebruikerId?: string | null
   // Onderwerpenbibliotheek: leesbaar voor elke ingelogde gebruiker (0043).
   bronnen?: ToolboxBron[]
 }) {
@@ -70,7 +75,8 @@ export default function ToolboxClient({
         {/* Niet-admin: altijd alleen het maandoverzicht, ongeacht de view-state. */}
         {!isAdmin || view === 'maandoverzicht' ? (
           <ToolboxMaandoverzicht companyId={company.id} initial={sessies}
-            gekoppeldeToolboxen={overzicht.filter(t => t.gekoppeld)} bronnen={bronnen} />
+            gekoppeldeToolboxen={overzicht.filter(t => t.gekoppeld)} bronnen={bronnen}
+            magAlleSessiesBeheren={magSessiesBeheren} huidigeGebruikerId={huidigeGebruikerId} />
         ) : view === 'toolboxen' ? (
           <KoppelBeheer companyId={company.id} supabase={supabase} overzicht={overzicht} onPatch={patch} setFout={setFout} />
         ) : (

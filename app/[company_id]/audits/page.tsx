@@ -34,6 +34,11 @@ export default async function AuditsPage({
 
   if (!profile) redirect('/login')
   if (profile.role !== 'admin' && profile.company_id !== company_id) notFound()
+  // Audits blijven volledig dicht voor teamleider (ook al is bedrijf_modules
+  // inmiddels leesbaar voor hem — dat is alleen voor de navigatie/module-check
+  // elders). Zonder deze regel zou hij een lege lijst zien in plaats van geen
+  // toegang: de audit-tabel zelf is en blijft dicht (mag_bedrijf_beheren).
+  if (profile.role === 'teamleider') notFound()
   // Module uit of gestopt: de audits bestaan nog, maar zijn niet bereikbaar.
   if (!moduleRij) notFound()
   if (!company) notFound()

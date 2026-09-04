@@ -284,6 +284,57 @@ async function run() {
     const { data } = await teamleiderB.from('modules').select('id').eq('company_id', A)
     check('teamleider van bedrijf B leest GEEN RI&E-modules van A', (data?.length ?? 0) === 0, `${data?.length ?? 0} rij(en)`)
   }
+
+  // ===== 9. Statuskop: bedrijf_modules + dashboard_overzicht/dashboard_pva_rie =====
+  await admin.from('bedrijf_modules').insert({ company_id: A, module: 'toolbox', module_status: 'actief', actief: true })
+  {
+    const { data } = await teamleiderA.from('bedrijf_modules').select('module').eq('company_id', A)
+    check('teamleider leest bedrijf_modules (nav/module-check blijft gevuld)', (data?.length ?? 0) >= 1, `${data?.length ?? 0} rij(en)`)
+  }
+  {
+    const { data, error } = await teamleiderA.rpc('dashboard_pva_rie', { p_company_id: A })
+    check('teamleider krijgt dashboard_pva_rie (statuskop PvA/RI&E)', !error && !!data, error?.message)
+  }
+  {
+    const { data, error } = await teamleiderA.rpc('dashboard_overzicht', { p_company_id: A })
+    const ok = !error && !!data && data.instellingen === null && data.rie !== undefined && data.inspecties !== undefined
+    check('teamleider krijgt dashboard_overzicht met instellingen op null', ok, error?.message ?? JSON.stringify(data?.instellingen))
+  }
+  {
+    await admin.from('bedrijf_dashboard_instelling').insert({ company_id: A, klachten_aantal: 3, tevredenheid_score: 8 })
+    const { data } = await kamA.rpc('dashboard_overzicht', { p_company_id: A })
+    check('regressie: KAM krijgt dashboard_overzicht MET instellingen', data?.instellingen?.klachten_aantal === 3, JSON.stringify(data?.instellingen))
+  }
+  {
+    const { error } = await teamleiderB.rpc('dashboard_overzicht', { p_company_id: A })
+    check('teamleider van bedrijf B krijgt GEEN dashboard_overzicht van A', !!error, error ? 'geweigerd' : 'TOEGESTAAN!')
+  }
+
+  // ===== 10. Toolbox-onderwerpen + norm-overzicht (migratie 0065) =====
+  {
+    const { data, error } = await teamleiderA.rpc('bedrijf_toolbox_overzicht', { p_company_id: A })
+    check('teamleider krijgt bedrijf_toolbox_overzicht (toolboxen kiezen bij registreren)', !error && Array.isArray(data), error?.message)
+  }
+  {
+    const { error } = await teamleiderB.rpc('bedrijf_toolbox_overzicht', { p_company_id: A })
+    check('teamleider van bedrijf B krijgt GEEN bedrijf_toolbox_overzicht van A', !!error, error ? 'geweigerd' : 'TOEGESTAAN!')
+  }
+  {
+    const { data, error } = await teamleiderA.rpc('bedrijf_norm_overzicht', { p_company_id: A })
+    check('teamleider krijgt bedrijf_norm_overzicht (norm-inspectie kunnen starten)', !error && Array.isArray(data), error?.message)
+  }
+  {
+    const { error } = await teamleiderB.rpc('bedrijf_norm_overzicht', { p_company_id: A })
+    check('teamleider van bedrijf B krijgt GEEN bedrijf_norm_overzicht van A', !!error, error ? 'geweigerd' : 'TOEGESTAAN!')
+  }
+  {
+    const { data: sess } = await admin.from('toolbox_sessie')
+      .insert({ company_id: A, datum: '2026-07-04', onderwerp: 'TLTEST aangemaakt_door-check', aangemaakt_door: null })
+      .select('id').single()
+    const { data, error } = await teamleiderA.rpc('toolbox_sessies_overzicht', { p_company_id: A })
+    const rij = data?.sessies?.find(s => s.sessie_id === sess.id)
+    check('toolbox_sessies_overzicht geeft aangemaakt_door mee', !error && rij && 'aangemaakt_door' in rij, error?.message ?? JSON.stringify(rij))
+  }
 }
 
 async function cleanup() {

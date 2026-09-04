@@ -37,7 +37,7 @@ function datumNL(d: string | null): string {
 
 export default function IncidentBeheer({
   company, huisstijl = VEILIGE_HUISSTIJL, initialIncidenten, initialMeldlink,
-  directeOorzaken, basisOorzaken, gevolgOpties,
+  directeOorzaken, basisOorzaken, gevolgOpties, magMedisch,
 }: {
   company: { id: string; name: string }
   huisstijl?: HuisstijlView
@@ -46,6 +46,10 @@ export default function IncidentBeheer({
   directeOorzaken: OorzaakOptie[]
   basisOorzaken: OorzaakOptie[]
   gevolgOpties: GevolgOptie[]
+  // Alleen admin/KAM: gezondheidsgegevens zien/bewerken, foto's zien, meldlink
+  // beheren. Teamleider doet oorzaakanalyse (incident_oorzaak_opslaan) zonder
+  // die drie — de server geeft de medische velden hem sowieso nooit terug.
+  magMedisch: boolean
 }) {
   const [supabase] = useState(() => createClient())
   const [incidenten, setIncidenten] = useState<Incident[]>(initialIncidenten)
@@ -98,7 +102,7 @@ export default function IncidentBeheer({
               { label: 'open', waarde: openTotaal, kleur: openTotaal > 0 ? 'text-amber-600' : 'text-ink' },
               { label: 'in onderzoek', waarde: onderzoekTotaal },
             ]}
-            actie={{ label: 'Nieuwe melding / meldlink', href: '#meldlink' }}
+            actie={magMedisch ? { label: 'Nieuwe melding / meldlink', href: '#meldlink' } : undefined}
           />
         )}
 
@@ -110,6 +114,7 @@ export default function IncidentBeheer({
             directeOorzaken={directeOorzaken}
             basisOorzaken={basisOorzaken}
             gevolgLabel={gevolgLabel}
+            magMedisch={magMedisch}
             onTerug={() => setOpenId(null)}
             onOpgeslagen={updated => {
               setIncidenten(prev => prev.map(i => (i.id === updated.id ? updated : i)))
@@ -117,12 +122,14 @@ export default function IncidentBeheer({
           />
         ) : (
           <>
-            <MeldlinkPaneel
-              supabase={supabase}
-              companyId={company.id}
-              meldlink={meldlink}
-              onWijzig={setMeldlink}
-            />
+            {magMedisch && (
+              <MeldlinkPaneel
+                supabase={supabase}
+                companyId={company.id}
+                meldlink={meldlink}
+                onWijzig={setMeldlink}
+              />
+            )}
 
             {/* Periodekeuze */}
             <div className="flex items-center gap-2 mt-8 mb-3">
@@ -456,7 +463,7 @@ function QrCode({ url }: { url: string }) {
 // Incident-detail: Deel 1 (lezen) + foto's + Deel 2 (bewerken).
 // ============================================================
 function IncidentDetail({
-  supabase, companyId, incident, directeOorzaken, basisOorzaken, gevolgLabel, onTerug, onOpgeslagen,
+  supabase, companyId, incident, directeOorzaken, basisOorzaken, gevolgLabel, magMedisch, onTerug, onOpgeslagen,
 }: {
   supabase: ReturnType<typeof createClient>
   companyId: string
@@ -464,6 +471,7 @@ function IncidentDetail({
   directeOorzaken: OorzaakOptie[]
   basisOorzaken: OorzaakOptie[]
   gevolgLabel: (code: string) => string
+  magMedisch: boolean
   onTerug: () => void
   onOpgeslagen: (i: Incident) => void
 }) {
@@ -501,7 +509,8 @@ function IncidentDetail({
   // verversen als het tabblad lang openstaat. Zie lib/verse-urls.ts.
   const { laad: laadFotosVers, herstelBeeld } = useVerseUrls(laadFotos)
 
-  useEffect(() => { laadFotosVers() }, [laadFotosVers])
+  // Foto's kunnen een letsel/scène tonen — alleen admin/KAM haalt ze op.
+  useEffect(() => { if (magMedisch) laadFotosVers() }, [magMedisch, laadFotosVers])
 
   function toggle(arr: number[], set: (v: number[]) => void, code: number) {
     set(arr.includes(code) ? arr.filter(c => c !== code) : [...arr, code])
@@ -509,7 +518,7 @@ function IncidentDetail({
 
   async function opslaan() {
     setBezig(true); setFout(null); setOpgeslagen(false)
-    const { error } = await supabase.rpc('incident_deel2_opslaan', {
+    const basisVelden = {
       p_company_id: companyId,
       p_incident_id: incident.id,
       p_status: status,
@@ -523,9 +532,14 @@ function IncidentDetail({
       p_tra_aanpassen: tra,
       p_andere_maatregelen: andere,
       p_besproken_in_toolbox_datum: toolboxDatum || null,
-      p_functie_slachtoffer: functie,
-      p_medische_dienst_bezocht: medisch || null,
-    })
+    }
+    // Teamleider doet oorzaakanalyse zonder medische velden (incident_oorzaak_
+    // opslaan raakt die kolommen niet aan); admin/KAM blijft het volledige pad.
+    const { error } = magMedisch
+      ? await supabase.rpc('incident_deel2_opslaan', {
+          ...basisVelden, p_functie_slachtoffer: functie, p_medische_dienst_bezocht: medisch || null,
+        })
+      : await supabase.rpc('incident_oorzaak_opslaan', basisVelden)
     setBezig(false)
     if (error) { setFout(error.message); return }
     setOpgeslagen(true)
@@ -540,8 +554,8 @@ function IncidentDetail({
       maatregelen_in_actielijst: inActielijst,
       tra_aanpassen: tra, andere_maatregelen: andere || null,
       besproken_in_toolbox_datum: toolboxDatum || null,
-      functie_slachtoffer: functie || null,
-      medische_dienst_bezocht: (medisch || null) as Incident['medische_dienst_bezocht'],
+      functie_slachtoffer: magMedisch ? (functie || null) : null,
+      medische_dienst_bezocht: magMedisch ? ((medisch || null) as Incident['medische_dienst_bezocht']) : null,
     })
   }
 
@@ -578,34 +592,36 @@ function IncidentDetail({
           </div>
         )}
 
-        {/* Foto's */}
-        <div className="mt-4">
-          <dt className="text-ink/40 text-xs mb-1.5">Foto’s</dt>
-          {fotos === null ? (
-            <p className="text-xs text-ink/40">Laden…</p>
-          ) : fotos.length === 0 ? (
-            <p className="text-xs text-ink/40">Geen foto’s.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {fotos.map(f => (
-                <a key={f.id} href={f.downloadUrl ?? '#'} target="_blank" rel="noopener noreferrer"
-                  className="block w-20 h-20 rounded-lg overflow-hidden border border-ink/10 bg-gray-50">
-                  {f.downloadUrl && f.type?.startsWith('image/')
-                    /* Signed URL van een privé-bucket: bewust geen next/image —
-                       die zou de kortlevende URL via een cachebare route spiegelen. */
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    ? <img
-                        src={f.downloadUrl}
-                        alt={f.bestandsnaam ?? 'foto'}
-                        onError={herstelBeeld}
-                        className="w-full h-full object-cover"
-                      />
-                    : <span className="flex items-center justify-center w-full h-full text-xs text-ink/40">bestand</span>}
-                </a>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Foto's — kunnen een letsel/scène tonen, alleen admin/KAM */}
+        {magMedisch && (
+          <div className="mt-4">
+            <dt className="text-ink/40 text-xs mb-1.5">Foto’s</dt>
+            {fotos === null ? (
+              <p className="text-xs text-ink/40">Laden…</p>
+            ) : fotos.length === 0 ? (
+              <p className="text-xs text-ink/40">Geen foto’s.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {fotos.map(f => (
+                  <a key={f.id} href={f.downloadUrl ?? '#'} target="_blank" rel="noopener noreferrer"
+                    className="block w-20 h-20 rounded-lg overflow-hidden border border-ink/10 bg-gray-50">
+                    {f.downloadUrl && f.type?.startsWith('image/')
+                      /* Signed URL van een privé-bucket: bewust geen next/image —
+                         die zou de kortlevende URL via een cachebare route spiegelen. */
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      ? <img
+                          src={f.downloadUrl}
+                          alt={f.bestandsnaam ?? 'foto'}
+                          onError={herstelBeeld}
+                          className="w-full h-full object-cover"
+                        />
+                      : <span className="flex items-center justify-center w-full h-full text-xs text-ink/40">bestand</span>}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* DEEL 2 — KAM-afhandeling (bewerken) */}
@@ -673,25 +689,27 @@ function IncidentDetail({
           <input id="tbdatum" type="date" className={veld} value={toolboxDatum} onChange={e => setToolboxDatum(e.target.value)} />
         </div>
 
-        {/* Gevoelige velden — gezondheidsgegevens */}
-        <div className="rounded-lg border border-red-100 bg-red-50/40 p-3 mb-4">
-          <p className="text-xs font-medium text-red-700/80 mb-2">Gevoelig — gezondheidsgegevens (alleen zichtbaar voor jou)</p>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <label className={label} htmlFor="functie">Functie slachtoffer</label>
-              <input id="functie" type="text" className={veld} value={functie} onChange={e => setFunctie(e.target.value)} />
-            </div>
-            <div>
-              <label className={label} htmlFor="medisch">Medische dienst bezocht?</label>
-              <select id="medisch" className={veld} value={medisch} onChange={e => setMedisch(e.target.value)}>
-                <option value="">—</option>
-                <option value="ja">Ja</option>
-                <option value="nee">Nee</option>
-                <option value="onbekend">Onbekend</option>
-              </select>
+        {/* Gevoelige velden — gezondheidsgegevens, alleen admin/KAM */}
+        {magMedisch && (
+          <div className="rounded-lg border border-red-100 bg-red-50/40 p-3 mb-4">
+            <p className="text-xs font-medium text-red-700/80 mb-2">Gevoelig — gezondheidsgegevens (alleen zichtbaar voor jou)</p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className={label} htmlFor="functie">Functie slachtoffer</label>
+                <input id="functie" type="text" className={veld} value={functie} onChange={e => setFunctie(e.target.value)} />
+              </div>
+              <div>
+                <label className={label} htmlFor="medisch">Medische dienst bezocht?</label>
+                <select id="medisch" className={veld} value={medisch} onChange={e => setMedisch(e.target.value)}>
+                  <option value="">—</option>
+                  <option value="ja">Ja</option>
+                  <option value="nee">Nee</option>
+                  <option value="onbekend">Onbekend</option>
+                </select>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {fout && <p className="text-sm text-red-600 mb-2">{fout}</p>}
         <div className="flex items-center gap-3">

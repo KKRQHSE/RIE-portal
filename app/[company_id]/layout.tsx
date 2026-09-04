@@ -20,11 +20,13 @@ export default async function CompanySectionLayout({
   const isAdmin = profile?.role === 'admin'
   const magBeheren =
     isAdmin || (profile?.role === 'client' && profile.company_id === company_id)
+  const isTeamleider = profile?.role === 'teamleider' && profile.company_id === company_id
+  const magWerken = magBeheren || isTeamleider
 
-  // Alleen voor wie dit bedrijf mag beheren de balk opbouwen (de pagina's doen hun
+  // Alleen voor wie in dit bedrijf mag werken de balk opbouwen (de pagina's doen hun
   // eigen afscherming; niet-gemachtigden krijgen daar een notFound/redirect).
   let topBar: React.ReactNode = null
-  if (magBeheren) {
+  if (magWerken) {
     const supabase = await createClient()
     const [{ data: company }, { data: modules }, huisstijl] = await Promise.all([
       supabase.from('companies').select('name').eq('id', company_id).single(),
@@ -37,17 +39,18 @@ export default async function CompanySectionLayout({
     const maak = (key: string, label: string, seg: string): NavItem =>
       ({ key, label, seg, href: `/${company_id}/${seg}` })
 
-    // Kernmodules altijd; toolbox/inspecties/incidenten/audits alleen bij actieve module.
+    // Kernmodules altijd; toolbox/inspecties/incidenten alleen bij actieve module.
+    // Dashboard/audits/personen/modules zijn beheerderswerk — teamleider ziet ze niet
+    // (audits en bedrijfsvoering/personen blijven ook op de pagina zelf dicht).
     const items: NavItem[] = [
-      maak('dashboard', 'Dashboard', 'dashboard'),
+      ...(magBeheren ? [maak('dashboard', 'Dashboard', 'dashboard')] : []),
       maak('rie', 'RI&E', 'rie'),
       maak('pva', 'Plan van aanpak', 'pva'),
       ...(actief.has('toolbox') ? [maak('toolbox', 'Toolbox', 'toolbox')] : []),
       ...(actief.has('inspectie') ? [maak('inspecties', 'Inspecties', 'inspecties')] : []),
       ...(actief.has('incidenten') ? [maak('incidenten', 'Incidenten', 'incidenten')] : []),
-      ...(actief.has('audit') ? [maak('audits', 'Audits', 'audits')] : []),
-      maak('personen', 'Personen', 'personen'),
-      maak('modules', 'Modules', 'modules'),
+      ...(magBeheren && actief.has('audit') ? [maak('audits', 'Audits', 'audits')] : []),
+      ...(magBeheren ? [maak('personen', 'Personen', 'personen'), maak('modules', 'Modules', 'modules')] : []),
     ]
 
     topBar = (
@@ -56,6 +59,7 @@ export default async function CompanySectionLayout({
         companyNaam={company?.name ?? 'Bedrijf'}
         items={items}
         huisstijl={huisstijl}
+        homeHref={magBeheren ? `/${company_id}/dashboard` : `/${company_id}/pva`}
       />
     )
   }

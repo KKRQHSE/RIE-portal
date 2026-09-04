@@ -22,12 +22,17 @@ function maandVan(iso: string) { return parseInt(iso.slice(5, 7), 10) - 1 }
 // Antwoord op de hoofdvraag: wat is er per maand gehouden en zitten we op target?
 export default function ToolboxMaandoverzicht({
   companyId, initial, gekoppeldeToolboxen, bronnen = [],
+  magAlleSessiesBeheren = true, huidigeGebruikerId = null,
 }: {
   companyId: string
   initial: ToolboxSessiesOverzicht | null
   gekoppeldeToolboxen: ToolboxOverzichtItem[]
   // Onderwerpenbibliotheek (0043): alleen-lezen inspiratie bij het aanmaken.
   bronnen?: ToolboxBron[]
+  // Default true: bestaand gedrag (admin/KAM) ongewijzigd. Teamleider krijgt
+  // false — dan mag alleen de sessie-EIGENAAR (aangemaakt_door) verwijderen.
+  magAlleSessiesBeheren?: boolean
+  huidigeGebruikerId?: string | null
 }) {
   const [supabase] = useState<Supa>(() => createClient())
   const [data, setData] = useState<ToolboxSessiesOverzicht | null>(initial)
@@ -138,6 +143,7 @@ export default function ToolboxMaandoverzicht({
                       personen={personen} open={openSessie === s.sessie_id}
                       onToggle={() => setOpenSessie(openSessie === s.sessie_id ? null : s.sessie_id)}
                       gekoppeldeToolboxen={gekoppeldeToolboxen} setFout={setFout} onGewijzigd={herlaad}
+                      magVerwijderen={magAlleSessiesBeheren || s.aangemaakt_door === huidigeGebruikerId}
                     />
                   ))}
                 </ul>
@@ -228,10 +234,12 @@ function TargetKop({
 
 function SessieRij({
   sessie, supabase, companyId, personen, open, onToggle, gekoppeldeToolboxen, setFout, onGewijzigd,
+  magVerwijderen = true,
 }: {
   sessie: ToolboxSessieRegel; supabase: Supa; companyId: string
   personen: ToolboxSessiePersoon[]; open: boolean; onToggle: () => void
   gekoppeldeToolboxen: ToolboxOverzichtItem[]; setFout: (v: string | null) => void; onGewijzigd: () => Promise<void>
+  magVerwijderen?: boolean
 }) {
   const [bewerk, setBewerk] = useState(false)
   const [bevestigVerwijder, setBevestigVerwijder] = useState(false)
@@ -306,7 +314,7 @@ function SessieRij({
               )}
               <button type="button" onClick={() => setBewerk(true)}
                 className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors">Bewerken</button>
-              {bevestigVerwijder ? (
+              {magVerwijderen && (bevestigVerwijder ? (
                 <span className="inline-flex items-center gap-2">
                   <span className="text-xs text-ink/60">Sessie én aanwezigheid verwijderen?</span>
                   <button type="button" onClick={() => { setBevestigVerwijder(false); verwijder() }} disabled={bezig}
@@ -317,7 +325,7 @@ function SessieRij({
               ) : (
                 <button type="button" onClick={() => setBevestigVerwijder(true)}
                   className="btn text-xs px-3 py-1.5 rounded-full border border-red-200 bg-white text-red-600 hover:border-red-400">Verwijderen</button>
-              )}
+              ))}
             </div>
           )}
 

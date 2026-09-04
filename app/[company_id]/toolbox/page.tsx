@@ -40,7 +40,8 @@ export default async function ToolboxPage({
 
   if (!profile) redirect('/login')
   const magBeheren = profile.role === 'admin' || (profile.role === 'client' && profile.company_id === company_id)
-  if (!magBeheren) notFound()
+  const magWerken = magBeheren || (profile.role === 'teamleider' && profile.company_id === company_id)
+  if (!magWerken) notFound()
   if (!moduleRij) notFound()
   if (!company) notFound()
 
@@ -51,6 +52,8 @@ export default async function ToolboxPage({
       initialOverzicht={(overzicht ?? []) as ToolboxOverzichtItem[]}
       sessies={sessies as ToolboxSessiesOverzicht | null}
       isAdmin={profile.role === 'admin'}
+      magSessiesBeheren={magBeheren}
+      huidigeGebruikerId={user.id}
       bronnen={(bronnen ?? []) as ToolboxBron[]}
     />
   )

@@ -311,17 +311,25 @@ export default function ActielijstClient({
                       <span className="font-medium text-ink">{item.onderwerp || 'Zonder onderwerp'}</span>
                     )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-ink/50">
-                    <select
-                      value={item.status}
-                      onChange={e => zetStatus(item.id, e.target.value)}
-                      aria-label={`Status van actie ${item.nr}`}
-                      className={`text-xs font-medium rounded-full px-2 py-1 border-0 cursor-pointer appearance-none ${STATUS_BADGE[item.status] ?? 'bg-gray-100 text-gray-700'}`}
-                    >
-                      {STATUS_OPTS_BEWERK.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                    <span className="truncate">👤 {houderNaam(item) ?? 'Niet toegewezen'}</span>
-                    {item.termijn && <span className="truncate">🗓 {item.termijn}</span>}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-1.5 text-xs text-ink/50">
+                    {/* Zichtbaar een knop met keuzemenu — rand + pijltje — in
+                        plaats van een onzichtbare select: dit IS de manier om
+                        de actie af te handelen, dus dat moet je in één oogopslag
+                        als klikbaar herkennen. */}
+                    <span className={`relative inline-flex items-center rounded-full border border-black/10 ${STATUS_BADGE[item.status] ?? 'bg-gray-100 text-gray-700'}`}>
+                      <select
+                        value={item.status}
+                        onChange={e => zetStatus(item.id, e.target.value)}
+                        aria-label={`Status van actie ${item.nr} wijzigen`}
+                        title="Status wijzigen"
+                        className="appearance-none bg-transparent text-xs font-medium pl-3 pr-6 py-1.5 min-h-[32px] rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      >
+                        {STATUS_OPTS_BEWERK.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <span aria-hidden="true" className="pointer-events-none absolute right-2 text-[9px]">▾</span>
+                    </span>
+                    <span className="truncate" title="Verantwoordelijke">👤 {houderNaam(item) ?? 'Niet toegewezen'}</span>
+                    {item.termijn && <span className="truncate" title="Termijn">🗓 {item.termijn}</span>}
                   </div>
                 </div>
                 {/* Klikbare herkomst → bronformulier (of nette niet-klikbare chip). */}

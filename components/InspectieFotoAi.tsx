@@ -69,6 +69,10 @@ export default function InspectieFotoAi({
   const [bevGekozen, setBevGekozen] = useState<Set<number>>(new Set())
   const [actGekozen, setActGekozen] = useState<Set<number>>(new Set())
   const [overgenomen, setOvergenomen] = useState(false)
+  // Uitleg bij het info-icoon: hover toont hem op desktop (group-hover, CSS-
+  // only); dit stukje state is ervoor dat een tik op mobiel (geen hover)
+  // hetzelfde doet, en dat een tweede tik hem weer wegklikt.
+  const [toonUitleg, setToonUitleg] = useState(false)
 
   const vinkjeId = `ai-toestemming-${foto.id}`
   const nietGeconfigureerd = aiStatus !== null && !aiStatus.geconfigureerd
@@ -198,23 +202,39 @@ export default function InspectieFotoAi({
         )}
       </div>
 
-      {/* Het toestemmingsvinkje met de waarschuwing er direct onder, niet
-          verstopt achter een tooltip: de inspecteur moet kunnen lezen waar hij
-          ja tegen zegt vóórdat hij klikt. */}
-      <div className="flex items-start gap-2">
+      {/* Het toestemmingsvinkje staat standaard uit; de uitleg (buiten de EU,
+          geen herkenbare personen) staat nog steeds voluit in de tekst, maar
+          achter een info-icoon in plaats van een groot waarschuwingsblok —
+          hover toont hem op desktop, een tik doet dat op mobiel. */}
+      <div className="flex items-center gap-2">
         <input
           id={vinkjeId}
           type="checkbox"
           checked={toestemming}
           onChange={e => setToestemming(e.target.checked)}
-          className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
+          className="h-4 w-4 shrink-0 accent-accent"
         />
         <label htmlFor={vinkjeId} className="text-xs text-ink/70 cursor-pointer">
           {t('aiToestemming')}
-          <span className="block text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-1">
+        </label>
+        <span className="relative group">
+          <button
+            type="button"
+            onClick={() => setToonUitleg(v => !v)}
+            aria-expanded={toonUitleg}
+            aria-label={t('aiMeerUitleg')}
+            className="h-4 w-4 shrink-0 inline-flex items-center justify-center rounded-full border border-ink/30 text-[10px] leading-none text-ink/50 hover:border-accent hover:text-accent transition-colors"
+          >
+            i
+          </button>
+          <span
+            role="tooltip"
+            className={`absolute z-20 left-0 top-full mt-1 w-64 max-w-[80vw] text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 shadow-sm
+              ${toonUitleg ? 'block' : 'hidden'} group-hover:block`}
+          >
             {waarschuwing}
           </span>
-        </label>
+        </span>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

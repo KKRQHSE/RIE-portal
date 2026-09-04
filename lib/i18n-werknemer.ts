@@ -142,6 +142,7 @@ export const INSP_TEKST: Woordenboek = {
   // toestemming baseert. Een slechte vertaling maakt die toestemming waardeloos.
   aiKop:            { nl: 'AI-voorwerk', tr: 'AI ön çalışması' },
   aiToestemming:    { nl: 'Deze foto naar de AI sturen', tr: 'Bu fotoğrafı AI’ya gönder' },
+  aiMeerUitleg:     { nl: 'Meer uitleg over deze toestemming', tr: 'Bu onay hakkında daha fazla bilgi' },
   aiWaarschuwingBuitenEu: {
     nl: 'Let op: de foto verlaat dan het portaal en gaat naar {dienst}, een externe AI-dienst BUITEN de EU. Stuur geen foto’s waarop personen herkenbaar zijn.',
     tr: 'Dikkat: fotoğraf portaldan çıkar ve AB DIŞINDAKİ harici bir AI hizmeti olan {dienst} adlı hizmete gönderilir. İnsanların tanınabildiği fotoğrafları göndermeyin.',

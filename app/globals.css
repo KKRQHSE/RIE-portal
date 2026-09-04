@@ -89,6 +89,36 @@
   will-change: transform;
 }
 
+/* ---- Interactie-tokens (premium facelift, fase A) ----
+   Puur transform/box-shadow/opacity, kort (150ms, ease-out): dit mag ook op
+   een zwakke telefoon geen hapering geven. .btn is de gedeelde basis (druk-
+   staat, focusring in de huisstijlkleur, disabled negeert alles); .btn-accent
+   voegt de hover-lift toe voor de primaire (oranje/huisstijl) knop-variant.
+   Bewust GEEN backdrop-filter hier — dat blijft zoals het was. */
+.btn {
+  transition-property: transform, box-shadow, background-color, border-color, opacity;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
+.btn:not(:disabled):active { transform: scale(0.97); }
+.btn:not(:disabled):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent, #FF5200) 45%, transparent);
+}
+.btn:disabled { transition-duration: 0ms; }
+
+.btn-accent:not(:disabled):hover {
+  box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--color-accent, #FF5200) 55%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn-accent:not(:disabled):hover { transform: translateY(-1px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition-duration: 1ms; }
+  .btn:not(:disabled):active { transform: none; }
+}
+
 /* Doorklikbare tegel: springt op, met het accent als SCHERPE RAND — niet als
    gloed. Een grote accentgloed onder de tegel kleurt het hele vlak eromheen en
    dat is precies de waas die we niet willen. De lift zelf blijft neutraal. */

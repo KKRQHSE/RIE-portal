@@ -210,7 +210,7 @@ export default function ActielijstClient({
               <button
                 type="button"
                 onClick={() => setFormOpen(true)}
-                className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center gap-2 rounded-full bg-accent text-white hover:opacity-90 transition-opacity"
+                className="btn btn-accent text-sm px-4 py-2 min-h-[44px] inline-flex items-center gap-2 rounded-full bg-accent text-white"
               >
                 + Losse actie toevoegen
               </button>
@@ -293,7 +293,10 @@ export default function ActielijstClient({
             <p className="text-center text-ink/40 py-10 text-sm">Geen acties die aan de filters voldoen.</p>
           )}
           {zichtbaar.map(({ item, herkomst }) => (
-            <div key={item.id} className="glass-tile rounded-2xl p-4">
+            <div
+              key={item.id}
+              className="glass-tile rounded-2xl p-4 transition-[box-shadow,border-color] duration-150 ease-out hover:shadow-lg hover:border-accent/25"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-baseline gap-2 flex-wrap">

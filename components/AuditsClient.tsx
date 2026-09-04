@@ -79,7 +79,7 @@ export default function AuditsClient({
         <div className="mb-5">
           {!formOpen ? (
             <button type="button" onClick={() => setFormOpen(true)}
-              className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center gap-2 rounded-full bg-accent text-white hover:opacity-90 transition-opacity">
+              className="btn btn-accent text-sm px-4 py-2 min-h-[44px] inline-flex items-center gap-2 rounded-full bg-accent text-white">
               + Nieuwe audit
             </button>
           ) : (
@@ -108,11 +108,11 @@ export default function AuditsClient({
               {fout && <p className="text-sm text-red-600">{fout}</p>}
               <div className="flex items-center gap-2">
                 <button type="submit" disabled={bezig || !titel.trim()}
-                  className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center rounded-full bg-accent text-white hover:opacity-90 transition-opacity disabled:opacity-40">
+                  className="btn btn-accent text-sm px-4 py-2 min-h-[44px] inline-flex items-center rounded-full bg-accent text-white disabled:opacity-40">
                   {bezig ? 'Bezig…' : 'Aanmaken'}
                 </button>
                 <button type="button" onClick={() => { setFormOpen(false); setFout(null) }}
-                  className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center rounded-full border border-ink/20 text-ink/60 hover:border-ink/40 transition-colors">
+                  className="btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center rounded-full border border-ink/20 text-ink/60 hover:border-ink/40 transition-colors">
                   Annuleren
                 </button>
               </div>

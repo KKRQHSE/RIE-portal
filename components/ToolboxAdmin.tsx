@@ -14,7 +14,7 @@ function Archiveerknop({ label, onBevestig }: { label: string; onBevestig: () =>
   if (!vraag) {
     return (
       <button type="button" onClick={() => setVraag(true)}
-        className="text-xs px-3 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors">
+        className="btn text-xs px-3 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors">
         {label}
       </button>
     )
@@ -23,9 +23,9 @@ function Archiveerknop({ label, onBevestig }: { label: string; onBevestig: () =>
     <span className="inline-flex items-center gap-2">
       <span className="text-xs text-ink/60">Weet je het zeker?</span>
       <button type="button" onClick={() => { setVraag(false); onBevestig() }}
-        className="text-xs px-3 py-2 min-h-[40px] rounded-full bg-red-600 text-white hover:opacity-90">Ja, archiveren</button>
+        className="btn btn-danger text-xs px-3 py-2 min-h-[40px] rounded-full bg-red-600 text-white">Ja, archiveren</button>
       <button type="button" onClick={() => setVraag(false)}
-        className="text-xs px-3 py-2 min-h-[40px] rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40">Annuleer</button>
+        className="btn text-xs px-3 py-2 min-h-[40px] rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors">Annuleer</button>
     </span>
   )
 }
@@ -111,7 +111,7 @@ export default function ToolboxAdmin({
               placeholder="Titel (bv. Werken op hoogte)" aria-label="Titel nieuwe toolbox"
               className="flex-1 min-w-[200px] text-sm border border-ink/20 rounded px-3 py-2.5 min-h-[44px] bg-white" />
             <button onClick={nieuwToolbox} disabled={!nieuw.trim() || bezig}
-              className="text-sm px-5 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium hover:opacity-90 disabled:opacity-40">
+              className="btn btn-accent text-sm px-5 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium disabled:opacity-40">
               Toolbox toevoegen
             </button>
           </div>
@@ -160,7 +160,7 @@ function ToolboxKaart({
 
   return (
     <div className="glass-tile rounded-2xl overflow-hidden">
-      <button onClick={() => setUit(o => !o)} className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-gray-50" aria-expanded={uit}>
+      <button onClick={() => setUit(o => !o)} className="btn w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-gray-50" aria-expanded={uit}>
         <div className="min-w-0">
           <p className="font-medium text-ink truncate">{t.titel}</p>
           <p className="text-xs text-ink/50 mt-0.5">
@@ -307,12 +307,12 @@ function Quizbeheer({
                   className="flex-1 text-sm border border-ink/20 rounded px-2 py-1 bg-white" />
                 {v.opties.length > 2 && (
                   <button type="button" onClick={() => { const opties = v.opties.filter((_, j) => j !== i); bewaarVraag(v, { opties, juist_antwoord: Math.min(v.juist_antwoord, opties.length - 1) }) }}
-                    className="text-red-500 hover:text-red-700 text-sm px-1" aria-label="Optie verwijderen">✕</button>
+                    className="btn text-red-500 hover:text-red-700 text-sm px-1" aria-label="Optie verwijderen">✕</button>
                 )}
               </div>
             ))}
             <button type="button" onClick={() => bewaarVraag(v, { opties: [...v.opties, 'Nieuwe optie'] })}
-              className="text-xs text-accent hover:underline">+ optie</button>
+              className="btn text-xs text-accent hover:underline">+ optie</button>
           </div>
           <input defaultValue={v.uitleg ?? ''} onBlur={e => bewaarVraag(v, { uitleg: e.target.value.trim() || null })}
             placeholder="Uitleg (verschijnt bij het juiste antwoord)…"
@@ -326,7 +326,7 @@ function Quizbeheer({
           onKeyDown={e => { if (e.key === 'Enter') voegToe() }} placeholder="Nieuwe quizvraag…"
           aria-label="Nieuwe quizvraag" className="flex-1 min-w-[180px] text-sm border border-ink/20 rounded px-3 py-2 min-h-[44px] bg-white" />
         <button onClick={voegToe} disabled={!nieuw.trim() || bezig}
-          className="text-sm px-4 py-2 min-h-[44px] rounded-full bg-ink text-white hover:opacity-90 disabled:opacity-40">Vraag toevoegen</button>
+          className="btn btn-dark text-sm px-4 py-2 min-h-[44px] rounded-full bg-ink text-white disabled:opacity-40">Vraag toevoegen</button>
       </div>
     </div>
   )
@@ -412,7 +412,7 @@ function BronnenBeheer({
         <input value={omschrijving} onChange={e => setOmschrijving(e.target.value)} placeholder="Korte omschrijving (optioneel)"
           aria-label="Omschrijving bron" className="w-full text-sm border border-ink/20 rounded px-3 py-2.5 min-h-[44px] bg-white" />
         <button onClick={voegToe} disabled={!naam.trim() || !url.trim() || bezig}
-          className="text-sm px-5 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium hover:opacity-90 disabled:opacity-40">
+          className="btn btn-accent text-sm px-5 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium disabled:opacity-40">
           Bron toevoegen
         </button>
         <p className="text-xs text-ink/40">De URL moet met https:// beginnen.</p>
@@ -449,7 +449,7 @@ function BronnenBeheer({
               <li key={b.id} className="flex items-center justify-between gap-2 text-sm bg-white rounded-lg shadow-sm p-3">
                 <span className="text-ink/40 line-through truncate">{b.naam}</span>
                 <button type="button" onClick={() => herstel(b.id)}
-                  className="shrink-0 text-xs px-3 py-2 min-h-[40px] rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40">
+                  className="btn shrink-0 text-xs px-3 py-2 min-h-[40px] rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors">
                   Terugzetten
                 </button>
               </li>

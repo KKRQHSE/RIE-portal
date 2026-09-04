@@ -110,9 +110,21 @@
 .btn-accent:not(:disabled):hover {
   box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--color-accent, #FF5200) 55%, transparent);
 }
+.btn-dark:not(:disabled):hover {
+  box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--color-ink, #14161B) 45%, transparent);
+}
+.btn-danger:not(:disabled):hover {
+  box-shadow: 0 6px 16px -8px color-mix(in srgb, #dc2626 45%, transparent);
+}
+.btn-warning:not(:disabled):hover {
+  box-shadow: 0 6px 16px -8px color-mix(in srgb, #d97706 45%, transparent);
+}
 
 @media (prefers-reduced-motion: no-preference) {
-  .btn-accent:not(:disabled):hover { transform: translateY(-1px); }
+  .btn-accent:not(:disabled):hover,
+  .btn-dark:not(:disabled):hover,
+  .btn-danger:not(:disabled):hover,
+  .btn-warning:not(:disabled):hover { transform: translateY(-1px); }
 }
 @media (prefers-reduced-motion: reduce) {
   .btn { transition-duration: 1ms; }

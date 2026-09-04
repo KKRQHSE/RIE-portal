@@ -295,7 +295,7 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
           <button
             onClick={afronden}
             disabled={verplichtOpen > 0 || afrondBezig}
-            className="text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+            className="btn btn-accent text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium disabled:opacity-40"
           >
             {afrondBezig ? t('bezig') : t('afronden')}
           </button>
@@ -480,7 +480,7 @@ function BevindingRow({
               key={r.key}
               onClick={() => kiesResultaat(r.key)}
               disabled={readOnly || bezig}
-              className={`text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors disabled:opacity-50
+              className={`btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors disabled:opacity-50
                 ${gekozen ? r.actief : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}
             >
               {gekozen ? '✓ ' : ''}{r.label}
@@ -515,7 +515,7 @@ function BevindingRow({
                 <button
                   onClick={kiesMeteenHersteld}
                   disabled={readOnly || bezig}
-                  className={`text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors disabled:opacity-50
+                  className={`btn text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors disabled:opacity-50
                     ${bevinding.afhandeling === 'meteen_hersteld'
                       ? 'bg-green-600 text-white border-green-600'
                       : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}
@@ -525,7 +525,7 @@ function BevindingRow({
                 <button
                   onClick={maakActie}
                   disabled={readOnly || bezig}
-                  className="text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="btn btn-accent text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium disabled:opacity-40"
                 >
                   {t('actieAanmaken')}
                 </button>
@@ -708,7 +708,7 @@ function FotoBlok({
               {!readOnly && (
                 <button type="button" onClick={() => verwijder(f.id)} aria-label={t('fotoVerwijder')}
                   title={t('fotoVerwijder')}
-                  className="absolute -top-1.5 -right-1.5 h-6 w-6 rounded-full bg-white border border-ink/20 text-ink/50 hover:text-red-600 hover:border-red-300 text-xs leading-none">
+                  className="btn absolute -top-1.5 -right-1.5 h-6 w-6 rounded-full bg-white border border-ink/20 text-ink/50 hover:text-red-600 hover:border-red-300 text-xs leading-none">
                   ✕
                 </button>
               )}
@@ -722,7 +722,7 @@ function FotoBlok({
           <input id={invoerId} type="file" accept="image/*" capture="environment" multiple
             onChange={kies} disabled={bezig} className="sr-only" />
           <label htmlFor={invoerId}
-            className={`text-xs px-3 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full border cursor-pointer transition-colors
+            className={`btn text-xs px-3 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full border cursor-pointer transition-colors
               ${bezig ? 'opacity-50 cursor-wait border-ink/20 bg-white text-ink/40'
                       : 'border-ink/20 bg-white text-ink/60 hover:border-accent hover:text-accent'}`}>
             {bezig ? t('fotoBezig') : `+ ${t('fotoToevoegen')}`}

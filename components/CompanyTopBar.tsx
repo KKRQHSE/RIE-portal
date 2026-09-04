@@ -61,7 +61,7 @@ export default function CompanyTopBar({
             onClick={() => setOpen(o => !o)}
             aria-expanded={open}
             aria-label="Menu"
-            className="md:hidden min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg text-ink/70 hover:bg-ink/5"
+            className="btn md:hidden min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg text-ink/70 hover:bg-ink/5"
           >
             <span aria-hidden className="text-xl leading-none">{open ? '✕' : '☰'}</span>
           </button>

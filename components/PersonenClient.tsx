@@ -255,7 +255,7 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
             <button
               type="submit"
               disabled={!naam.trim() || bezig}
-              className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
+              className="btn btn-accent text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium disabled:opacity-40"
             >
               {bezig ? 'Bezig…' : 'Toevoegen'}
             </button>
@@ -353,7 +353,7 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
                         />
                         <button
                           onClick={() => kopieer(url, p.id)}
-                          className="shrink-0 text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white hover:opacity-90 transition-opacity"
+                          className="btn btn-dark shrink-0 text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white"
                         >
                           {gekopieerd === p.id ? '✓ Gekopieerd' : 'Kopieer link'}
                         </button>
@@ -362,14 +362,14 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
                         <button
                           onClick={() => maakOfVernieuw(p.id)}
                           disabled={linkBezig === p.id}
-                          className="inline-flex items-center min-h-[44px] px-2 text-xs text-ink/50 hover:text-accent transition-colors disabled:opacity-40"
+                          className="btn inline-flex items-center min-h-[44px] px-2 text-xs text-ink/50 hover:text-accent transition-colors disabled:opacity-40"
                         >
                           Opnieuw genereren
                         </button>
                         <button
                           onClick={() => trekIn(p.id)}
                           disabled={linkBezig === p.id}
-                          className="inline-flex items-center min-h-[44px] px-2 text-xs text-red-600 hover:underline disabled:opacity-40"
+                          className="btn inline-flex items-center min-h-[44px] px-2 text-xs text-red-600 hover:underline disabled:opacity-40"
                         >
                           Intrekken
                         </button>
@@ -384,7 +384,7 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
                           onClick={() => stuurUitnodiging(p.id)}
                           disabled={!p.email || mailBezig === p.id}
                           title={p.email ? undefined : 'Deze persoon heeft geen e-mailadres'}
-                          className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
+                          className="btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
                         >
                           {mailBezig === p.id ? 'Versturen…' : 'Stuur uitnodiging per e-mail'}
                         </button>
@@ -407,7 +407,7 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
                     <button
                       onClick={() => maakOfVernieuw(p.id)}
                       disabled={linkBezig === p.id}
-                      className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
+                      className="btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
                     >
                       {linkBezig === p.id ? 'Bezig…' : ingetrokken ? 'Nieuwe deellink' : 'Deellink aanmaken'}
                     </button>

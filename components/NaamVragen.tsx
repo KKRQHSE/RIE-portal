@@ -48,7 +48,7 @@ export default function NaamVragen() {
         <button
           type="submit"
           disabled={!naam.trim() || bezig}
-          className="text-sm px-4 py-2 rounded-full bg-accent text-white font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
+          className="btn btn-accent text-sm px-4 py-2 rounded-full bg-accent text-white font-medium disabled:opacity-40"
         >
           {bezig ? 'Bezig…' : 'Opslaan'}
         </button>

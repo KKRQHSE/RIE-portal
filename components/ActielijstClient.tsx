@@ -46,7 +46,7 @@ function Pill({ label, active, onClick }: { label: string; active: boolean; onCl
     <button
       type="button"
       onClick={onClick}
-      className={`text-xs px-3 py-2 min-h-[44px] inline-flex items-center rounded-full border transition-colors ${
+      className={`btn text-xs px-3 py-2 min-h-[44px] inline-flex items-center rounded-full border transition-colors ${
         active ? 'bg-ink text-white border-ink' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'
       }`}
     >
@@ -268,14 +268,14 @@ export default function ActielijstClient({
                   <button
                     type="submit"
                     disabled={bezig || !onderwerp.trim()}
-                    className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center rounded-full bg-accent text-white hover:opacity-90 transition-opacity disabled:opacity-40"
+                    className="btn btn-accent text-sm px-4 py-2 min-h-[44px] inline-flex items-center rounded-full bg-accent text-white disabled:opacity-40"
                   >
                     {bezig ? 'Bezig…' : 'Toevoegen'}
                   </button>
                   <button
                     type="button"
                     onClick={() => { setFormOpen(false); setFout(null) }}
-                    className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center rounded-full border border-ink/20 text-ink/60 hover:border-ink/40 transition-colors"
+                    className="btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center rounded-full border border-ink/20 text-ink/60 hover:border-ink/40 transition-colors"
                   >
                     Annuleren
                   </button>

@@ -34,7 +34,7 @@ export default function RieClient({ company, modules, vragen, fotos, huisstijl =
 
   // Eén knopstijl voor de drie filterstanden; alleen de actieve is gevuld.
   const knop = (actief: boolean) =>
-    `text-xs px-3 py-2 min-h-[44px] inline-flex items-center rounded-full border transition-colors ${
+    `btn text-xs px-3 py-2 min-h-[44px] inline-flex items-center rounded-full border transition-colors ${
       actief ? 'bg-ink text-white border-ink' : 'bg-white text-ink/60 border-ink/20'
     }`
 

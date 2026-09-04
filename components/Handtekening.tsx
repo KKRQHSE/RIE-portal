@@ -85,7 +85,7 @@ export default function Handtekening({ onChange }: { onChange: (dataUrl: string)
       />
       <div className="flex items-center justify-between">
         <p className="text-xs text-ink/40">{leeg ? 'Zet hier je handtekening met je vinger of muis.' : 'Handtekening gezet.'}</p>
-        <button type="button" onClick={wis} className="text-xs text-ink/50 hover:text-accent">Wissen</button>
+        <button type="button" onClick={wis} className="btn text-xs text-ink/50 hover:text-accent">Wissen</button>
       </div>
     </div>
   )

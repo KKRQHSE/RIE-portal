@@ -41,7 +41,7 @@ export default function ToolboxClient({
 
   const tab = (v: View, label: string) => (
     <button onClick={() => setView(v)}
-      className={`text-sm px-4 py-2 min-h-[44px] rounded-full border transition-colors
+      className={`btn text-sm px-4 py-2 min-h-[44px] rounded-full border transition-colors
         ${view === v ? 'bg-accent text-white border-accent' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}>
       {label}
     </button>
@@ -200,7 +200,7 @@ function ToolboxRij({
         </div>
         {item.gekoppeld
           ? <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded ${status.stijl}`}>{status.label}</span>
-          : <button type="button" onClick={() => onKoppel(true)} className="shrink-0 text-sm px-4 py-2 min-h-[40px] rounded-full bg-accent text-white font-medium hover:opacity-90">Koppelen</button>}
+          : <button type="button" onClick={() => onKoppel(true)} className="btn btn-accent shrink-0 text-sm px-4 py-2 min-h-[40px] rounded-full bg-accent text-white font-medium">Koppelen</button>}
       </div>
 
       {item.gekoppeld && (
@@ -214,8 +214,8 @@ function ToolboxRij({
             <div className="rounded bg-blue-50 border border-blue-200 p-2 space-y-2">
               <p className="text-xs text-blue-800">De centrale toolbox is bijgewerkt. Huidige centrale titel: <span className="italic">“{item.centrale_titel}”</span></p>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={terug} disabled={bezig} className="text-xs px-3 py-1.5 rounded-full bg-accent text-white hover:opacity-90 disabled:opacity-40">Overnemen (terug naar centraal)</button>
-                <button type="button" onClick={houdMijnVersie} disabled={bezig} className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 disabled:opacity-40">Mijn versie houden</button>
+                <button type="button" onClick={terug} disabled={bezig} className="btn btn-accent text-xs px-3 py-1.5 rounded-full bg-accent text-white disabled:opacity-40">Overnemen (terug naar centraal)</button>
+                <button type="button" onClick={houdMijnVersie} disabled={bezig} className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors disabled:opacity-40">Mijn versie houden</button>
               </div>
             </div>
           )}
@@ -223,17 +223,17 @@ function ToolboxRij({
           {modus === 'lezen' && (
             <div className="flex flex-wrap gap-2 pt-1">
               {!afw && <>
-                <button type="button" onClick={() => { setTitel(item.geldende_titel); setTekst(item.geldende_tekst); setVideo(item.geldende_video_url ?? ''); setModus('aanpassen') }} className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent">Lokaal aanpassen</button>
-                <button type="button" onClick={() => setModus('uitzetten')} className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent">Uitzetten</button>
+                <button type="button" onClick={() => { setTitel(item.geldende_titel); setTekst(item.geldende_tekst); setVideo(item.geldende_video_url ?? ''); setModus('aanpassen') }} className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors">Lokaal aanpassen</button>
+                <button type="button" onClick={() => setModus('uitzetten')} className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors">Uitzetten</button>
               </>}
               {afw?.modus === 'lokaal' && <>
-                <button type="button" onClick={() => { setTitel(afw.lokale_titel ?? item.centrale_titel); setTekst(afw.lokale_tekst ?? ''); setVideo(afw.lokale_video_url ?? ''); setModus('aanpassen') }} className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent">Lokaal bewerken</button>
-                <button type="button" onClick={terug} disabled={bezig} className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 disabled:opacity-40">{vervallen ? 'Mijn versie verwijderen' : 'Terug naar centraal'}</button>
+                <button type="button" onClick={() => { setTitel(afw.lokale_titel ?? item.centrale_titel); setTekst(afw.lokale_tekst ?? ''); setVideo(afw.lokale_video_url ?? ''); setModus('aanpassen') }} className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors">Lokaal bewerken</button>
+                <button type="button" onClick={terug} disabled={bezig} className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors disabled:opacity-40">{vervallen ? 'Mijn versie verwijderen' : 'Terug naar centraal'}</button>
               </>}
               {afw?.modus === 'uit' && (
-                <button type="button" onClick={terug} disabled={bezig} className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 disabled:opacity-40">Weer aanzetten (terug naar centraal)</button>
+                <button type="button" onClick={terug} disabled={bezig} className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors disabled:opacity-40">Weer aanzetten (terug naar centraal)</button>
               )}
-              <button type="button" onClick={() => onKoppel(false)} className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/50 hover:border-ink/40">Ontkoppelen</button>
+              <button type="button" onClick={() => onKoppel(false)} className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/50 hover:border-ink/40 transition-colors">Ontkoppelen</button>
             </div>
           )}
 
@@ -244,8 +244,8 @@ function ToolboxRij({
               <textarea value={tekst} onChange={e => setTekst(e.target.value)} rows={4} aria-label="Lokale tekst" className="w-full text-sm border border-ink/20 rounded px-3 py-2 bg-white resize-y" />
               <input value={video} onChange={e => setVideo(e.target.value)} placeholder="Video-link (optioneel)" aria-label="Lokale video-link" className="w-full text-sm border border-ink/20 rounded px-3 py-2 bg-white" />
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={slaLokaalOp} disabled={!tekst.trim() || bezig} className="text-xs px-3 py-1.5 rounded-full bg-accent text-white hover:opacity-90 disabled:opacity-40">{afw ? 'Lokale versie opslaan' : 'Bevestig en sla lokaal op'}</button>
-                <button type="button" onClick={() => setModus('lezen')} className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40">Annuleer</button>
+                <button type="button" onClick={slaLokaalOp} disabled={!tekst.trim() || bezig} className="btn btn-accent text-xs px-3 py-1.5 rounded-full bg-accent text-white disabled:opacity-40">{afw ? 'Lokale versie opslaan' : 'Bevestig en sla lokaal op'}</button>
+                <button type="button" onClick={() => setModus('lezen')} className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors">Annuleer</button>
               </div>
             </div>
           )}
@@ -255,8 +255,8 @@ function ToolboxRij({
               <p className="text-xs text-amber-800">{WAARSCHUWING}</p>
               <p className="text-xs text-ink/60">Je zet deze toolbox uit; hij telt niet meer mee voor de doelstelling.</p>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={zetUit} disabled={bezig} className="text-xs px-3 py-1.5 rounded-full bg-amber-600 text-white hover:opacity-90 disabled:opacity-40">Bevestig: uitzetten</button>
-                <button type="button" onClick={() => setModus('lezen')} className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40">Annuleer</button>
+                <button type="button" onClick={zetUit} disabled={bezig} className="btn btn-warning text-xs px-3 py-1.5 rounded-full bg-amber-600 text-white disabled:opacity-40">Bevestig: uitzetten</button>
+                <button type="button" onClick={() => setModus('lezen')} className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors">Annuleer</button>
               </div>
             </div>
           )}

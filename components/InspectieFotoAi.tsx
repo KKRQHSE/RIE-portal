@@ -223,7 +223,7 @@ export default function InspectieFotoAi({
             onClick={() => setToonUitleg(v => !v)}
             aria-expanded={toonUitleg}
             aria-label={t('aiMeerUitleg')}
-            className="h-4 w-4 shrink-0 inline-flex items-center justify-center rounded-full border border-ink/30 text-[10px] leading-none text-ink/50 hover:border-accent hover:text-accent transition-colors"
+            className="btn h-4 w-4 shrink-0 inline-flex items-center justify-center rounded-full border border-ink/30 text-[10px] leading-none text-ink/50 hover:border-accent hover:text-accent transition-colors"
           >
             i
           </button>
@@ -243,7 +243,7 @@ export default function InspectieFotoAi({
           onClick={analyseer}
           disabled={!toestemming || bezig || aiStatus === null}
           title={!toestemming ? t('aiZetVinkjeAan') : undefined}
-          className="text-xs px-3 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/60 hover:border-accent hover:text-accent transition-colors disabled:opacity-40 disabled:hover:border-ink/20 disabled:hover:text-ink/60"
+          className="btn text-xs px-3 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/60 hover:border-accent hover:text-accent transition-colors disabled:opacity-40 disabled:hover:border-ink/20 disabled:hover:text-ink/60"
         >
           {bezig ? t('aiBezig') : `✦ ${t('aiKnop')}`}
         </button>
@@ -357,7 +357,7 @@ export default function InspectieFotoAi({
               onClick={overnemen}
               disabled={besluitBezig || !magOvernemen}
               title={!magOvernemen ? t('aiNietsAangevinkt') : undefined}
-              className="text-xs px-4 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+              className="btn btn-accent text-xs px-4 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium disabled:opacity-40"
             >
               {t('aiOvernemen')}
             </button>
@@ -365,7 +365,7 @@ export default function InspectieFotoAi({
               type="button"
               onClick={weggooien}
               disabled={besluitBezig}
-              className="text-xs px-4 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/60 hover:border-red-300 hover:text-red-600 transition-colors disabled:opacity-40"
+              className="btn text-xs px-4 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/60 hover:border-red-300 hover:text-red-600 transition-colors disabled:opacity-40"
             >
               {t('aiWeggooien')}
             </button>

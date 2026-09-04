@@ -67,7 +67,7 @@ export default function Bevestig({
   if (!open) return null
 
   const knop =
-    'text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors disabled:opacity-50'
+    'btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors disabled:opacity-40'
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-ink/40">
@@ -98,8 +98,8 @@ export default function Bevestig({
             onClick={onBevestig}
             disabled={bezig}
             className={`${knop} ${gevaar
-              ? 'bg-red-600 text-white border-red-600 hover:opacity-90'
-              : 'bg-accent text-white border-accent hover:opacity-90'}`}
+              ? 'btn-danger bg-red-600 text-white border-red-600'
+              : 'btn-accent bg-accent text-white border-accent'}`}
           >
             {bezig ? 'Bezig…' : bevestigLabel}
           </button>

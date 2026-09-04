@@ -111,7 +111,7 @@ export default function IncidentBeheer({
               <div className="ml-auto flex gap-1">
                 {([['jaar', 'Dit jaar'], ['12m', 'Laatste 12 mnd'], ['alles', 'Alles']] as const).map(([w, lbl]) => (
                   <button key={w} onClick={() => { setPeriode(w); setFilter(null) }}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${periode === w ? 'bg-ink text-white border-ink' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}>
+                    className={`btn text-xs px-3 py-1.5 rounded-full border transition-colors ${periode === w ? 'bg-ink text-white border-ink' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}>
                     {lbl}
                   </button>
                 ))}
@@ -135,7 +135,7 @@ export default function IncidentBeheer({
                 <span className="text-ink/40 font-normal"> ({zichtbaar.length})</span>
               </h2>
               {filter && (
-                <button onClick={() => setFilter(null)} className="text-xs text-accent hover:underline" style={{ color: 'var(--color-accent)' }}>
+                <button onClick={() => setFilter(null)} className="btn text-xs text-accent hover:underline" style={{ color: 'var(--color-accent)' }}>
                   toon alle
                 </button>
               )}
@@ -239,7 +239,7 @@ function IncidentDashboard({
             const n = gevolgTelling(g.code)
             return (
               <button key={g.code} onClick={() => klik('gevolg', g.code)}
-                className={`text-xs px-2.5 py-1.5 rounded-full border transition-colors ${actief('gevolg', g.code) ? 'bg-accent text-white border-accent' : 'bg-white text-ink/70 border-ink/15 hover:border-ink/40'}`}
+                className={`btn text-xs px-2.5 py-1.5 rounded-full border transition-colors ${actief('gevolg', g.code) ? 'bg-accent text-white border-accent' : 'bg-white text-ink/70 border-ink/15 hover:border-ink/40'}`}
                 style={actief('gevolg', g.code) ? { backgroundColor: 'var(--color-accent)', borderColor: 'var(--color-accent)' } : undefined}>
                 {g.omschrijving} <span className="font-semibold">{n}</span>
               </button>
@@ -343,7 +343,7 @@ function MeldlinkPaneel({
 
       {!meldlink ? (
         <button type="button" onClick={genereer} disabled={bezig}
-          className="min-h-[44px] px-4 rounded-lg bg-accent text-white text-sm font-semibold disabled:opacity-60"
+          className="btn btn-accent min-h-[44px] px-4 rounded-lg bg-accent text-white text-sm font-semibold disabled:opacity-40"
           style={{ backgroundColor: 'var(--color-accent)' }}>
           {bezig ? 'Bezig…' : 'Meldlink aanmaken'}
         </button>
@@ -362,7 +362,7 @@ function MeldlinkPaneel({
                 <input readOnly value={meldUrl}
                   className="flex-1 min-w-0 px-3 py-2 min-h-[44px] rounded-lg border border-ink/15 bg-gray-50 text-sm text-ink/70" />
                 <button type="button" onClick={kopieer}
-                  className="shrink-0 min-h-[44px] px-3 rounded-lg border border-ink/20 text-sm text-ink/70 hover:border-ink/40">
+                  className="btn shrink-0 min-h-[44px] px-3 rounded-lg border border-ink/20 text-sm text-ink/70 hover:border-ink/40 transition-colors">
                   {gekopieerd ? 'Gekopieerd' : 'Kopieer'}
                 </button>
               </div>
@@ -372,24 +372,24 @@ function MeldlinkPaneel({
                   <span className="inline-flex items-center gap-2 text-xs text-ink/60">
                     Nieuwe link maken? De oude QR werkt dan niet meer.
                     <button type="button" onClick={roteer} disabled={bezig}
-                      className="min-h-[36px] px-3 rounded-lg bg-ink text-white">Ja, vervang</button>
+                      className="btn btn-dark min-h-[36px] px-3 rounded-lg bg-ink text-white">Ja, vervang</button>
                     <button type="button" onClick={() => setBevestigRoteren(false)}
-                      className="min-h-[36px] px-3 rounded-lg border border-ink/20">Annuleer</button>
+                      className="btn min-h-[36px] px-3 rounded-lg border border-ink/20">Annuleer</button>
                   </span>
                 ) : (
                   <button type="button" onClick={() => setBevestigRoteren(true)} disabled={bezig}
-                    className="min-h-[36px] px-3 rounded-lg border border-ink/20 text-xs text-ink/70 hover:border-ink/40">
+                    className="btn min-h-[36px] px-3 rounded-lg border border-ink/20 text-xs text-ink/70 hover:border-ink/40 transition-colors">
                     Vervang link (roteer)
                   </button>
                 )}
                 {meldlink.ingetrokken ? (
                   <button type="button" onClick={() => zetIngetrokken(false)} disabled={bezig}
-                    className="min-h-[36px] px-3 rounded-lg border border-ink/20 text-xs text-ink/70 hover:border-ink/40">
+                    className="btn min-h-[36px] px-3 rounded-lg border border-ink/20 text-xs text-ink/70 hover:border-ink/40 transition-colors">
                     Weer inschakelen
                   </button>
                 ) : (
                   <button type="button" onClick={() => zetIngetrokken(true)} disabled={bezig}
-                    className="min-h-[36px] px-3 rounded-lg border border-ink/20 text-xs text-red-600 hover:border-red-300">
+                    className="btn min-h-[36px] px-3 rounded-lg border border-ink/20 text-xs text-red-600 hover:border-red-300 transition-colors">
                     Intrekken
                   </button>
                 )}
@@ -677,7 +677,7 @@ function IncidentDetail({
         {fout && <p className="text-sm text-red-600 mb-2">{fout}</p>}
         <div className="flex items-center gap-3">
           <button type="button" onClick={opslaan} disabled={bezig}
-            className="min-h-[48px] px-6 rounded-lg bg-accent text-white font-semibold disabled:opacity-60"
+            className="btn btn-accent min-h-[48px] px-6 rounded-lg bg-accent text-white font-semibold disabled:opacity-40"
             style={{ backgroundColor: 'var(--color-accent)' }}>
             {bezig ? 'Opslaan…' : 'Afhandeling opslaan'}
           </button>

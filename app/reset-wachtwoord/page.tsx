@@ -56,8 +56,8 @@ export default function ResetWachtwoord() {
             {error && <p className="text-sm text-red-600">{error}</p>}
             <button
               type="submit" disabled={loading}
-              className="w-full bg-accent text-white font-medium py-2.5 rounded
-                         hover:bg-orange-600 disabled:opacity-50 transition-colors"
+              className="btn btn-accent w-full bg-accent text-white font-medium py-2.5 rounded
+                         disabled:opacity-40"
             >
               {loading ? 'Even geduld…' : 'Stuur resetlink'}
             </button>

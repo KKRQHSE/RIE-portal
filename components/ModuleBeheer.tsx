@@ -113,7 +113,7 @@ export default function ModuleBeheer({
   }
 
   const knop =
-    'text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors disabled:opacity-50'
+    'btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors disabled:opacity-40'
 
   return (
     <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
@@ -178,7 +178,7 @@ export default function ModuleBeheer({
                         aria-pressed={actief}
                         className={`${knop} ${actief
                           ? 'bg-white text-ink/70 border-ink/20 hover:border-ink/40'
-                          : 'bg-accent text-white border-accent hover:opacity-90'}`}
+                          : 'btn-accent bg-accent text-white border-accent'}`}
                       >
                         {actief ? 'Gebruik uitzetten' : 'Gebruik aanzetten'}
                       </button>
@@ -204,7 +204,7 @@ export default function ModuleBeheer({
                       type="button"
                       onClick={() => setVraag({ soort: 'activeren', module: item.module, titel: item.titel })}
                       disabled={bezigHier}
-                      className={`${knop} bg-accent text-white border-accent hover:opacity-90`}
+                      className={`${knop} btn-accent bg-accent text-white border-accent`}
                     >
                       {status === 'gestopt' ? 'Opnieuw activeren' : 'Activeren'}
                     </button>

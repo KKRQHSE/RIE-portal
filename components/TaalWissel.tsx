@@ -105,7 +105,7 @@ export default function TaalWissel({ taal, onTaal }: { taal: Taal; onTaal: (t: T
             aria-pressed={actief}
             aria-label={naam}
             title={naam}
-            className={`relative w-10 h-10 rounded-full overflow-hidden shadow-sm transition duration-150 ${
+            className={`btn relative w-10 h-10 rounded-full overflow-hidden shadow-sm transition duration-150 ${
               actief
                 ? 'ring-2 ring-ink scale-105'
                 : 'ring-1 ring-black/10 opacity-60 grayscale hover:opacity-100 hover:grayscale-0'

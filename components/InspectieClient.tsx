@@ -216,14 +216,14 @@ export default function InspectieClient({
             <div className="flex gap-2 mb-4">
               <button
                 onClick={() => setView('inspecties')}
-                className={`text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors
+                className={`btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors
                   ${view === 'inspecties' ? 'bg-accent text-white border-accent' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}
               >
                 Inspecties
               </button>
               <button
                 onClick={() => setView('norm')}
-                className={`text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center gap-2 rounded-full border transition-colors
+                className={`btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center gap-2 rounded-full border transition-colors
                   ${view === 'norm' ? 'bg-accent text-white border-accent' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}
               >
                 Norm
@@ -238,7 +238,7 @@ export default function InspectieClient({
               </button>
               <button
                 onClick={() => setView('sjablonen')}
-                className={`text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors
+                className={`btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors
                   ${view === 'sjablonen' ? 'bg-accent text-white border-accent' : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'}`}
               >
                 Eigen sjablonen
@@ -367,7 +367,7 @@ function Bibliotheek({
               </p>
               <button
                 onClick={() => (enkel ? onStart(enkel) : onStartCentraal())}
-                className="mt-2 text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity"
+                className="btn btn-accent mt-2 text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium"
               >
                 Inspectie starten
               </button>
@@ -381,8 +381,8 @@ function Bibliotheek({
             <div className="glass-tile rounded-2xl p-4">
               <p className="text-sm text-ink/60">
                 Nog geen inspectie mogelijk.{' '}
-                <button onClick={onNaarSjablonen} className="text-accent hover:underline">Maak een sjabloon</button>
-                {' '}of <button onClick={onNaarNorm} className="text-accent hover:underline">koppel de norm</button>.
+                <button onClick={onNaarSjablonen} className="btn text-accent hover:underline">Maak een sjabloon</button>
+                {' '}of <button onClick={onNaarNorm} className="btn text-accent hover:underline">koppel de norm</button>.
               </p>
             </div>
           )
@@ -399,7 +399,7 @@ function Bibliotheek({
                 </p>
                 <button
                   onClick={onStartCentraal}
-                  className="mt-2 text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity"
+                  className="btn btn-accent mt-2 text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium"
                 >
                   Inspectie starten ({normPunten} {normPunten === 1 ? 'punt' : 'punten'})
                 </button>
@@ -425,7 +425,7 @@ function Bibliotheek({
                 <button
                   onClick={() => gekozen && onStart(gekozen)}
                   disabled={!gekozen}
-                  className="text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+                  className="btn btn-dark text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white font-medium disabled:opacity-40"
                 >
                   Starten
                 </button>
@@ -468,7 +468,7 @@ function Bibliotheek({
             {heeftFilters && (
               <button
                 onClick={() => { setFStatus(ALLE); setFSjabloon(ALLE); setFUitvoerder(ALLE); setFJaar(ALLE) }}
-                className="text-sm px-3 py-2 min-h-[44px] inline-flex items-center text-ink/50 hover:text-ink"
+                className="btn text-sm px-3 py-2 min-h-[44px] inline-flex items-center text-ink/50 hover:text-ink"
               >
                 Filters wissen
               </button>
@@ -572,7 +572,7 @@ function SjabloonBeheer({
         <button
           onClick={bewaar}
           disabled={!naam.trim()}
-          className="text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+          className="btn btn-accent text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium disabled:opacity-40"
         >
           Sjabloon aanmaken
         </button>
@@ -702,7 +702,7 @@ function SjabloonKaart({
     <div className="glass-tile rounded-2xl overflow-hidden">
       <button
         onClick={() => setUit(o => !o)}
-        className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
+        className="btn w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
       >
         <div className="min-w-0">
           <p className="font-medium text-ink truncate">{sjabloon.naam}</p>
@@ -767,7 +767,7 @@ function SjabloonKaart({
                 </label>
                 <button
                   onClick={() => verwijderPunt(p)}
-                  className="text-red-500 hover:text-red-700 text-sm shrink-0 px-2 min-h-[44px]"
+                  className="btn text-red-500 hover:text-red-700 text-sm shrink-0 px-2 min-h-[44px]"
                   aria-label="Verwijderen"
                 >✕</button>
               </li>
@@ -795,7 +795,7 @@ function SjabloonKaart({
             <button
               onClick={voegPuntToe}
               disabled={!nieuwTekst.trim() || bezig}
-              className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white hover:opacity-90 transition-opacity disabled:opacity-40"
+              className="btn btn-dark text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white disabled:opacity-40"
             >
               Toevoegen
             </button>
@@ -804,7 +804,7 @@ function SjabloonKaart({
           <div className="pt-2">
             <button
               onClick={onArchiveer}
-              className="text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors"
+              className="btn text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors"
             >
               Sjabloon archiveren
             </button>

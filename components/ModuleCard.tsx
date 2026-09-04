@@ -71,7 +71,7 @@ export default function ModuleCard({ companyId, module, vragen, fotos, filter, h
   return (
     <div className="glass-tile rounded-2xl overflow-hidden">
       <button
-        className="w-full flex items-center gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
+        className="btn w-full flex items-center gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
       >

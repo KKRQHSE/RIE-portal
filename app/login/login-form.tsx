@@ -64,8 +64,8 @@ export default function LoginForm() {
 
           <button
             type="submit" disabled={loading}
-            className="w-full bg-accent text-white font-medium py-2.5 rounded
-                       hover:bg-orange-600 disabled:opacity-50 transition-colors"
+            className="btn btn-accent w-full bg-accent text-white font-medium py-2.5 rounded
+                       disabled:opacity-40"
           >
             {loading ? 'Even geduld…' : 'Inloggen'}
           </button>

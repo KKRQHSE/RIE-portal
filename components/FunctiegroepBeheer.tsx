@@ -90,7 +90,7 @@ export default function FunctiegroepBeheer({
     <div className="glass-tile rounded-2xl mb-6 overflow-hidden">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
+        className="btn w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
         aria-expanded={open}
       >
         <div className="min-w-0">
@@ -113,7 +113,7 @@ export default function FunctiegroepBeheer({
               <button
                 onClick={voegVoorbeeldenToe}
                 disabled={bezig}
-                className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
+                className="btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
               >
                 {bezig ? 'Bezig…' : `Voorbeeldgroepen toevoegen (${VOORBEELDGROEPEN.join(', ')})`}
               </button>
@@ -130,7 +130,7 @@ export default function FunctiegroepBeheer({
                   />
                   <button
                     onClick={() => archiveer(g)}
-                    className="text-xs px-3 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors shrink-0"
+                    className="btn text-xs px-3 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors shrink-0"
                   >
                     Archiveren
                   </button>
@@ -151,7 +151,7 @@ export default function FunctiegroepBeheer({
             <button
               onClick={() => voegToe(nieuw)}
               disabled={!nieuw.trim() || bezig}
-              className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white hover:opacity-90 transition-opacity disabled:opacity-40"
+              className="btn btn-dark text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white disabled:opacity-40"
             >
               Toevoegen
             </button>

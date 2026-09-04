@@ -195,7 +195,7 @@ export default function PvaCard({
 
       {/* Rustige, scanbare kopregel: onderwerp + de kernfeiten */}
       <button
-        className="w-full flex items-start gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
+        className="btn w-full flex items-start gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
         onClick={() => { setOpen(o => !o); setOoitGeopend(true) }}
         aria-expanded={open}
       >
@@ -348,14 +348,14 @@ export default function PvaCard({
                     <button
                       onClick={() => openPaneel('vrijgeven')}
                       disabled={bezig}
-                      className="text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+                      className="btn btn-accent text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium disabled:opacity-40"
                     >
                       Vrijgeven
                     </button>
                     <button
                       onClick={() => openPaneel('terugsturen')}
                       disabled={bezig}
-                      className="text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
+                      className="btn text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
                     >
                       Terugsturen
                     </button>
@@ -363,7 +363,7 @@ export default function PvaCard({
                 )}
                 <button
                   onClick={toggleHistorie}
-                  className="text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/50 hover:border-ink/40 transition-colors"
+                  className="btn text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/50 hover:border-ink/40 transition-colors"
                 >
                   Geschiedenis {histOpen ? '▲' : '▼'}
                 </button>
@@ -388,7 +388,7 @@ export default function PvaCard({
                   <button
                     onClick={doeVrijgeven}
                     disabled={bezig}
-                    className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+                    className="btn btn-accent text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium disabled:opacity-40"
                   >
                     {bezig ? 'Bezig…' : 'Vrijgeven'}
                   </button>
@@ -407,7 +407,7 @@ export default function PvaCard({
                   <button
                     onClick={doeTerugsturen}
                     disabled={bezig}
-                    className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 font-medium hover:bg-red-50 transition-colors disabled:opacity-40"
+                    className="btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 font-medium hover:bg-red-50 transition-colors disabled:opacity-40"
                   >
                     {bezig ? 'Bezig…' : 'Terugsturen'}
                   </button>

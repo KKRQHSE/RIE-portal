@@ -65,7 +65,7 @@ function KleurUitLogo({ logoUrl, onGebruik }: { logoUrl: string | null; onGebrui
         onClick={bepaal}
         disabled={!logoUrl || bezig}
         title={logoUrl ? undefined : 'Upload eerst een logo'}
-        className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
+        className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
       >
         {bezig ? 'Bezig…' : 'Kleur uit logo halen'}
       </button>
@@ -81,7 +81,7 @@ function KleurUitLogo({ logoUrl, onGebruik }: { logoUrl: string | null; onGebrui
           <button
             type="button"
             onClick={() => { onGebruik(voorstel); setVoorstel(null); setMelding(null) }}
-            className="text-xs px-3 py-1.5 rounded-full bg-ink text-white hover:opacity-90 transition-opacity"
+            className="btn btn-dark text-xs px-3 py-1.5 rounded-full bg-ink text-white"
           >
             Gebruik deze kleur {voorstel}
           </button>
@@ -246,7 +246,7 @@ function MerkKaart({
             <button
               onClick={opslaan}
               disabled={bezig || !naam.trim()}
-              className="text-sm px-4 py-1.5 rounded-full bg-accent text-white font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
+              className="btn btn-accent text-sm px-4 py-1.5 rounded-full bg-accent text-white font-medium disabled:opacity-40"
             >
               {bezig ? 'Bezig…' : 'Opslaan'}
             </button>
@@ -306,7 +306,7 @@ function NieuwMerk({ supabase, onAdded }: { supabase: Supa; onAdded: (m: Merk) =
         <button
           type="submit"
           disabled={bezig || !naam.trim()}
-          className="text-sm px-4 py-2 rounded-full bg-accent text-white font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
+          className="btn btn-accent text-sm px-4 py-2 rounded-full bg-accent text-white font-medium disabled:opacity-40"
         >
           Toevoegen
         </button>
@@ -465,7 +465,7 @@ function KlantForm({
             className="h-7 w-10 rounded border border-ink/20 bg-white"
           />
           {accentOverride ? (
-            <button onClick={() => setAccentOverride('')} className="text-xs text-ink/50 hover:text-accent">Wissen (erf van merk)</button>
+            <button onClick={() => setAccentOverride('')} className="btn text-xs text-ink/50 hover:text-accent">Wissen (erf van merk)</button>
           ) : (
             <span className="text-xs text-ink/40">erft van merk</span>
           )}

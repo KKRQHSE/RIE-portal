@@ -142,7 +142,7 @@ export default function BewijsUpload({ modus, actieId, token, onUploaded }: Prop
         }}
         onDragLeave={() => setSleep(false)}
         onDrop={onDrop}
-        className={`flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-lg border-2 border-dashed cursor-pointer text-sm text-center transition-colors ${
+        className={`btn flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-lg border-2 border-dashed cursor-pointer text-sm text-center transition-colors ${
           sleep ? 'border-accent bg-accent/5' : 'border-ink/20 bg-white hover:border-ink/40'
         } ${bezig ? 'opacity-60 pointer-events-none' : ''}`}
       >

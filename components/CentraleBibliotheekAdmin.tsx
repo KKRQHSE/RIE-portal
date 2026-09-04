@@ -17,7 +17,7 @@ function Archiveerknop({ label, onBevestig }: { label: string; onBevestig: () =>
       <button
         type="button"
         onClick={() => setVraag(true)}
-        className="text-xs px-3 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors"
+        className="btn text-xs px-3 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors"
       >
         {label}
       </button>
@@ -29,14 +29,14 @@ function Archiveerknop({ label, onBevestig }: { label: string; onBevestig: () =>
       <button
         type="button"
         onClick={() => { setVraag(false); onBevestig() }}
-        className="text-xs px-3 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full bg-red-600 text-white hover:opacity-90 transition-opacity"
+        className="btn btn-danger text-xs px-3 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full bg-red-600 text-white"
       >
         Ja, archiveren
       </button>
       <button
         type="button"
         onClick={() => setVraag(false)}
-        className="text-xs px-3 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors"
+        className="btn text-xs px-3 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors"
       >
         Annuleer
       </button>
@@ -137,7 +137,7 @@ export default function CentraleBibliotheekAdmin({ initialRubrieken }: { initial
             <button
               onClick={nieuwRubriek}
               disabled={!nieuwNaam.trim() || bezig}
-              className="text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+              className="btn btn-accent text-sm px-5 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium disabled:opacity-40"
             >
               Rubriek toevoegen
             </button>
@@ -245,7 +245,7 @@ function RubriekKaart({
           <button onClick={() => onVerplaats(-1)} disabled={isEerste || bezig} className="text-ink/40 hover:text-ink disabled:opacity-25 text-xs leading-none px-1" aria-label="Rubriek omhoog">▲</button>
           <button onClick={() => onVerplaats(1)} disabled={isLaatste || bezig} className="text-ink/40 hover:text-ink disabled:opacity-25 text-xs leading-none px-1" aria-label="Rubriek omlaag">▼</button>
         </div>
-        <button onClick={() => setUit(o => !o)} className="flex-1 min-w-0 text-left" aria-expanded={uit}>
+        <button onClick={() => setUit(o => !o)} className="btn flex-1 min-w-0 text-left" aria-expanded={uit}>
           <p className="font-medium text-ink truncate">{rubriek.naam}</p>
           <p className="text-xs text-ink/50 mt-0.5">
             {vragen.length} vra{vragen.length === 1 ? 'ag' : 'gen'}
@@ -312,7 +312,7 @@ function RubriekKaart({
             <button
               onClick={voegVraagToe}
               disabled={!nieuwVraag.trim() || vraagBezig}
-              className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white hover:opacity-90 transition-opacity disabled:opacity-40"
+              className="btn btn-dark text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-ink text-white disabled:opacity-40"
             >
               Vraag toevoegen
             </button>

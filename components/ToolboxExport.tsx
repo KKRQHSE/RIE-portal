@@ -76,7 +76,7 @@ export default function ToolboxExport({ companyId }: { companyId: string }) {
           <input type="date" value={tot} onChange={e => setTot(e.target.value)} className="text-sm border border-ink/20 rounded px-2 py-1.5 min-h-[40px] bg-white" />
         </label>
         <button onClick={downloadCsv} disabled={regels.length === 0}
-          className="text-sm px-4 py-2 min-h-[40px] rounded-full bg-ink text-white hover:opacity-90 disabled:opacity-40">
+          className="btn btn-dark text-sm px-4 py-2 min-h-[40px] rounded-full bg-ink text-white disabled:opacity-40">
           Download CSV
         </button>
         <Link href={pdfHref} target="_blank"

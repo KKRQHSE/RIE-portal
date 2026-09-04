@@ -250,7 +250,7 @@ function GastActieKaart({ token, actie }: { token: string; actie: GastActie }) {
           <button
             onClick={ditHebIkGedaan}
             disabled={bezig}
-            className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
+            className="btn btn-accent text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium disabled:opacity-40"
           >
             Dit heb ik gedaan
           </button>
@@ -292,7 +292,7 @@ function GastActieKaart({ token, actie }: { token: string; actie: GastActie }) {
         <div>
           <button
             onClick={() => setHistOpen(o => !o)}
-            className="text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/50 hover:border-ink/40 transition-colors"
+            className="btn text-xs px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/50 hover:border-ink/40 transition-colors"
           >
             Geschiedenis {histOpen ? '▲' : '▼'}
           </button>

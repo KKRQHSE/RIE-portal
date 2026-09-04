@@ -86,7 +86,7 @@ export default function ToolboxMaandoverzicht({
         />
       ) : (
         <button type="button" onClick={() => { setFout(null); setNieuwVoor('los') }}
-          className="text-sm px-4 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium hover:opacity-90">
+          className="btn btn-accent text-sm px-4 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium">
           + Nieuwe sessie
         </button>
       )}
@@ -110,7 +110,7 @@ export default function ToolboxMaandoverzicht({
                 {sessies.length === 0 && (
                   <button type="button"
                     onClick={() => { setFout(null); setNieuwVoor(maandKey) }}
-                    className="shrink-0 text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-accent hover:text-accent">
+                    className="btn shrink-0 text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-accent hover:text-accent transition-colors">
                     + sessie
                   </button>
                 )}
@@ -184,10 +184,10 @@ function TargetKop({
         <p className="text-xs font-medium uppercase tracking-wide text-ink/40">Toolboxsessies · {jaar}</p>
         <div className="flex items-center gap-1 text-sm">
           <button type="button" onClick={() => onJaar(jaar - 1)} aria-label="Vorig jaar"
-            className="min-h-[36px] min-w-[36px] rounded-full hover:bg-ink/5 text-ink/60">◀</button>
+            className="btn min-h-[36px] min-w-[36px] rounded-full hover:bg-ink/5 text-ink/60">◀</button>
           <span className="tabular-nums text-ink/70 w-12 text-center">{jaar}</span>
           <button type="button" onClick={() => onJaar(jaar + 1)} aria-label="Volgend jaar"
-            className="min-h-[36px] min-w-[36px] rounded-full hover:bg-ink/5 text-ink/60">▶</button>
+            className="btn min-h-[36px] min-w-[36px] rounded-full hover:bg-ink/5 text-ink/60">▶</button>
         </div>
       </div>
 
@@ -218,13 +218,13 @@ function TargetKop({
             <input type="number" min={0} value={waarde} onChange={e => setGetypt(e.target.value)}
               aria-label="Jaartarget" className="w-16 text-sm border border-ink/20 rounded px-2 py-1 bg-white" />
             <button type="button" onClick={opslaan} disabled={bezig}
-              className="text-xs px-2 py-1 rounded-full bg-accent text-white hover:opacity-90 disabled:opacity-40">OK</button>
+              className="btn btn-accent text-xs px-2 py-1 rounded-full bg-accent text-white disabled:opacity-40">OK</button>
             <button type="button" onClick={() => { setBewerk(false); setGetypt(null) }}
-              className="text-xs px-2 py-1 rounded-full border border-ink/20 text-ink/60">×</button>
+              className="btn text-xs px-2 py-1 rounded-full border border-ink/20 text-ink/60">×</button>
           </span>
         ) : (
           <button type="button" onClick={() => setBewerk(true)}
-            className="text-xs text-ink/50 underline decoration-dotted underline-offset-2 hover:text-accent">
+            className="btn text-xs text-ink/50 underline decoration-dotted underline-offset-2 hover:text-accent">
             doel aanpassen
           </button>
         )}
@@ -275,7 +275,7 @@ function SessieRij({
   return (
     <li className="px-5 py-3">
       <div className="flex items-center justify-between gap-3">
-        <button type="button" onClick={onToggle} className="min-w-0 text-left flex-1">
+        <button type="button" onClick={onToggle} className="btn min-w-0 text-left flex-1">
           <p className="text-sm text-ink truncate">{sessie.onderwerp}</p>
           <p className="text-xs text-ink/40">
             {datumNL(sessie.datum)} · <span className="tabular-nums">{sessie.opkomst}</span> van {personen.length} aanwezig
@@ -283,7 +283,7 @@ function SessieRij({
           </p>
         </button>
         <button type="button" onClick={onToggle}
-          className="shrink-0 text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent">
+          className="btn shrink-0 text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors">
           {open ? 'Sluiten' : 'Aanwezigheid'}
         </button>
       </div>
@@ -312,18 +312,18 @@ function SessieRij({
                 </>
               )}
               <button type="button" onClick={() => setBewerk(true)}
-                className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40">Bewerken</button>
+                className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors">Bewerken</button>
               {bevestigVerwijder ? (
                 <span className="inline-flex items-center gap-2">
                   <span className="text-xs text-ink/60">Sessie én aanwezigheid verwijderen?</span>
                   <button type="button" onClick={() => { setBevestigVerwijder(false); verwijder() }} disabled={bezig}
-                    className="text-xs px-3 py-1.5 rounded-full bg-red-600 text-white hover:opacity-90 disabled:opacity-40">Ja, verwijderen</button>
+                    className="btn btn-danger text-xs px-3 py-1.5 rounded-full bg-red-600 text-white disabled:opacity-40">Ja, verwijderen</button>
                   <button type="button" onClick={() => setBevestigVerwijder(false)}
-                    className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40">Annuleer</button>
+                    className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors">Annuleer</button>
                 </span>
               ) : (
                 <button type="button" onClick={() => setBevestigVerwijder(true)}
-                  className="text-xs px-3 py-1.5 rounded-full border border-red-200 bg-white text-red-600 hover:border-red-400">Verwijderen</button>
+                  className="btn text-xs px-3 py-1.5 rounded-full border border-red-200 bg-white text-red-600 hover:border-red-400">Verwijderen</button>
               )}
             </div>
           )}
@@ -437,11 +437,11 @@ function NieuweSessie({
         className="w-full text-sm border border-ink/20 rounded px-3 py-2 bg-white resize-y" />
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={opslaan} disabled={!datum || !onderwerp.trim() || bezig}
-          className="text-xs px-3 py-1.5 rounded-full bg-accent text-white hover:opacity-90 disabled:opacity-40">
+          className="btn btn-accent text-xs px-3 py-1.5 rounded-full bg-accent text-white disabled:opacity-40">
           {bestaand ? 'Opslaan' : 'Sessie aanmaken'}
         </button>
         <button type="button" onClick={onAnnuleer}
-          className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40">Annuleer</button>
+          className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors">Annuleer</button>
       </div>
     </div>
   )

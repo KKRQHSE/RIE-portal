@@ -223,7 +223,7 @@ export default function AuditDetailClient({
                       b.actie_id
                         ? <span className="text-xs text-green-700">✓ Actie gekoppeld</span>
                         : <button type="button" onClick={() => maakActie('vca', b.id)}
-                            className="text-xs px-3 py-1 rounded-full bg-accent text-white hover:opacity-90">Maak hier een actie van</button>
+                            className="btn btn-accent text-xs px-3 py-1 rounded-full bg-accent text-white">Maak hier een actie van</button>
                     )}
                   </div>
                   <textarea rows={2} value={b.toelichting ?? ''} placeholder="Toelichting"
@@ -270,7 +270,7 @@ export default function AuditDetailClient({
                       onChange={e => setObservaties(prev => prev.map(x => (x.id === o.id ? { ...x, observatie: e.target.value } : x)))}
                       onBlur={() => persist('audit_iso_observatie', o.id, { observatie: o.observatie })} className={`${veld} resize-y`} />
                     <button type="button" onClick={() => verwijderObservatie(o.id)}
-                      className="text-xs text-red-600 hover:underline">Verwijderen</button>
+                      className="btn text-xs text-red-600 hover:underline">Verwijderen</button>
                   </div>
                 ))}
               </div>
@@ -299,9 +299,9 @@ export default function AuditDetailClient({
                       {v.actie_id
                         ? <span className="text-xs text-green-700">✓ Actie gekoppeld</span>
                         : <button type="button" onClick={() => maakActie('verbeterpunt', v.id)}
-                            className="text-xs px-3 py-1 rounded-full bg-accent text-white hover:opacity-90">Maak hier een actie van</button>}
+                            className="btn btn-accent text-xs px-3 py-1 rounded-full bg-accent text-white">Maak hier een actie van</button>}
                       <button type="button" onClick={() => verwijderVerbeterpunt(v.id)}
-                        className="text-xs text-red-600 hover:underline ml-auto">Verwijderen</button>
+                        className="btn text-xs text-red-600 hover:underline ml-auto">Verwijderen</button>
                     </div>
                   </div>
                 ))}
@@ -335,7 +335,7 @@ function Blok({ titel, actie, children }: { titel: string; actie?: React.ReactNo
 function AddKnop({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick}
-      className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors">
+      className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors">
       {label}
     </button>
   )

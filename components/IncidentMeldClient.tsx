@@ -211,12 +211,12 @@ export default function IncidentMeldClient({
                 {fotos.map((f, i) => (
                   <li key={i} className="flex items-center justify-between gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
                     <span className="truncate text-ink/70">{f.name}</span>
-                    <button type="button" onClick={() => verwijderFoto(i)} className="text-ink/40 hover:text-red-600 shrink-0" aria-label={t('verwijderFoto')}>✕</button>
+                    <button type="button" onClick={() => verwijderFoto(i)} className="btn text-ink/40 hover:text-red-600 shrink-0" aria-label={t('verwijderFoto')}>✕</button>
                   </li>
                 ))}
               </ul>
             )}
-            <label className="flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-lg border-2 border-dashed border-ink/20 bg-white cursor-pointer text-sm text-ink/60 hover:border-ink/40">
+            <label className="btn flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-lg border-2 border-dashed border-ink/20 bg-white cursor-pointer text-sm text-ink/60 hover:border-ink/40">
               <input type="file" accept="image/*" capture="environment" multiple className="sr-only" onChange={kiesFotos} />
               <span>{t('fotoToevoegen')}</span>
             </label>
@@ -225,7 +225,7 @@ export default function IncidentMeldClient({
           {fout && <p className="text-sm text-red-600">{fout}</p>}
 
           <button type="button" onClick={verstuur} disabled={bezig}
-            className="w-full min-h-[48px] rounded-lg bg-accent text-white font-semibold text-base disabled:opacity-60"
+            className="btn btn-accent w-full min-h-[48px] rounded-lg bg-accent text-white font-semibold text-base disabled:opacity-40"
             style={{ backgroundColor: 'var(--color-accent)' }}>
             {bezig ? t('versturenBezig') : t('versturen')}
           </button>

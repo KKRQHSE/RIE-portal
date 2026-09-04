@@ -98,7 +98,7 @@ function RubriekBlok({
           <button
             type="button"
             onClick={() => onKoppel(false)}
-            className="shrink-0 text-xs px-3 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors"
+            className="btn shrink-0 text-xs px-3 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors"
           >
             Ontkoppelen
           </button>
@@ -106,7 +106,7 @@ function RubriekBlok({
           <button
             type="button"
             onClick={() => onKoppel(true)}
-            className="shrink-0 text-sm px-4 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium hover:opacity-90 transition-opacity"
+            className="btn btn-accent shrink-0 text-sm px-4 py-2 min-h-[40px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium"
           >
             Koppelen
           </button>
@@ -246,11 +246,11 @@ function VraagRij({
           </p>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={terugNaarCentraal} disabled={bezig}
-              className="text-xs px-3 py-1.5 rounded-full bg-accent text-white hover:opacity-90 transition-opacity disabled:opacity-40">
+              className="btn btn-accent text-xs px-3 py-1.5 rounded-full bg-accent text-white disabled:opacity-40">
               Overnemen (terug naar centraal)
             </button>
             <button type="button" onClick={houdMijnVersie} disabled={bezig}
-              className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors disabled:opacity-40">
+              className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors disabled:opacity-40">
               Mijn versie houden
             </button>
           </div>
@@ -263,11 +263,11 @@ function VraagRij({
           {!afw && (
             <>
               <button type="button" onClick={() => { setTekst(vraag.centrale_tekst); setModus('aanpassen') }}
-                className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors">
+                className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors">
                 Lokaal aanpassen
               </button>
               <button type="button" onClick={() => setModus('uitzetten')}
-                className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors">
+                className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors">
                 Uitzetten
               </button>
             </>
@@ -275,18 +275,18 @@ function VraagRij({
           {afw?.modus === 'lokaal' && (
             <>
               <button type="button" onClick={() => { setTekst(afw.lokale_tekst ?? ''); setModus('aanpassen') }}
-                className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors">
+                className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors">
                 Lokale tekst bewerken
               </button>
               <button type="button" onClick={terugNaarCentraal} disabled={bezig}
-                className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors disabled:opacity-40">
+                className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors disabled:opacity-40">
                 {vervallen ? 'Mijn versie verwijderen' : 'Terug naar centraal'}
               </button>
             </>
           )}
           {afw?.modus === 'uit' && (
             <button type="button" onClick={terugNaarCentraal} disabled={bezig}
-              className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors disabled:opacity-40">
+              className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors disabled:opacity-40">
               Weer aanzetten (terug naar centraal)
             </button>
           )}
@@ -306,11 +306,11 @@ function VraagRij({
           />
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={slaLokaalOp} disabled={!tekst.trim() || bezig}
-              className="text-xs px-3 py-1.5 rounded-full bg-accent text-white hover:opacity-90 transition-opacity disabled:opacity-40">
+              className="btn btn-accent text-xs px-3 py-1.5 rounded-full bg-accent text-white disabled:opacity-40">
               {afw ? 'Lokale tekst opslaan' : 'Bevestig en sla lokaal op'}
             </button>
             <button type="button" onClick={() => setModus('lezen')}
-              className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors">
+              className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors">
               Annuleer
             </button>
           </div>
@@ -324,11 +324,11 @@ function VraagRij({
           <p className="text-xs text-ink/60">Je zet dit punt uit; het verschijnt niet in nieuwe inspecties.</p>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={zetUit} disabled={bezig}
-              className="text-xs px-3 py-1.5 rounded-full bg-amber-600 text-white hover:opacity-90 transition-opacity disabled:opacity-40">
+              className="btn btn-warning text-xs px-3 py-1.5 rounded-full bg-amber-600 text-white disabled:opacity-40">
               Bevestig: uitzetten
             </button>
             <button type="button" onClick={() => setModus('lezen')}
-              className="text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors">
+              className="btn text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors">
               Annuleer
             </button>
           </div>

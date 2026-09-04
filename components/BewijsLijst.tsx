@@ -80,7 +80,7 @@ export default function BewijsLijst({
               <button
                 onClick={() => onVerwijder(b.id)}
                 disabled={verwijderBezigId === b.id}
-                className="shrink-0 inline-flex items-center min-h-[44px] px-2 text-xs text-red-600 hover:underline disabled:opacity-40"
+                className="btn shrink-0 inline-flex items-center min-h-[44px] px-2 text-xs text-red-600 hover:underline disabled:opacity-40"
               >
                 {verwijderBezigId === b.id ? 'Bezig…' : 'Verwijderen'}
               </button>

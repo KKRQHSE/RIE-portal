@@ -14,7 +14,7 @@ function Pill({
   return (
     <button
       onClick={onClick}
-      className={`text-xs px-3 py-2 min-h-[44px] inline-flex items-center rounded-full border transition-colors ${
+      className={`btn text-xs px-3 py-2 min-h-[44px] inline-flex items-center rounded-full border transition-colors ${
         active
           ? 'bg-ink text-white border-ink'
           : 'bg-white text-ink/60 border-ink/20 hover:border-ink/40'

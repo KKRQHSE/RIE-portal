@@ -144,7 +144,7 @@ export default function Doorgeven({ modus, actieId, token, onDoorgegeven }: Prop
     return (
       <button
         onClick={() => setOpen(true)}
-        className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors"
+        className="btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors"
       >
         Doorgeven aan collega
       </button>
@@ -177,14 +177,14 @@ export default function Doorgeven({ modus, actieId, token, onDoorgegeven }: Prop
         <button
           onClick={doorgeven}
           disabled={!magVerzenden}
-          className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
+          className="btn btn-accent text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium disabled:opacity-40"
         >
           {bezig ? 'Bezig…' : 'Doorgeven'}
         </button>
         <button
           onClick={annuleer}
           disabled={bezig}
-          className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors disabled:opacity-40"
+          className="btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/60 hover:border-ink/40 transition-colors disabled:opacity-40"
         >
           Annuleren
         </button>

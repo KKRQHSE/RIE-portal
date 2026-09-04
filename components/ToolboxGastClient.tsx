@@ -117,7 +117,7 @@ export default function ToolboxGastClient({
           <div className="glass-tile rounded-2xl p-5 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <h2 className="text-lg font-semibold text-ink">{open.titel}</h2>
-              <button onClick={sluit} className="text-xs text-ink/40 hover:text-ink shrink-0">{t('sluiten')}</button>
+              <button onClick={sluit} className="btn text-xs text-ink/40 hover:text-ink shrink-0">{t('sluiten')}</button>
             </div>
 
             {stap === 'al_afgerond' && (
@@ -126,7 +126,7 @@ export default function ToolboxGastClient({
                   <p className="text-sm font-medium text-green-800">{t('alAfgerondTitel')}</p>
                   <p className="text-sm text-ink/70 mt-1">{t('alAfgerondTekst')}</p>
                 </div>
-                <button onClick={sluit} className="text-sm px-5 py-2 min-h-[44px] rounded-full border border-ink/20 bg-white text-ink/70 hover:border-ink/40">{t('terugOverzicht')}</button>
+                <button onClick={sluit} className="btn text-sm px-5 py-2 min-h-[44px] rounded-full border border-ink/20 bg-white text-ink/70 hover:border-ink/40 transition-colors">{t('terugOverzicht')}</button>
               </div>
             )}
 
@@ -170,7 +170,7 @@ export default function ToolboxGastClient({
 
                 <button onClick={() => setStap(heeftQuiz ? 'quiz' : 'naam')}
                   disabled={open.vereist_video && !videoBekeken}
-                  className="text-sm px-5 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium hover:opacity-90 disabled:opacity-40">
+                  className="btn btn-accent text-sm px-5 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium disabled:opacity-40">
                   {t('volgende')}
                 </button>
               </div>
@@ -209,10 +209,10 @@ export default function ToolboxGastClient({
                 <div className="flex flex-wrap gap-2">
                   {open.quiz_uitleg_modus === 'aan_eind' && !nagekeken ? (
                     <button onClick={() => setNagekeken(true)} disabled={!alleBeantwoord}
-                      className="text-sm px-5 py-2 min-h-[44px] rounded-full bg-ink text-white font-medium hover:opacity-90 disabled:opacity-40">{t('nakijken')}</button>
+                      className="btn btn-dark text-sm px-5 py-2 min-h-[44px] rounded-full bg-ink text-white font-medium disabled:opacity-40">{t('nakijken')}</button>
                   ) : (
                     <button onClick={() => setStap('naam')} disabled={!alleBeantwoord}
-                      className="text-sm px-5 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium hover:opacity-90 disabled:opacity-40">{t('volgende')}</button>
+                      className="btn btn-accent text-sm px-5 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium disabled:opacity-40">{t('volgende')}</button>
                   )}
                 </div>
               </div>
@@ -224,8 +224,8 @@ export default function ToolboxGastClient({
                 <p className="text-lg font-semibold text-ink">{naam}</p>
                 <p className="text-sm text-ink/60">{t('kloptDit')}</p>
                 <div className="flex flex-wrap gap-2">
-                  <button onClick={() => setStap('handtekening')} className="text-sm px-5 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium hover:opacity-90">{t('jaDatBenIk')}</button>
-                  <button onClick={() => setStap('mismatch')} className="text-sm px-5 py-2 min-h-[44px] rounded-full border border-ink/20 bg-white text-ink/70 hover:border-ink/40">{t('neeNietIk')}</button>
+                  <button onClick={() => setStap('handtekening')} className="btn btn-accent text-sm px-5 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium">{t('jaDatBenIk')}</button>
+                  <button onClick={() => setStap('mismatch')} className="btn text-sm px-5 py-2 min-h-[44px] rounded-full border border-ink/20 bg-white text-ink/70 hover:border-ink/40 transition-colors">{t('neeNietIk')}</button>
                 </div>
               </div>
             )}
@@ -236,7 +236,7 @@ export default function ToolboxGastClient({
                   <p className="text-sm font-medium text-amber-800">{t('stoppenTitel')}</p>
                   <p className="text-sm text-ink/70 mt-1">{t('stoppenTekst')}</p>
                 </div>
-                <button onClick={sluit} className="text-sm px-5 py-2 min-h-[44px] rounded-full border border-ink/20 bg-white text-ink/70 hover:border-ink/40">{t('terugOverzicht')}</button>
+                <button onClick={sluit} className="btn text-sm px-5 py-2 min-h-[44px] rounded-full border border-ink/20 bg-white text-ink/70 hover:border-ink/40 transition-colors">{t('terugOverzicht')}</button>
               </div>
             )}
 
@@ -245,7 +245,7 @@ export default function ToolboxGastClient({
                 <p className="text-sm text-ink">{t('handtekeningUitleg').replace('{naam}', naam)}</p>
                 <Handtekening onChange={setHandtekening} />
                 <button onClick={afronden} disabled={!handtekening || bezig}
-                  className="text-sm px-5 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium hover:opacity-90 disabled:opacity-40">
+                  className="btn btn-accent text-sm px-5 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium disabled:opacity-40">
                   {bezig ? t('bezig') : t('afrondenKnop')}
                 </button>
                 {fout && <p className="text-xs text-red-600">{fout}</p>}
@@ -257,7 +257,7 @@ export default function ToolboxGastClient({
                 <p className="text-2xl">✓</p>
                 <p className="text-sm font-medium text-ink">{t('klaarBedankt').replace('{naam}', naam)}</p>
                 <p className="text-xs text-ink/50">{t('klaarUitleg')}</p>
-                <button onClick={sluit} className="text-sm px-5 py-2 min-h-[44px] rounded-full bg-ink text-white hover:opacity-90">{t('terugOverzicht')}</button>
+                <button onClick={sluit} className="btn btn-dark text-sm px-5 py-2 min-h-[44px] rounded-full bg-ink text-white">{t('terugOverzicht')}</button>
               </div>
             )}
           </div>

@@ -176,7 +176,7 @@ export default function PersoonSamenvoegen({ personen, onSamengevoegd, eerdereMe
           type="button"
           onClick={voorbereiden}
           disabled={!gekozen || bezig}
-          className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
+          className="btn btn-accent text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-accent text-white font-medium disabled:opacity-40"
         >
           {bezig && !voorbeeld ? 'Bezig…' : 'Samenvoegen'}
         </button>
@@ -184,7 +184,7 @@ export default function PersoonSamenvoegen({ personen, onSamengevoegd, eerdereMe
           type="button"
           onClick={omdraaien}
           disabled={!doelId && !bronId}
-          className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/70 hover:border-ink/40 disabled:opacity-40 transition-colors"
+          className="btn text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full border border-ink/20 bg-white text-ink/70 hover:border-ink/40 disabled:opacity-40 transition-colors"
         >
           Omdraaien
         </button>

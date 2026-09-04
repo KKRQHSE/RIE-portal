@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { BEWIJS_BUCKET, DOWNLOAD_GELDIGHEID_SEC, parseJson, type BewijsItem } from '@/lib/bewijs'
+import { BEWIJS_BUCKET, DOWNLOAD_GELDIGHEID_SEC, parseJson, signedUrlOpties, type BewijsItem } from '@/lib/bewijs'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       if (typeof r.pad === 'string' && r.pad) {
         const { data: signed } = await service.storage
           .from(BEWIJS_BUCKET)
-          .createSignedUrl(r.pad, DOWNLOAD_GELDIGHEID_SEC)
+          .createSignedUrl(r.pad, DOWNLOAD_GELDIGHEID_SEC, signedUrlOpties(r.type, r.bestandsnaam))
         downloadUrl = signed?.signedUrl ?? null
       }
       return {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { BEWIJS_BUCKET, veiligeExt } from '@/lib/bewijs'
+import { BEWIJS_BUCKET, veiligeExt, isServerToegestaanType, isToegestaneGrootte } from '@/lib/bewijs'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,13 +20,18 @@ export async function POST(request: Request) {
     return fout('Ongeldige aanvraag.', 400)
   }
 
-  const { actieId, bestandsnaam } = (body ?? {}) as Record<string, unknown>
+  const { actieId, bestandsnaam, type, grootte } = (body ?? {}) as Record<string, unknown>
   if (
     typeof actieId !== 'string' || !actieId ||
     typeof bestandsnaam !== 'string' || !bestandsnaam.trim()
   ) {
     return fout('Ongeldige invoer.', 400)
   }
+  // Harde server-side controle vóór er een signed URL wordt gemint — geen
+  // stille acceptatie van een bestandstype/-grootte buiten de allowlist.
+  // De bucket zelf (allowed_mime_types/file_size_limit) is de echte grens.
+  if (!isServerToegestaanType(type)) return fout('Alleen jpg/png/webp/gif of pdf zijn toegestaan.', 415)
+  if (!isToegestaneGrootte(grootte)) return fout('Bestand te groot of ongeldige grootte opgegeven.', 413)
 
   const supabase = await createClient()
 

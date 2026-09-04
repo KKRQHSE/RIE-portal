@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAnonClient } from '@/lib/supabase/anon'
 import { createServiceClient } from '@/lib/supabase/service'
-import { parseJson, isVeiligOpslagPad } from '@/lib/bewijs'
+import { parseJson, isVeiligOpslagPad, isServerToegestaanType, isToegestaneGrootte } from '@/lib/bewijs'
 import { INCIDENT_FOTO_BUCKET } from '@/lib/incident'
 
 // Nooit cachen/prerenderen: altijd een verse, request-specifieke actie.
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     return fout('Ongeldige aanvraag.', 400)
   }
 
-  const { token, incidentId, bestandsnaam } = (body ?? {}) as Record<string, unknown>
+  const { token, incidentId, bestandsnaam, type, grootte } = (body ?? {}) as Record<string, unknown>
   if (
     typeof token !== 'string' || !token ||
     typeof incidentId !== 'string' || !incidentId ||
@@ -30,6 +30,8 @@ export async function POST(request: Request) {
   ) {
     return fout('Ongeldige invoer.', 400)
   }
+  if (!isServerToegestaanType(type)) return fout('Alleen jpg/png/webp/gif of pdf zijn toegestaan.', 415)
+  if (!isToegestaneGrootte(grootte)) return fout('Bestand te groot of ongeldige grootte opgegeven.', 413)
 
   // Token + incident-koppeling worden in de RPC gevalideerd; die reserveert een pad.
   const anon = createAnonClient()

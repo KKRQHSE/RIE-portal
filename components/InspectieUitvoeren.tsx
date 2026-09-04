@@ -642,7 +642,7 @@ function FotoBlok({
     const res = await fetch('/api/inspectie/foto-upload', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ inspectieId, bevindingId, bestandsnaam: naam }),
+      body: JSON.stringify({ inspectieId, bevindingId, bestandsnaam: naam, type, grootte: blob.size }),
     })
     // De reden uit de server/storage erbij zetten. Een kale "uploaden mislukt"
     // is niet te diagnosticeren; bij een storing als "Bucket not found" wil je

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { isVeiligOpslagPad, parseJson } from '@/lib/bewijs'
+import { isVeiligOpslagPad, parseJson, isServerToegestaanType, isToegestaneGrootte } from '@/lib/bewijs'
 import { INSPECTIE_FOTO_BUCKET } from '@/lib/inspectie-foto'
 
 // Nooit cachen/prerenderen: altijd een verse, request-specifieke actie.
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     return fout('Ongeldige aanvraag.', 400)
   }
 
-  const { inspectieId, bevindingId, bestandsnaam } = (body ?? {}) as Record<string, unknown>
+  const { inspectieId, bevindingId, bestandsnaam, type, grootte } = (body ?? {}) as Record<string, unknown>
   if (
     typeof inspectieId !== 'string' || !inspectieId ||
     typeof bestandsnaam !== 'string' || !bestandsnaam.trim() ||
@@ -31,6 +31,8 @@ export async function POST(request: Request) {
   ) {
     return fout('Ongeldige invoer.', 400)
   }
+  if (!isServerToegestaanType(type)) return fout('Alleen jpg/png/webp/gif of pdf zijn toegestaan.', 415)
+  if (!isToegestaneGrootte(grootte)) return fout('Bestand te groot of ongeldige grootte opgegeven.', 413)
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

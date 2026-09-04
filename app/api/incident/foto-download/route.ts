@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { DOWNLOAD_GELDIGHEID_SEC } from '@/lib/bewijs'
+import { DOWNLOAD_GELDIGHEID_SEC, signedUrlOpties } from '@/lib/bewijs'
 import { INCIDENT_FOTO_BUCKET, type IncidentFotoItem } from '@/lib/incident'
 
 export const dynamic = 'force-dynamic'
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       if (typeof r.storage_pad === 'string' && r.storage_pad) {
         const { data: signed } = await service.storage
           .from(INCIDENT_FOTO_BUCKET)
-          .createSignedUrl(r.storage_pad, DOWNLOAD_GELDIGHEID_SEC)
+          .createSignedUrl(r.storage_pad, DOWNLOAD_GELDIGHEID_SEC, signedUrlOpties(r.type, r.bestandsnaam))
         downloadUrl = signed?.signedUrl ?? null
       }
       return {

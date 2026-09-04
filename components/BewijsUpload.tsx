@@ -60,8 +60,8 @@ export default function BewijsUpload({ modus, actieId, token, onUploaded }: Prop
       const endpoint = modus === 'gast' ? '/api/bewijs/gast-upload' : '/api/bewijs/beheerder-upload'
       const payload =
         modus === 'gast'
-          ? { token, actieId, bestandsnaam: naam }
-          : { actieId, bestandsnaam: naam }
+          ? { token, actieId, bestandsnaam: naam, type, grootte: blob.size }
+          : { actieId, bestandsnaam: naam, type, grootte: blob.size }
 
       const res = await fetch(endpoint, {
         method: 'POST',

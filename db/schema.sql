@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-04T18:36:52.077Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-04T18:39:22.755Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -2853,20 +2853,14 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare
-  v_role    text;
-  v_company uuid;
 begin
-  v_role := case
-    when new.raw_user_meta_data->>'role' in ('client','admin')
-      then new.raw_user_meta_data->>'role'
-    else 'client'
-  end;
-
-  v_company := nullif(new.raw_user_meta_data->>'company_id', '')::uuid;
-
+  -- role/company_id komen NOOIT uit new.raw_user_meta_data: dat is door de
+  -- aanvrager zelf ingevuld bij signup en dus niet te vertrouwen. Elk nieuw
+  -- account start als machteloze 'client' zonder bedrijf; een admin (of een
+  -- gecontroleerd proces met de service-role) kent de echte rol/koppeling
+  -- daarna apart toe.
   insert into public.users (id, email, role, company_id)
-  values (new.id, new.email, v_role, v_company)
+  values (new.id, new.email, 'client', null)
   on conflict (id) do nothing;
 
   return new;

@@ -31,6 +31,7 @@ const BASIS = process.env.AI_TEST_BASIS || 'http://localhost:3000'
 // Volgorde: eerst de brede beveiligingstests, dan per module, dan de zelftests.
 const TESTS = [
   { naam: 'security_hardening_test.mjs',            soort: 'database' },
+  { naam: 'signup_privilege_isolatie_test.mjs',     soort: 'database' },
   { naam: 'anon_execute_audit_test.mjs',            soort: 'database' },
   { naam: 'onveranderlijkheid_test.mjs',            soort: 'database' },
   { naam: 'nachttest_rls.mjs',                      soort: 'database' },

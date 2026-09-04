@@ -44,6 +44,13 @@
   border-radius: 0.5rem;
 }
 
+/* Toast-bevestiging (components/Toast.tsx): kort in schuiven, geen slide-out
+   nodig — hij verdwijnt na de timer gewoon uit de DOM. */
+@keyframes toast-in {
+  0%   { opacity: 0; transform: translate(-50%, 8px); }
+  100% { opacity: 1; transform: translate(-50%, 0); }
+}
+
 /* ---- Apple-stijl frosted-glass tegels — fris & licht ----
    Het accent (huisstijl) zit BEWUST NIET in de grote vlakken of de glas-tint:
    oranje × grijs × blur werd modderbruin. Het accent komt alleen scherp en klein

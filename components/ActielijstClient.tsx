@@ -9,6 +9,7 @@ import { BRON_FILTERS, type BronSoort, type Herkomst } from '@/lib/actie-herkoms
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
 import Gauge from './Gauge'
+import Toast from './Toast'
 
 const STATUS_OPTS_BEWERK = ['Open', 'In behandeling', 'Afgerond']
 
@@ -70,6 +71,7 @@ export default function ActielijstClient({
   const [prio, setPrio] = useState('Middel')
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
   const naamVan = useMemo(() => {
     const m = new Map<string, string>()
@@ -134,6 +136,7 @@ export default function ActielijstClient({
     }
     setOnderwerp(''); setPersoonId(''); setTermijn(''); setPrio('Middel')
     setFormOpen(false); setBezig(false)
+    setToast('Actie toegevoegd')
   }
 
   // Status inline bijwerken (RLS: pva_update staat eigen-bedrijf toe). Optimistisch;
@@ -148,7 +151,9 @@ export default function ActielijstClient({
     if (error) {
       setFout(error.message)
       if (oud) setRijen(prev => prev.map(r => (r.item.id === id ? { ...r, item: { ...r.item, status: oud } } : r)))
+      return
     }
+    setToast(`Status gewijzigd naar "${status}"`)
   }
 
   const afgerondTotaal = rijen.filter(r => r.item.status === 'Afgerond').length
@@ -319,7 +324,7 @@ export default function ActielijstClient({
                         plaats van een onzichtbare select: dit IS de manier om
                         de actie af te handelen, dus dat moet je in één oogopslag
                         als klikbaar herkennen. */}
-                    <span className={`relative inline-flex items-center rounded-full border border-black/10 ${STATUS_BADGE[item.status] ?? 'bg-gray-100 text-gray-700'}`}>
+                    <span className={`relative inline-flex items-center rounded-full border border-black/10 transition-colors duration-150 ${STATUS_BADGE[item.status] ?? 'bg-gray-100 text-gray-700'}`}>
                       <select
                         value={item.status}
                         onChange={e => zetStatus(item.id, e.target.value)}
@@ -354,6 +359,7 @@ export default function ActielijstClient({
           ))}
         </div>
       </div>
+      <Toast bericht={toast} onSluiten={() => setToast(null)} />
     </main>
   )
 }

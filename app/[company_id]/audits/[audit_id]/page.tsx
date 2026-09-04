@@ -32,6 +32,11 @@ export default async function AuditDetailPage({
 
   if (!profile) redirect('/login')
   if (profile.role !== 'admin' && profile.company_id !== company_id) notFound()
+  // Audits blijven volledig dicht voor teamleider (zelfde regel als het
+  // overzicht, audits/page.tsx) — een losse deeplink naar een auditdetail
+  // mag daar niet omheen. De audit-tabel zelf is en blijft dicht
+  // (mag_bedrijf_beheren), dus dit is consistentie, geen nieuwe grens.
+  if (profile.role === 'teamleider') notFound()
   if (!moduleRij) notFound()
   if (!audit) notFound()
 

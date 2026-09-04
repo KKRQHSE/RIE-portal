@@ -8,7 +8,7 @@ import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/hui
 import type { Audit, AuditSjabloon, AuditStatus, Company } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
-import Gauge from './Gauge'
+import ModuleStatuskop from './ModuleStatuskop'
 
 const STATUS_BADGE: Record<AuditStatus, string> = {
   gepland:    'bg-gray-100 text-gray-600',
@@ -40,7 +40,17 @@ export default function AuditsClient({
   const jaren = Array.from(new Set(audits.map(a => a.jaar))).sort((a, b) => b - a)
   const ditJaar = new Date().getFullYear()
   const ditJaarAudits = audits.filter(a => a.jaar === ditJaar)
-  const gedaan = ditJaarAudits.filter(a => a.status !== 'gepland').length
+  const afgerondJaar = ditJaarAudits.filter(a => a.status === 'afgerond').length
+  const geplandJaar = ditJaarAudits.filter(a => a.status === 'gepland')
+
+  // Primaire knop: naar de eerstvolgende geplande audit (op datum; zonder
+  // datum onderaan), anders naar "Nieuwe audit" — alles al geladen data.
+  const eerstvolgende = [...geplandJaar]
+    .sort((a, b) => (a.datum ?? '9999-99-99').localeCompare(b.datum ?? '9999-99-99'))[0]
+    ?? null
+  const primaireActieAudit = eerstvolgende
+    ? { label: `Naar eerstvolgende audit (${eerstvolgende.titel})`, href: `/${companyId}/audits/${eerstvolgende.id}` }
+    : { label: '+ Nieuwe audit', href: '#nieuwe-audit' }
 
   async function maakAan(e: React.FormEvent) {
     e.preventDefault()
@@ -66,17 +76,16 @@ export default function AuditsClient({
           <p className="text-sm text-ink/50 mt-0.5">Audits</p>
         </div>
 
-        {/* Voortgang dit jaar */}
-        <div className="glass-tile rounded-2xl p-4 mb-5 flex items-center gap-4">
-          <Gauge value={gedaan} total={ditJaarAudits.length} size={72} label="uitgevoerd" />
-          <div>
-            <p className="text-sm font-medium text-ink">{gedaan} van {ditJaarAudits.length} interne audits uitgevoerd</p>
-            <p className="text-xs text-ink/40 mt-0.5">{ditJaar}</p>
-          </div>
-        </div>
+        <ModuleStatuskop
+          titel="Audits"
+          ondertitel={String(ditJaar)}
+          ring={ditJaarAudits.length > 0 ? { waarde: afgerondJaar, totaal: ditJaarAudits.length, ringLabel: 'afgerond' } : null}
+          cijfers={[{ label: 'gepland', waarde: geplandJaar.length }]}
+          actie={primaireActieAudit}
+        />
 
         {/* Nieuwe audit */}
-        <div className="mb-5">
+        <div id="nieuwe-audit" className="mb-5 scroll-mt-20">
           {!formOpen ? (
             <button type="button" onClick={() => setFormOpen(true)}
               className="btn btn-accent text-sm px-4 py-2 min-h-[44px] inline-flex items-center gap-2 rounded-full bg-accent text-white">

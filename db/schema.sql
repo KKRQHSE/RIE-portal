@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-04T18:39:22.755Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-04T19:27:18.338Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -747,7 +747,7 @@ ALTER TABLE public.toolbox_bron ADD CONSTRAINT toolbox_bron_url_https CHECK ((ur
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT deelname_bewijssoort_check CHECK ((bewijssoort = ANY (ARRAY['digitaal'::text, 'fysiek_aanwezig'::text])));
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT deelname_digitaal_bewijs CHECK (((bewijssoort <> 'digitaal'::text) OR ((naam_bevestigd = true) AND (handtekening IS NOT NULL) AND (btrim(handtekening) <> ''::text) AND (handtekening_gezet_op IS NOT NULL))));
 ALTER TABLE public.toolbox_sessie ADD CONSTRAINT toolbox_sessie_onderwerp_check CHECK ((btrim(onderwerp) <> ''::text));
-ALTER TABLE public.users ADD CONSTRAINT users_role_check CHECK ((role = ANY (ARRAY['client'::text, 'admin'::text])));
+ALTER TABLE public.users ADD CONSTRAINT users_role_check CHECK ((role = ANY (ARRAY['client'::text, 'admin'::text, 'teamleider'::text])));
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_aantoonbaar_check CHECK (((aantoonbaar IS NULL) OR (aantoonbaar = ANY (ARRAY['Ja'::text, 'Nee'::text]))));
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.actie_historie ADD CONSTRAINT actie_historie_pva_item_id_fkey FOREIGN KEY (pva_item_id) REFERENCES pva_items(id) ON DELETE CASCADE;
@@ -975,9 +975,9 @@ CREATE POLICY audit_verbeterpunt_sel ON public.audit_verbeterpunt AS PERMISSIVE 
 CREATE POLICY bedrijf_dashboard_instelling_sel ON public.bedrijf_dashboard_instelling AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_doelstelling_sel ON public.bedrijf_doelstelling AS PERMISSIVE FOR SELECT TO public
-  USING (mag_bedrijf_beheren(company_id));
+  USING (mag_bedrijf_werken(company_id));
 CREATE POLICY bedrijf_inspectie_doel_sel ON public.bedrijf_inspectie_doel AS PERMISSIVE FOR SELECT TO public
-  USING (mag_bedrijf_beheren(company_id));
+  USING (mag_bedrijf_werken(company_id));
 CREATE POLICY bedrijf_modules_sel ON public.bedrijf_modules AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_rubriek_sel ON public.bedrijf_rubriek AS PERMISSIVE FOR SELECT TO public
@@ -987,7 +987,7 @@ CREATE POLICY bedrijf_toolbox_sel ON public.bedrijf_toolbox AS PERMISSIVE FOR SE
 CREATE POLICY bedrijf_toolbox_afwijking_sel ON public.bedrijf_toolbox_afwijking AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_toolbox_instelling_sel ON public.bedrijf_toolbox_instelling AS PERMISSIVE FOR SELECT TO public
-  USING (mag_bedrijf_beheren(company_id));
+  USING (mag_bedrijf_werken(company_id));
 CREATE POLICY bedrijf_vraag_afwijking_sel ON public.bedrijf_vraag_afwijking AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bewijs_select ON public.bewijs AS PERMISSIVE FOR SELECT TO public
@@ -1054,19 +1054,19 @@ CREATE POLICY incident_gevolg_soort_sel ON public.incident_gevolg_soort AS PERMI
 CREATE POLICY incident_meldlink_sel ON public.incident_meldlink AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY inspectie_sel ON public.inspectie AS PERMISSIVE FOR SELECT TO public
-  USING (mag_bedrijf_beheren(company_id));
+  USING (mag_bedrijf_werken(company_id));
 CREATE POLICY inspectie_ai_suggestie_sel ON public.inspectie_ai_suggestie AS PERMISSIVE FOR SELECT TO public
-  USING (mag_bedrijf_beheren(company_id));
+  USING (mag_bedrijf_werken(company_id));
 CREATE POLICY inspectie_bevinding_sel ON public.inspectie_bevinding AS PERMISSIVE FOR SELECT TO public
-  USING (mag_bedrijf_beheren(company_id));
+  USING (mag_bedrijf_werken(company_id));
 CREATE POLICY inspectie_foto_sel ON public.inspectie_foto AS PERMISSIVE FOR SELECT TO public
-  USING (mag_bedrijf_beheren(company_id));
+  USING (mag_bedrijf_werken(company_id));
 CREATE POLICY inspectie_historie_sel ON public.inspectie_historie AS PERMISSIVE FOR SELECT TO public
-  USING (mag_bedrijf_beheren(company_id));
+  USING (mag_bedrijf_werken(company_id));
 CREATE POLICY inspectie_sjabloon_sel ON public.inspectie_sjabloon AS PERMISSIVE FOR SELECT TO public
-  USING (mag_bedrijf_beheren(company_id));
+  USING (mag_bedrijf_werken(company_id));
 CREATE POLICY inspectie_sjabloon_punt_sel ON public.inspectie_sjabloon_punt AS PERMISSIVE FOR SELECT TO public
-  USING (mag_bedrijf_beheren(company_id));
+  USING (mag_bedrijf_werken(company_id));
 CREATE POLICY merken_admin_all ON public.merken AS PERMISSIVE FOR ALL TO public
   USING (is_admin())
   WITH CHECK (is_admin());
@@ -1079,25 +1079,25 @@ CREATE POLICY modules_select ON public.modules AS PERMISSIVE FOR SELECT TO publi
 CREATE POLICY personen_select ON public.personen AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
 CREATE POLICY personen_write ON public.personen AS PERMISSIVE FOR ALL TO public
-  USING (((company_id = my_company_id()) OR is_admin()))
-  WITH CHECK (((company_id = my_company_id()) OR is_admin()));
+  USING (mag_bedrijf_beheren(company_id))
+  WITH CHECK (mag_bedrijf_beheren(company_id));
 CREATE POLICY persoon_merge_log_sel ON public.persoon_merge_log AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY pva_select ON public.pva_items AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
 CREATE POLICY pva_update ON public.pva_items AS PERMISSIVE FOR UPDATE TO public
-  USING (((company_id = my_company_id()) OR is_admin()));
-CREATE POLICY rie_versies_sel ON public.rie_versies AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
+CREATE POLICY rie_versies_sel ON public.rie_versies AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_werken(company_id));
 CREATE POLICY toolbox_bron_adm ON public.toolbox_bron AS PERMISSIVE FOR ALL TO public
   USING (is_admin())
   WITH CHECK (is_admin());
 CREATE POLICY toolbox_bron_sel ON public.toolbox_bron AS PERMISSIVE FOR SELECT TO public
   USING ((auth.uid() IS NOT NULL));
 CREATE POLICY toolbox_deelname_sel ON public.toolbox_deelname AS PERMISSIVE FOR SELECT TO public
-  USING (mag_bedrijf_beheren(company_id));
+  USING (mag_bedrijf_werken(company_id));
 CREATE POLICY toolbox_sessie_sel ON public.toolbox_sessie AS PERMISSIVE FOR SELECT TO public
-  USING (mag_bedrijf_beheren(company_id));
+  USING (mag_bedrijf_werken(company_id));
 CREATE POLICY users_select ON public.users AS PERMISSIVE FOR SELECT TO public
   USING (((id = auth.uid()) OR is_admin()));
 CREATE POLICY vragen_select ON public.vragen AS PERMISSIVE FOR SELECT TO public
@@ -1184,7 +1184,7 @@ declare
 begin
   select company_id into v_company_id from public.pva_items where id = p_actie_id;
   if v_company_id is null then return '[]'::jsonb; end if;
-  if not public.mag_bedrijf_beheren(v_company_id) then raise exception 'Geen toegang'; end if;
+  if not public.mag_bedrijf_werken(v_company_id) then raise exception 'Geen toegang'; end if;
 
   return coalesce((
     select jsonb_agg(to_jsonb(h) order by h.created_at desc)
@@ -1231,6 +1231,41 @@ begin
   returning id into v_id;
 
   return v_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.actie_status_zetten(p_actie_id uuid, p_status text, p_opm text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_item public.pva_items;
+  v_naam text;
+begin
+  select * into v_item from public.pva_items where id = p_actie_id;
+  if v_item.id is null then raise exception 'Actie bestaat niet'; end if;
+  if not public.mag_bedrijf_werken(v_item.company_id) then raise exception 'Geen toegang'; end if;
+  if coalesce(p_status, '') not in ('Open', 'In behandeling', 'Afgerond') then
+    raise exception 'Ongeldige status';
+  end if;
+
+  select coalesce(naam, email) into v_naam from public.users where id = auth.uid();
+
+  update public.pva_items
+  set status = p_status,
+      opm = coalesce(nullif(btrim(coalesce(p_opm, '')), ''), opm),
+      updated_at = now(),
+      updated_by = coalesce(v_naam, updated_by)
+  where id = p_actie_id;
+
+  insert into public.actie_historie
+    (company_id, pva_item_id, gebeurtenis, van_status, naar_status, opmerking, actor_naam, actor_type)
+  values
+    (v_item.company_id, p_actie_id, 'status_gewijzigd', v_item.status, p_status, p_opm, v_naam,
+     case when public.is_teamleider() then 'teamleider' else 'beheerder' end);
+
+  return public.actie_als_jsonb(p_actie_id);
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.audit_aanmaken(p_company_id uuid, p_sjabloon text, p_titel text, p_jaar integer, p_status text DEFAULT 'gepland'::text)
@@ -1654,14 +1689,13 @@ begin
   if v_company is null then
     raise exception 'Bevinding niet gevonden';
   end if;
-  if not mag_bedrijf_beheren(v_company) then
+  if not mag_bedrijf_werken(v_company) then
     raise exception 'Geen toegang tot dit bedrijf';
   end if;
   if v_status not in ('concept', 'ingediend') then
     raise exception 'Inspectie is afgerond of geannuleerd en kan niet meer worden gewijzigd';
   end if;
 
-  -- Idempotent: hergebruik een eventueel al bestaande actie voor deze bevinding.
   if v_actie is null then
     select id into v_actie
       from pva_items
@@ -1672,7 +1706,6 @@ begin
   end if;
 
   if v_actie is null then
-    -- Volgend vrij nummer binnen dit bedrijf (nr is tekst, numeriek gebruikt).
     select coalesce(max(case when nr ~ '^[0-9]+$' then nr::int end), 0) + 1
       into v_nr
       from pva_items
@@ -1720,7 +1753,7 @@ begin
   if v_company is null then
     raise exception 'Bevinding niet gevonden';
   end if;
-  if not mag_bedrijf_beheren(v_company) then
+  if not mag_bedrijf_werken(v_company) then
     raise exception 'Geen toegang tot dit bedrijf';
   end if;
   if v_status not in ('concept', 'ingediend') then
@@ -1733,11 +1766,9 @@ begin
   v_opm := nullif(btrim(coalesce(p_opmerking, '')), '');
 
   if p_resultaat in ('in_orde', 'nvt') then
-    -- Geen afhandeling/actie bij in orde of n.v.t. (ontkoppelt een evt. actie).
     v_afh := 'geen';
     v_act := null;
   else
-    -- niet_in_orde
     if p_afhandeling = 'actie' then
       if v_bestaande_actie is null then
         raise exception 'Gebruik bevinding_naar_actie om een actie aan te maken';
@@ -1763,7 +1794,6 @@ begin
          opmerking   = v_opm
    where id = p_bevinding_id;
 
-  -- Alleen herstel loggen (statuswijziging/herstel/actie), niet elke resultaat-tik.
   if v_afh = 'meteen_hersteld' then
     insert into inspectie_historie (company_id, inspectie_id, wie, wanneer, wijziging)
     values (v_company, v_inspectie, auth.uid(), now(), 'Direct hersteld: ' || coalesce(v_punt, ''));
@@ -1781,7 +1811,7 @@ declare
 begin
   select company_id into v_company_id from public.pva_items where id = p_actie_id;
   if v_company_id is null then return '[]'::jsonb; end if;
-  if not public.mag_bedrijf_beheren(v_company_id) then raise exception 'Geen toegang'; end if;
+  if not public.mag_bedrijf_werken(v_company_id) then raise exception 'Geen toegang'; end if;
 
   return coalesce((
     select jsonb_agg(to_jsonb(b) order by b.created_at desc)
@@ -3344,6 +3374,100 @@ begin
   return jsonb_build_object('token', v_link.token, 'ingetrokken', v_link.ingetrokken);
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.incident_oorzaak_opslaan(p_company_id uuid, p_incident_id uuid, p_status text, p_directe_oorzaken integer[], p_basis_oorzaken integer[], p_oorzaak_toelichting text, p_onderzoeksrapportage_bijgevoegd boolean, p_telefonische_melding_directie boolean, p_telefonische_melding_aan text, p_maatregelen_in_actielijst boolean, p_tra_aanpassen boolean, p_andere_maatregelen text, p_besproken_in_toolbox_datum date)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_directe integer[];
+  v_basis   integer[];
+  v_row     public.incident;
+begin
+  if not mag_bedrijf_werken(p_company_id) then
+    raise exception 'Geen rechten voor dit bedrijf';
+  end if;
+  if not exists (select 1 from public.incident where id = p_incident_id and company_id = p_company_id) then
+    raise exception 'Incident niet gevonden';
+  end if;
+  if coalesce(p_status,'') not in ('open','in_onderzoek','afgehandeld') then
+    raise exception 'Ongeldige status';
+  end if;
+
+  select coalesce(array_agg(c order by c), '{}') into v_directe
+  from unnest(coalesce(p_directe_oorzaken,'{}')) c
+  where exists (select 1 from public.incident_directe_oorzaak d where d.code = c);
+
+  select coalesce(array_agg(c order by c), '{}') into v_basis
+  from unnest(coalesce(p_basis_oorzaken,'{}')) c
+  where exists (select 1 from public.incident_basis_oorzaak b where b.code = c);
+
+  update public.incident set
+    status                          = p_status,
+    directe_oorzaken                = v_directe,
+    basis_oorzaken                  = v_basis,
+    oorzaak_toelichting             = nullif(btrim(coalesce(p_oorzaak_toelichting,'')), ''),
+    onderzoeksrapportage_bijgevoegd = coalesce(p_onderzoeksrapportage_bijgevoegd, false),
+    telefonische_melding_directie   = coalesce(p_telefonische_melding_directie, false),
+    telefonische_melding_aan        = nullif(btrim(coalesce(p_telefonische_melding_aan,'')), ''),
+    maatregelen_in_actielijst       = coalesce(p_maatregelen_in_actielijst, false),
+    tra_aanpassen                   = coalesce(p_tra_aanpassen, false),
+    andere_maatregelen              = nullif(btrim(coalesce(p_andere_maatregelen,'')), ''),
+    besproken_in_toolbox_datum      = p_besproken_in_toolbox_datum,
+    afgehandeld_op                  = case
+                                        when p_status = 'afgehandeld' then coalesce(afgehandeld_op, now())
+                                        else null
+                                      end,
+    laatst_bijgewerkt_op            = now()
+  where id = p_incident_id and company_id = p_company_id
+  returning * into v_row;
+
+  -- Medische velden gaan hier nooit mee terug, ongeacht wat er in de DB staat.
+  return jsonb_build_object(
+    'id', v_row.id, 'company_id', v_row.company_id, 'status', v_row.status,
+    'directe_oorzaken', v_row.directe_oorzaken, 'basis_oorzaken', v_row.basis_oorzaken,
+    'oorzaak_toelichting', v_row.oorzaak_toelichting,
+    'onderzoeksrapportage_bijgevoegd', v_row.onderzoeksrapportage_bijgevoegd,
+    'telefonische_melding_directie', v_row.telefonische_melding_directie,
+    'telefonische_melding_aan', v_row.telefonische_melding_aan,
+    'maatregelen_in_actielijst', v_row.maatregelen_in_actielijst,
+    'tra_aanpassen', v_row.tra_aanpassen,
+    'andere_maatregelen', v_row.andere_maatregelen,
+    'besproken_in_toolbox_datum', v_row.besproken_in_toolbox_datum,
+    'afgehandeld_op', v_row.afgehandeld_op,
+    'laatst_bijgewerkt_op', v_row.laatst_bijgewerkt_op,
+    'functie_slachtoffer', null,
+    'medische_dienst_bezocht', null
+  );
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.incident_overzicht(p_company_id uuid)
+ RETURNS TABLE(id uuid, company_id uuid, datum date, tijd time without time zone, locatie text, project text, omschrijving text, naam_melder text, gevolgen text[], aangemaakt_op timestamp with time zone, status text, directe_oorzaken integer[], basis_oorzaken integer[], oorzaak_toelichting text, onderzoeksrapportage_bijgevoegd boolean, telefonische_melding_directie boolean, telefonische_melding_aan text, maatregelen_in_actielijst boolean, tra_aanpassen boolean, andere_maatregelen text, besproken_in_toolbox_datum date, functie_slachtoffer text, medische_dienst_bezocht text, actie_ids uuid[], toolbox_push_id uuid, afgehandeld_op timestamp with time zone, laatst_bijgewerkt_op timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  if not mag_bedrijf_werken(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  return query
+    select i.id, i.company_id, i.datum, i.tijd, i.locatie, i.project, i.omschrijving,
+           i.naam_melder, i.gevolgen, i.aangemaakt_op, i.status,
+           i.directe_oorzaken, i.basis_oorzaken, i.oorzaak_toelichting,
+           i.onderzoeksrapportage_bijgevoegd, i.telefonische_melding_directie,
+           i.telefonische_melding_aan, i.maatregelen_in_actielijst, i.tra_aanpassen,
+           i.andere_maatregelen, i.besproken_in_toolbox_datum,
+           case when is_teamleider() then null else i.functie_slachtoffer end,
+           case when is_teamleider() then null else i.medische_dienst_bezocht end,
+           i.actie_ids, i.toolbox_push_id, i.afgehandeld_op, i.laatst_bijgewerkt_op
+      from public.incident i
+     where i.company_id = p_company_id
+     order by i.aangemaakt_op desc;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text DEFAULT NULL::text)
  RETURNS void
  LANGUAGE plpgsql
@@ -3358,7 +3482,7 @@ begin
   if v_company is null then
     raise exception 'Inspectie niet gevonden';
   end if;
-  if not mag_bedrijf_beheren(v_company) then
+  if not mag_bedrijf_werken(v_company) then
     raise exception 'Geen toegang tot dit bedrijf';
   end if;
   if v_status = 'afgerond' then
@@ -3377,8 +3501,6 @@ begin
     raise exception 'Niet alle verplichte punten hebben een resultaat';
   end if;
 
-  -- Sinds de constraint de tussenstadia toelaat, borgt afronden de eindstrengheid:
-  -- een 'niet in orde'-bevinding moet zijn afgehandeld (meteen hersteld of actie).
   if exists (
     select 1 from inspectie_bevinding
      where inspectie_id = p_inspectie_id
@@ -3601,7 +3723,7 @@ AS $function$
 declare
   v jsonb;
 begin
-  if not mag_bedrijf_beheren(p_company_id) then
+  if not mag_bedrijf_werken(p_company_id) then
     raise exception 'Geen toegang tot dit bedrijf';
   end if;
 
@@ -3622,8 +3744,6 @@ begin
         'conclusie',          i.conclusie,
         'sjabloon_naam_snap', i.sjabloon_naam_snap,
         'controlesoort_snap', i.controlesoort_snap,
-        -- Uitvoerder = wie de inspectie startte (eerste historieregel met een 'wie');
-        -- valt terug op de gekoppelde persoon (voor historisch geïmporteerde inspecties).
         'uitvoerder_naam', coalesce(
           (select u.naam
              from inspectie_historie h
@@ -3658,7 +3778,7 @@ begin
   if v_company is null then
     raise exception 'Inspectie niet gevonden';
   end if;
-  if not mag_bedrijf_beheren(v_company) then
+  if not mag_bedrijf_werken(v_company) then
     raise exception 'Geen toegang tot dit bedrijf';
   end if;
   if v_status not in ('concept', 'ingediend') then
@@ -3699,12 +3819,11 @@ begin
   select company_id, status into v_company, v_status
     from inspectie where id = p_inspectie_id;
   if v_company is null then raise exception 'Inspectie niet gevonden'; end if;
-  if not mag_bedrijf_beheren(v_company) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not mag_bedrijf_werken(v_company) then raise exception 'Geen toegang tot dit bedrijf'; end if;
   if p_moet_lopen and v_status in ('afgerond', 'geannuleerd') then
     raise exception 'Deze inspectie is afgerond; foto''s kunnen niet meer wijzigen';
   end if;
 
-  -- Een bevinding moet bij DEZE inspectie horen.
   if p_bevinding_id is not null and not exists (
     select 1 from inspectie_bevinding
      where id = p_bevinding_id and inspectie_id = p_inspectie_id
@@ -3821,7 +3940,7 @@ begin
   if v_company is null then
     raise exception 'Inspectie niet gevonden';
   end if;
-  if not mag_bedrijf_beheren(v_company) then
+  if not mag_bedrijf_werken(v_company) then
     raise exception 'Geen toegang tot dit bedrijf';
   end if;
 
@@ -3857,7 +3976,6 @@ begin
         'opmerking',        b.opmerking,
         'actie_id',         b.actie_id,
         'actie_nr',         pa.nr,
-        -- NIEUW (0052): null als er geen AI-suggestie is overgenomen.
         'ai_voorwerk', (
           select jsonb_build_object(
             'leverancier',        s.leverancier,
@@ -3932,7 +4050,7 @@ begin
   if v_company is null then
     raise exception 'Sjabloon niet gevonden';
   end if;
-  if not mag_bedrijf_beheren(v_company) then
+  if not mag_bedrijf_werken(v_company) then
     raise exception 'Geen toegang tot dit bedrijf';
   end if;
   if v_arch is not null or coalesce(v_actief, false) = false then
@@ -3943,7 +4061,6 @@ begin
   values (v_company, p_sjabloon_id, 'concept', v_naam, v_soort)
   returning id into v_inspectie;
 
-  -- Eén bevinding per sjabloonpunt, met bevroren tekst + verplicht + volgorde.
   insert into inspectie_bevinding (company_id, inspectie_id, punt_tekst_snap, verplicht, volgorde, afhandeling)
   select v_company, v_inspectie, punt.tekst, coalesce(punt.verplicht, false), coalesce(punt.volgorde, 0), 'geen'
     from inspectie_sjabloon_punt punt
@@ -3966,7 +4083,7 @@ declare
   v_inspectie uuid;
   v_aantal    integer;
 begin
-  if not mag_bedrijf_beheren(p_company_id) then
+  if not mag_bedrijf_werken(p_company_id) then
     raise exception 'Geen toegang tot dit bedrijf';
   end if;
 
@@ -4039,6 +4156,14 @@ CREATE OR REPLACE FUNCTION public.is_admin()
 AS $function$
   select coalesce((select role = 'admin' from public.users where id = auth.uid()), false)
 $function$;
+CREATE OR REPLACE FUNCTION public.is_teamleider()
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select coalesce((select role = 'teamleider' from public.users where id = auth.uid()), false)
+$function$;
 CREATE OR REPLACE FUNCTION public.jaar_utc(p_ts timestamp with time zone)
  RETURNS integer
  LANGUAGE sql
@@ -4095,7 +4220,25 @@ CREATE OR REPLACE FUNCTION public.mag_bedrijf_beheren(p_company_id uuid)
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-  select coalesce(public.is_admin() or p_company_id = public.my_company_id(), false)
+  select coalesce(
+    public.is_admin() or (
+      p_company_id = public.my_company_id() and not public.is_teamleider()
+    ),
+    false
+  )
+$function$;
+CREATE OR REPLACE FUNCTION public.mag_bedrijf_werken(p_company_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select coalesce(
+    public.mag_bedrijf_beheren(p_company_id) or (
+      p_company_id = public.my_company_id() and public.is_teamleider()
+    ),
+    false
+  )
 $function$;
 CREATE OR REPLACE FUNCTION public.mag_herinneren(p_persoon_id uuid)
  RETURNS boolean
@@ -4834,7 +4977,7 @@ declare
 begin
   select company_id into v_company from toolbox_deelname where id = p_deelname_id;
   if v_company is null then raise exception 'Deelname niet gevonden'; end if;
-  if not coalesce(mag_bedrijf_beheren(v_company), false) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not coalesce(mag_bedrijf_werken(v_company), false) then raise exception 'Geen toegang tot dit bedrijf'; end if;
 
   select jsonb_build_object(
     'id',                    d.id,
@@ -4869,7 +5012,7 @@ AS $function$
 declare
   v jsonb;
 begin
-  if not coalesce(mag_bedrijf_beheren(p_company_id), false) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not coalesce(mag_bedrijf_werken(p_company_id), false) then raise exception 'Geen toegang tot dit bedrijf'; end if;
 
   select coalesce(jsonb_agg(jsonb_build_object(
     'id',              d.id,
@@ -4955,7 +5098,7 @@ declare
   v_yd   int  := (v_ye - v_ys) + 1;
   v jsonb;
 begin
-  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not mag_bedrijf_werken(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
 
   with pers as (
     select p.id, p.naam, p.functiegroep_id, fg.naam as fg_naam,
@@ -5123,9 +5266,8 @@ begin
   select id, company_id, datum, onderwerp, notitie into v_sessie
     from toolbox_sessie where id = p_sessie_id;
   if v_sessie.id is null then raise exception 'Sessie niet gevonden'; end if;
-  if not mag_bedrijf_beheren(v_sessie.company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not mag_bedrijf_werken(v_sessie.company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
 
-  -- Cross-company-guard: de persoon moet bij hetzelfde bedrijf horen en actief zijn.
   select id, naam, company_id into v_persoon
     from personen where id = p_persoon_id and archived_at is null;
   if v_persoon.id is null then raise exception 'Persoon niet gevonden'; end if;
@@ -5170,10 +5312,9 @@ CREATE OR REPLACE FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_se
 AS $function$
 declare v_id uuid;
 begin
-  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not mag_bedrijf_werken(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
   if coalesce(btrim(p_onderwerp),'') = '' then raise exception 'Onderwerp is verplicht'; end if;
   if p_datum is null then raise exception 'Datum is verplicht'; end if;
-  -- Optionele referentie naar een centrale toolbox: als opgegeven, moet hij bestaan.
   if p_toolbox_id is not null and not exists (select 1 from centrale_toolbox where id = p_toolbox_id) then
     raise exception 'Gekozen toolbox bestaat niet';
   end if;
@@ -5185,7 +5326,6 @@ begin
     return v_id;
   end if;
 
-  -- Bijwerken: alleen binnen het eigen bedrijf (cross-company-guard via company_id).
   update toolbox_sessie set
     datum = p_datum, onderwerp = btrim(p_onderwerp),
     notitie = nullif(btrim(coalesce(p_notitie,'')),''), toolbox_id = p_toolbox_id,
@@ -5201,11 +5341,15 @@ CREATE OR REPLACE FUNCTION public.toolbox_sessie_verwijderen(p_sessie_id uuid)
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare v_company uuid;
+declare v_company uuid; v_aangemaakt_door uuid;
 begin
-  select company_id into v_company from toolbox_sessie where id = p_sessie_id;
+  select company_id, aangemaakt_door into v_company, v_aangemaakt_door
+    from toolbox_sessie where id = p_sessie_id;
   if v_company is null then raise exception 'Sessie niet gevonden'; end if;
-  if not mag_bedrijf_beheren(v_company) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not mag_bedrijf_werken(v_company) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not mag_bedrijf_beheren(v_company) and v_aangemaakt_door is distinct from auth.uid() then
+    raise exception 'Een teamleider mag alleen eigen toolbox-sessies verwijderen';
+  end if;
   delete from toolbox_sessie where id = p_sessie_id;
 end;
 $function$;
@@ -5217,7 +5361,7 @@ CREATE OR REPLACE FUNCTION public.toolbox_sessies_overzicht(p_company_id uuid)
 AS $function$
 declare v jsonb;
 begin
-  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if not mag_bedrijf_werken(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
 
   select jsonb_build_object(
     'totaal_sessies', (select count(*) from toolbox_sessie s where s.company_id = p_company_id),
@@ -5254,6 +5398,7 @@ begin
       where p.company_id = p_company_id and p.archived_at is null
     )
   ) into v;
+
   return v;
 end;
 $function$;
@@ -5532,6 +5677,9 @@ GRANT EXECUTE ON FUNCTION public.actie_historie_ophalen(p_actie_id uuid) TO serv
 REVOKE EXECUTE ON FUNCTION public.actie_los_toevoegen(p_company_id uuid, p_onderwerp text, p_persoon_id uuid, p_termijn_datum date, p_prio text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.actie_los_toevoegen(p_company_id uuid, p_onderwerp text, p_persoon_id uuid, p_termijn_datum date, p_prio text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.actie_los_toevoegen(p_company_id uuid, p_onderwerp text, p_persoon_id uuid, p_termijn_datum date, p_prio text) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.actie_status_zetten(p_actie_id uuid, p_status text, p_opm text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.actie_status_zetten(p_actie_id uuid, p_status text, p_opm text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.actie_status_zetten(p_actie_id uuid, p_status text, p_opm text) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.audit_aanmaken(p_company_id uuid, p_sjabloon text, p_titel text, p_jaar integer, p_status text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.audit_aanmaken(p_company_id uuid, p_sjabloon text, p_titel text, p_jaar integer, p_status text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.audit_aanmaken(p_company_id uuid, p_sjabloon text, p_titel text, p_jaar integer, p_status text) TO service_role;
@@ -5706,6 +5854,12 @@ GRANT EXECUTE ON FUNCTION public.incident_meldlink_roteren(p_company_id uuid) TO
 REVOKE EXECUTE ON FUNCTION public.incident_meldlink_zorg(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.incident_meldlink_zorg(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.incident_meldlink_zorg(p_company_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.incident_oorzaak_opslaan(p_company_id uuid, p_incident_id uuid, p_status text, p_directe_oorzaken integer[], p_basis_oorzaken integer[], p_oorzaak_toelichting text, p_onderzoeksrapportage_bijgevoegd boolean, p_telefonische_melding_directie boolean, p_telefonische_melding_aan text, p_maatregelen_in_actielijst boolean, p_tra_aanpassen boolean, p_andere_maatregelen text, p_besproken_in_toolbox_datum date) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.incident_oorzaak_opslaan(p_company_id uuid, p_incident_id uuid, p_status text, p_directe_oorzaken integer[], p_basis_oorzaken integer[], p_oorzaak_toelichting text, p_onderzoeksrapportage_bijgevoegd boolean, p_telefonische_melding_directie boolean, p_telefonische_melding_aan text, p_maatregelen_in_actielijst boolean, p_tra_aanpassen boolean, p_andere_maatregelen text, p_besproken_in_toolbox_datum date) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.incident_oorzaak_opslaan(p_company_id uuid, p_incident_id uuid, p_status text, p_directe_oorzaken integer[], p_basis_oorzaken integer[], p_oorzaak_toelichting text, p_onderzoeksrapportage_bijgevoegd boolean, p_telefonische_melding_directie boolean, p_telefonische_melding_aan text, p_maatregelen_in_actielijst boolean, p_tra_aanpassen boolean, p_andere_maatregelen text, p_besproken_in_toolbox_datum date) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.incident_overzicht(p_company_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.incident_overzicht(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.incident_overzicht(p_company_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_afronden(p_inspectie_id uuid, p_conclusie text) TO service_role;
@@ -5762,6 +5916,9 @@ GRANT EXECUTE ON FUNCTION public.intrek_deellink(p_persoon_id uuid) TO service_r
 GRANT EXECUTE ON FUNCTION public.is_admin() TO anon;
 GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_admin() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.is_teamleider() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_teamleider() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_teamleider() TO service_role;
 GRANT EXECUTE ON FUNCTION public.jaar_utc(p_ts timestamp with time zone) TO anon;
 GRANT EXECUTE ON FUNCTION public.jaar_utc(p_ts timestamp with time zone) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.jaar_utc(p_ts timestamp with time zone) TO service_role;
@@ -5771,6 +5928,9 @@ GRANT EXECUTE ON FUNCTION public.koppel_mij_als_persoon(p_company_id uuid) TO se
 GRANT EXECUTE ON FUNCTION public.mag_bedrijf_beheren(p_company_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.mag_bedrijf_beheren(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mag_bedrijf_beheren(p_company_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.mag_bedrijf_werken(p_company_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.mag_bedrijf_werken(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.mag_bedrijf_werken(p_company_id uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.mag_herinneren(p_persoon_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.mag_herinneren(p_persoon_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mag_herinneren(p_persoon_id uuid) TO service_role;

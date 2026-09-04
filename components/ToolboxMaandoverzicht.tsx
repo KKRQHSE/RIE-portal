@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import Gauge from './Gauge'
+import ModuleStatuskop from './ModuleStatuskop'
 import type { ToolboxSessiesOverzicht, ToolboxSessieRegel, ToolboxSessiePersoon, ToolboxOverzichtItem, ToolboxBron } from '@/lib/types'
 
 type Supa = ReturnType<typeof createClient>
@@ -77,19 +77,21 @@ export default function ToolboxMaandoverzicht({
       />
 
       {/* Nieuwe losse sessie */}
-      {nieuwVoor === 'los' ? (
-        <NieuweSessie
-          companyId={companyId} supabase={supabase} gekoppeldeToolboxen={gekoppeldeToolboxen}
-          bronnen={bronnen} setFout={setFout}
-          onKlaar={async (id) => { setNieuwVoor(null); await herlaad(); if (id) setOpenSessie(id) }}
-          onAnnuleer={() => setNieuwVoor(null)}
-        />
-      ) : (
-        <button type="button" onClick={() => { setFout(null); setNieuwVoor('los') }}
-          className="btn btn-accent text-sm px-4 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium">
-          + Nieuwe sessie
-        </button>
-      )}
+      <div id="nieuwe-sessie" className="scroll-mt-20">
+        {nieuwVoor === 'los' ? (
+          <NieuweSessie
+            companyId={companyId} supabase={supabase} gekoppeldeToolboxen={gekoppeldeToolboxen}
+            bronnen={bronnen} setFout={setFout}
+            onKlaar={async (id) => { setNieuwVoor(null); await herlaad(); if (id) setOpenSessie(id) }}
+            onAnnuleer={() => setNieuwVoor(null)}
+          />
+        ) : (
+          <button type="button" onClick={() => { setFout(null); setNieuwVoor('los') }}
+            className="btn btn-accent text-sm px-4 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium">
+            + Nieuwe sessie
+          </button>
+        )}
+      </div>
 
       {/* Per maand */}
       <div className="space-y-2">
@@ -179,9 +181,16 @@ function TargetKop({
   const opTarget = sessiesDitJaar >= target && target > 0
 
   return (
-    <div className="glass-tile rounded-2xl p-5">
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-ink/40">Toolboxsessies · {jaar}</p>
+    <ModuleStatuskop
+      titel={`Toolboxsessies · ${jaar}`}
+      ring={target > 0 ? { waarde: sessiesDitJaar, totaal: target, ringLabel: 'gehouden' } : null}
+      cijfers={[{
+        label: 'van 12 maanden gedekt', waarde: maandenGedekt,
+        kleur: opTarget ? 'text-green-700' : 'text-amber-600',
+      }]}
+      actie={{ label: '+ Nieuwe sessie', href: '#nieuwe-sessie' }}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-1 text-sm">
           <button type="button" onClick={() => onJaar(jaar - 1)} aria-label="Vorig jaar"
             className="btn min-h-[36px] min-w-[36px] rounded-full hover:bg-ink/5 text-ink/60">◀</button>
@@ -189,29 +198,6 @@ function TargetKop({
           <button type="button" onClick={() => onJaar(jaar + 1)} aria-label="Volgend jaar"
             className="btn min-h-[36px] min-w-[36px] rounded-full hover:bg-ink/5 text-ink/60">▶</button>
         </div>
-      </div>
-
-      {/* Kernboodschap: X van [target] gehouden dit jaar, met gauge */}
-      <div className="flex items-center gap-4">
-        <Gauge value={sessiesDitJaar} total={target} size={72} />
-        <div className="flex flex-wrap items-baseline gap-x-2">
-          <span className="text-3xl font-semibold text-ink tabular-nums">{sessiesDitJaar}</span>
-          <span className="text-xl text-ink/30 tabular-nums">van {target}</span>
-          <span className="text-sm text-ink/60 ml-1">gehouden dit jaar</span>
-        </div>
-      </div>
-
-      {/* Maanddekking */}
-      <div className="flex items-center gap-1 mt-4 mb-2" aria-hidden>
-        {Array.from({ length: 12 }, (_, i) => (
-          <span key={i} className={`h-2 flex-1 rounded-full ${i < maandenGedekt ? 'bg-accent' : 'bg-ink/10'}`} />
-        ))}
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${opTarget ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
-          {maandenGedekt} van 12 maanden gedekt
-        </span>
         {bewerk ? (
           <span className="inline-flex items-center gap-1">
             <span className="text-xs text-ink/50">doel/jaar</span>
@@ -229,7 +215,14 @@ function TargetKop({
           </button>
         )}
       </div>
-    </div>
+
+      {/* Maanddekking */}
+      <div className="flex items-center gap-1" aria-hidden>
+        {Array.from({ length: 12 }, (_, i) => (
+          <span key={i} className={`h-2 flex-1 rounded-full ${i < maandenGedekt ? 'bg-accent' : 'bg-ink/10'}`} />
+        ))}
+      </div>
+    </ModuleStatuskop>
   )
 }
 

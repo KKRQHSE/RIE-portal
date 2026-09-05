@@ -63,3 +63,39 @@ anon-EXECUTE loopt daarom alleen via de lokale `scripts/hooks/pre-push`-hook
 checkout of CI-omgeving moet die hook-config apart gezet worden, anders draait het vangnet niet mee.
 
 ---
+
+## 4. AVG-data-inventaris (5 sept 2026) — vijf openstaande punten
+
+**Bron:** `audit/2026-09-04/DATA-INVENTARIS.md`, puur uit code/schema opgesteld, geen wijzigingen
+aangebracht. Vijf punten die een businessbeslissing vragen, geen technisch dilemma:
+
+**a. `audit_log` is per ontwerp onverwijderbaar.** Triggers blokkeren DELETE/UPDATE/TRUNCATE,
+expliciet ook voor service-role. De tabel bevat aantoonbaar persoonsgegevens (naam + e-mail worden
+erin gezet zodra een `personen`-rij verwijderd wordt). Als er ooit een "recht op vergetelheid"-
+verzoek komt, is er geen technisch pad om dat gegeven daar weg te krijgen. Vraag: is dit een
+bewuste keuze (audit-trail moet onveranderlijk zijn) en zo ja, welke bewaartermijn/rechtvaardiging
+hoort daarbij volgens de AVG (een onbeperkte bewaartermijn is normaliter niet houdbaar)?
+
+**b. Geen bewaartermijn ingericht op nagenoeg elke tabel met persoonsgegevens.** Met name
+`herinnering_log`, `rate_limiet_log` en verlopen `deellinks` groeien ongelimiteerd. Vraag: welke
+bewaartermijn hoort hierbij, en is een opschoonproces gewenst?
+
+**c. Geen end-to-end "verwijder deze medewerker volledig"-pad.** Het enige hard-delete-pad op
+`personen` zit verstopt in de samenvoeg-functie (voor dubbele records, admin-only) en laat
+toolbox-bewijs (naam + handtekening) bewust staan. Vraag: moet er een aparte, AVG-gerichte
+verwijderroute komen, en wat moet die wel/niet raken (toolbox-bewijs is bewust onveranderlijk
+trainingsbewijs — mag dat blijven staan na een verwijderverzoek, of niet)?
+
+**d. Handtekening in toolbox-bewijs is voor teamleider zichtbaar zonder maskering** — in
+tegenstelling tot de gezondheidsvelden bij incidenten, die wél server-side gemaskeerd zijn voor
+teamleider. Vraag: is dit bewust (teamleider moet kunnen aantonen wie tekende) of moet dit ook
+gemaskeerd/beperkt worden?
+
+**e. Geen route bestaat om een heel bedrijf (`companies`-rij) te verwijderen**, en zou die er komen
+dan loopt hij vast op `rie_versies` (geen ON DELETE-actie) en laat hij wezen achter in `audit_log`/
+`rate_limiet_log` (geen FK naar companies). Vraag: is een "bedrijf volledig offboarden"-pad nodig
+(bv. bij einde klantrelatie), en zo ja, hoe grondig (harde wis vs. gearchiveerd bewaren)?
+
+Geen van deze vijf is door mij ingevuld — puur gesignaleerd.
+
+---

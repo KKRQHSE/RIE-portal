@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
+import NotificatieBel from './NotificatieBel'
 
 export type NavItem = { key: string; label: string; href: string; seg: string }
 
@@ -58,16 +59,20 @@ export default function CompanyTopBar({
             ))}
           </nav>
 
-          {/* Mobiele menuknop */}
-          <button
-            type="button"
-            onClick={() => setOpen(o => !o)}
-            aria-expanded={open}
-            aria-label="Menu"
-            className="btn md:hidden min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg text-ink/70 hover:bg-ink/5"
-          >
-            <span aria-hidden className="text-xl leading-none">{open ? '✕' : '☰'}</span>
-          </button>
+          <div className="flex items-center gap-1">
+            <NotificatieBel companyId={companyId} />
+
+            {/* Mobiele menuknop */}
+            <button
+              type="button"
+              onClick={() => setOpen(o => !o)}
+              aria-expanded={open}
+              aria-label="Menu"
+              className="btn md:hidden min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg text-ink/70 hover:bg-ink/5"
+            >
+              <span aria-hidden className="text-xl leading-none">{open ? '✕' : '☰'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Broodkruimel: waar ben ik */}

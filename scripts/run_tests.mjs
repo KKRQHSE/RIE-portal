@@ -51,6 +51,7 @@ const TESTS = [
   { naam: 'incident_isolatie_test.mjs',             soort: 'database' },
   { naam: 'teamleider_rol_isolatie_test.mjs',       soort: 'database' },
   { naam: 'concept_medewerkers_test.mjs',           soort: 'database' },
+  { naam: 'notificaties_test.mjs',                  soort: 'database' },
   { naam: 'module_isolatie_test.mjs',               soort: 'database' },
   { naam: 'persoon_merge_isolatie_test.mjs',        soort: 'database' },
   { naam: 'inspectie_e2e_test.mjs',                 soort: 'database' },
@@ -60,6 +61,7 @@ const TESTS = [
   { naam: 'auth_redirect_test.ts',                  soort: 'zelftest' },
   { naam: 'inspectie_ai_route_test.ts',             soort: 'app' },
   { naam: 'inspectie_ai_robuustheid_test.ts',       soort: 'app' },
+  { naam: 'avg_beheer_gate_test.ts',                soort: 'app' },
   { naam: 'browser_smoke_test.mjs',                 soort: 'app' },
 ]
 

@@ -1,0 +1,38 @@
+#!/bin/sh
+# ============================================================================
+# Pre-push-gate: geen onverklaarde anon-EXECUTE naar origin.
+# ----------------------------------------------------------------------------
+# Er is geen CI in dit project (geen .github/workflows, geen Vercel-build-
+# checks) -- dit is daarmee het enige harde vangnet tegen het default-ACL-gat
+# uit migratie 0068/0069 (zie [[default-acl-werkt-niet]] in memory): elke
+# nieuwe SECURITY DEFINER-functie krijgt standaard anon-EXECUTE, en dat is
+# NIET via een database-instelling te voorkomen (bewezen, zie 0069). De enige
+# echte controle is scripts/anon_execute_audit_test.mjs, DEEL 1: een
+# handmatig onderhouden allowlist die faalt op elke onverklaarde
+# anon-EXECUTE. Dit hook-bestand dwingt af dat die test draait vóór een
+# push naar origin lukt.
+#
+# Activeren (eenmalig per checkout, hooks worden niet automatisch
+# meegekopieerd bij clonen):
+#   git config core.hooksPath scripts/hooks
+#
+# De test slaat zichzelf netjes over (exit 0) als SUPABASE_SERVICE_ROLE_KEY/
+# DATABASE_URL ontbreken -- dus dit blokkeert geen push op een machine zonder
+# databasetoegang, het is dan alleen geen daadwerkelijke controle.
+# ============================================================================
+
+echo "[pre-push] anon-EXECUTE-gate: scripts/anon_execute_audit_test.mjs draait..."
+node --use-system-ca scripts/anon_execute_audit_test.mjs
+status=$?
+
+if [ $status -ne 0 ]; then
+  echo ""
+  echo "[pre-push] GEWEIGERD: anon_execute_audit_test.mjs faalde (exit $status)."
+  echo "[pre-push] Er staat een functie met onverklaarde anon-EXECUTE. Los dat op"
+  echo "[pre-push] (REVOKE EXECUTE ... FROM public, anon; op de nieuwe functie) of"
+  echo "[pre-push] voeg 'm bewust toe aan de allowlist in het testscript zelf."
+  exit 1
+fi
+
+echo "[pre-push] anon-EXECUTE-gate: groen."
+exit 0

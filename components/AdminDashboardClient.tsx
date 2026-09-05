@@ -104,6 +104,12 @@ export default function AdminDashboardClient({
           >
             Huisstijl beheren
           </Link>
+          <Link
+            href="/admin/avg"
+            className="inline-block text-sm px-4 py-2 rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors"
+          >
+            AVG
+          </Link>
         </div>
       </div>
     </main>

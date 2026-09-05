@@ -81,9 +81,9 @@ async function run() {
   const aPad = `bewijs/${A}/${randomUUID()}/eigen_${TS}.txt`
   paden.push(bPad, aPad)
   {
-    const { error } = await admin.storage.from('bewijs').upload(bPad, Buffer.from('GEHEIM bewijs van bedrijf B'), { contentType: 'text/plain', upsert: true })
+    const { error } = await admin.storage.from('bewijs').upload(bPad, Buffer.from('GEHEIM bewijs van bedrijf B'), { contentType: 'image/png', upsert: true })
     if (error) throw new Error(`upload B-bestand: ${error.message}`)
-    await admin.storage.from('bewijs').upload(aPad, Buffer.from('eigen bestand A'), { contentType: 'text/plain', upsert: true })
+    await admin.storage.from('bewijs').upload(aPad, Buffer.from('eigen bestand A'), { contentType: 'image/png', upsert: true })
   }
 
   console.log('\n=== STORAGE-ISOLATIE (ingelogde A vs bewijs van B) ===')
@@ -103,7 +103,7 @@ async function run() {
   // 3. A schrijft een bestand in B's map
   {
     const indringer = `bewijs/${B}/${actie}/INDRINGER_${TS}.txt`
-    const { data, error } = await cA.storage.from('bewijs').upload(indringer, Buffer.from('A schrijft in B'), { contentType: 'text/plain' })
+    const { data, error } = await cA.storage.from('bewijs').upload(indringer, Buffer.from('A schrijft in B'), { contentType: 'image/png' })
     const gelukt = !!data && !error
     if (gelukt) paden.push(indringer)
     rec('A kan GEEN bestand in B-bewijsmap schrijven', !gelukt, gelukt ? 'UPLOAD in B GELUKT' : `geweigerd (${error?.message})`)
@@ -133,7 +133,7 @@ async function run() {
     // 2. De INGELOGDE beheerder uploadt met dat token (BewijsUpload.tsx).
     if (up?.token) {
       const { error } = await cA.storage.from('bewijs').uploadToSignedUrl(flowPad, up.token,
-        Buffer.from('bewijs via de app-flow'), { contentType: 'text/plain' })
+        Buffer.from('bewijs via de app-flow'), { contentType: 'image/png' })
       rec('ingelogde beheerder kan uploaden met dat token', !error, error?.message)
     }
 
@@ -144,7 +144,7 @@ async function run() {
     if (gUp?.token) {
       const gast = createClient(URL, ANON, { auth: { persistSession: false, autoRefreshToken: false } })
       const { error } = await gast.storage.from('bewijs').uploadToSignedUrl(gastPad, gUp.token,
-        Buffer.from('bewijs van een gast zonder account'), { contentType: 'text/plain' })
+        Buffer.from('bewijs van een gast zonder account'), { contentType: 'image/png' })
       rec('sessieloze gast kan uploaden met een eigen token', !error, error?.message)
     }
 

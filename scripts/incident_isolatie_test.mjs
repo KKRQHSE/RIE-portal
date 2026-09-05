@@ -167,7 +167,7 @@ async function run() {
   const padA = `${A}/${incidentA}/geheim_${TS}.txt`
   padenA.push(padA)
   {
-    const { error } = await admin.storage.from(BUCKET).upload(padA, Buffer.from('GEHEIM incident-foto A'), { contentType: 'text/plain', upsert: true })
+    const { error } = await admin.storage.from(BUCKET).upload(padA, Buffer.from('GEHEIM incident-foto A'), { contentType: 'image/png', upsert: true })
     if (error) throw new Error(`upload A-foto: ${error.message}`)
 
     const { data: bDl } = await kamB.storage.from(BUCKET).download(padA)

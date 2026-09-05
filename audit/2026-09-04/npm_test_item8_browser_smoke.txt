@@ -1,0 +1,39 @@
+
+> rie-portal@0.1.0 test
+> node scripts/run_tests.mjs
+
+Testronde — 28 scripts
+
+App bereikbaar op http://localhost:3000; de app-tests draaien mee.
+
+PASS  security_hardening_test.mjs                26/26 tests geslaagd. (6s)
+PASS  signup_privilege_isolatie_test.mjs         14/14 tests geslaagd. (5s)
+PASS  heartbeat_rpc_test.mjs                     4/4 tests geslaagd. (2s)
+PASS  upload_validatie_test.mjs                  7/7 tests geslaagd. (4s)
+PASS  audit_log_test.mjs                         15/15 tests geslaagd. (3s)
+PASS  token_flows_test.mjs                       16/16 tests geslaagd. (2s)
+PASS  anon_execute_audit_test.mjs                20/20 controles geslaagd. (3s)
+PASS  onveranderlijkheid_test.mjs                41/41 controles geslaagd. (6s)
+PASS  nachttest_rls.mjs                          EINDOORDEEL: GEEN cross-tenant datalek aangetoond (12s)
+PASS  nachttest_storage.mjs                      Storage-laag isoleert per bedrijf. (4s)
+PASS  toolbox_isolatie_test.mjs                  64/64 tests geslaagd. (8s)
+PASS  inspectie_isolatie_test.mjs                51/51 tests geslaagd. (6s)
+PASS  inspectie_ai_isolatie_test.mjs             39/39 tests geslaagd. (6s)
+PASS  centrale_bibliotheek_isolatie_test.mjs     34/34 tests geslaagd. (5s)
+PASS  audit_isolatie_test.mjs                    43/43 tests geslaagd. (5s)
+PASS  dashboard_isolatie_test.mjs                17/17 tests geslaagd. (3s)
+PASS  dashboard_test.mjs                         7/7 tests geslaagd. (1s)
+PASS  incident_isolatie_test.mjs                 ## Incident-isolatie -> PASS (20/20) (4s)
+PASS  teamleider_rol_isolatie_test.mjs           ## Teamleider-rol -> PASS (44/44) (6s)
+PASS  module_isolatie_test.mjs                   8/8 tests geslaagd. (2s)
+PASS  persoon_merge_isolatie_test.mjs            20/20 tests geslaagd. (4s)
+PASS  inspectie_e2e_test.mjs                     18/18 tests geslaagd. (3s)
+PASS  inspectie_foto_selftest.mjs                16/16 controles geslaagd. (3s)
+PASS  qr_selftest.ts                             ## QR-zelftest -> PASS (0 fout) (0s)
+PASS  ai_analyse_selftest.ts                     17/17 checks geslaagd. (1s)
+PASS  inspectie_ai_route_test.ts                 21/21 tests geslaagd. (5s)
+PASS  inspectie_ai_robuustheid_test.ts           49/49 controles geslaagd. (15s)
+PASS  browser_smoke_test.mjs                     21/21 checks geslaagd. (27s)
+
+────────────────────────────────────────────────────────────────────────────
+28/28 scripts groen

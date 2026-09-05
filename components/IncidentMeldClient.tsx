@@ -72,7 +72,7 @@ export default function IncidentMeldClient({
     const res = await fetch('/api/incident/foto-upload', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, incidentId, bestandsnaam: naam }),
+      body: JSON.stringify({ token, incidentId, bestandsnaam: naam, type, grootte: blob.size }),
     })
     if (!res.ok) throw new Error(t('foutFotoUpload'))
     const { pad, uploadToken } = (await res.json()) as { pad?: string; uploadToken?: string }

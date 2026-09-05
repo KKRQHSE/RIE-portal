@@ -33,6 +33,9 @@ const TESTS = [
   { naam: 'security_hardening_test.mjs',            soort: 'database' },
   { naam: 'signup_privilege_isolatie_test.mjs',     soort: 'database' },
   { naam: 'heartbeat_rpc_test.mjs',                 soort: 'database' },
+  { naam: 'upload_validatie_test.mjs',              soort: 'database' },
+  { naam: 'audit_log_test.mjs',                     soort: 'database' },
+  { naam: 'token_flows_test.mjs',                   soort: 'database' },
   { naam: 'anon_execute_audit_test.mjs',            soort: 'database' },
   { naam: 'onveranderlijkheid_test.mjs',            soort: 'database' },
   { naam: 'nachttest_rls.mjs',                      soort: 'database' },
@@ -54,6 +57,7 @@ const TESTS = [
   { naam: 'ai_analyse_selftest.ts',                 soort: 'zelftest' },
   { naam: 'inspectie_ai_route_test.ts',             soort: 'app' },
   { naam: 'inspectie_ai_robuustheid_test.ts',       soort: 'app' },
+  { naam: 'browser_smoke_test.mjs',                 soort: 'app' },
 ]
 
 const args = process.argv.slice(2)

@@ -1,0 +1,387 @@
+[
+  {
+    "tabel": "users",
+    "conname": "users_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "auth.users"
+  },
+  {
+    "tabel": "pva_items",
+    "conname": "pva_items_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "modules",
+    "conname": "modules_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "vragen",
+    "conname": "vragen_module_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "modules"
+  },
+  {
+    "tabel": "vragen",
+    "conname": "vragen_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "fotos",
+    "conname": "fotos_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "personen",
+    "conname": "personen_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "deellinks",
+    "conname": "deellinks_persoon_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "personen"
+  },
+  {
+    "tabel": "deellinks",
+    "conname": "deellinks_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "actie_historie",
+    "conname": "actie_historie_pva_item_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "pva_items"
+  },
+  {
+    "tabel": "actie_historie",
+    "conname": "actie_historie_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "bewijs",
+    "conname": "bewijs_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "bewijs",
+    "conname": "bewijs_pva_item_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "pva_items"
+  },
+  {
+    "tabel": "herinner_instelling",
+    "conname": "herinner_instelling_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "herinnering_log",
+    "conname": "herinnering_log_persoon_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "personen"
+  },
+  {
+    "tabel": "herinnering_log",
+    "conname": "herinnering_log_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "bedrijf_modules",
+    "conname": "bedrijf_modules_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "inspectie_sjabloon",
+    "conname": "inspectie_sjabloon_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "inspectie_sjabloon_punt",
+    "conname": "inspectie_sjabloon_punt_sjabloon_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "inspectie_sjabloon"
+  },
+  {
+    "tabel": "inspectie_sjabloon_punt",
+    "conname": "inspectie_sjabloon_punt_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "inspectie",
+    "conname": "inspectie_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "inspectie_bevinding",
+    "conname": "inspectie_bevinding_inspectie_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "inspectie"
+  },
+  {
+    "tabel": "inspectie_bevinding",
+    "conname": "inspectie_bevinding_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "inspectie_historie",
+    "conname": "inspectie_historie_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "inspectie_historie",
+    "conname": "inspectie_historie_inspectie_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "inspectie"
+  },
+  {
+    "tabel": "module_historie",
+    "conname": "module_historie_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "functiegroep",
+    "conname": "functiegroep_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "centrale_vraag",
+    "conname": "centrale_vraag_rubriek_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "centrale_rubriek"
+  },
+  {
+    "tabel": "bedrijf_rubriek",
+    "conname": "bedrijf_rubriek_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "bedrijf_rubriek",
+    "conname": "bedrijf_rubriek_rubriek_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "centrale_rubriek"
+  },
+  {
+    "tabel": "bedrijf_vraag_afwijking",
+    "conname": "bedrijf_vraag_afwijking_vraag_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "centrale_vraag"
+  },
+  {
+    "tabel": "bedrijf_vraag_afwijking",
+    "conname": "bedrijf_vraag_afwijking_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "centrale_toolbox_vraag",
+    "conname": "centrale_toolbox_vraag_toolbox_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "centrale_toolbox"
+  },
+  {
+    "tabel": "bedrijf_toolbox",
+    "conname": "bedrijf_toolbox_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "bedrijf_toolbox",
+    "conname": "bedrijf_toolbox_toolbox_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "centrale_toolbox"
+  },
+  {
+    "tabel": "bedrijf_toolbox_afwijking",
+    "conname": "bedrijf_toolbox_afwijking_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "bedrijf_toolbox_afwijking",
+    "conname": "bedrijf_toolbox_afwijking_toolbox_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "centrale_toolbox"
+  },
+  {
+    "tabel": "bedrijf_doelstelling",
+    "conname": "bedrijf_doelstelling_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "bedrijf_doelstelling",
+    "conname": "bedrijf_doelstelling_functiegroep_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "functiegroep"
+  },
+  {
+    "tabel": "toolbox_deelname",
+    "conname": "toolbox_deelname_sessie_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "toolbox_sessie"
+  },
+  {
+    "tabel": "toolbox_deelname",
+    "conname": "toolbox_deelname_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "incident_meldlink",
+    "conname": "incident_meldlink_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "incident",
+    "conname": "incident_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "incident_foto",
+    "conname": "incident_foto_incident_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "incident"
+  },
+  {
+    "tabel": "incident_foto",
+    "conname": "incident_foto_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "toolbox_sessie",
+    "conname": "toolbox_sessie_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "bedrijf_inspectie_doel",
+    "conname": "bedrijf_inspectie_doel_persoon_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "personen"
+  },
+  {
+    "tabel": "bedrijf_inspectie_doel",
+    "conname": "bedrijf_inspectie_doel_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "bedrijf_dashboard_instelling",
+    "conname": "bedrijf_dashboard_instelling_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "bedrijf_toolbox_instelling",
+    "conname": "bedrijf_toolbox_instelling_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "audit",
+    "conname": "audit_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "audit_vca_bevinding",
+    "conname": "audit_vca_bevinding_audit_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "audit"
+  },
+  {
+    "tabel": "audit_vca_bevinding",
+    "conname": "audit_vca_bevinding_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "audit_iso_observatie",
+    "conname": "audit_iso_observatie_audit_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "audit"
+  },
+  {
+    "tabel": "audit_iso_observatie",
+    "conname": "audit_iso_observatie_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "audit_verbeterpunt",
+    "conname": "audit_verbeterpunt_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "audit_verbeterpunt",
+    "conname": "audit_verbeterpunt_audit_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "audit"
+  },
+  {
+    "tabel": "inspectie_foto",
+    "conname": "inspectie_foto_inspectie_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "inspectie"
+  },
+  {
+    "tabel": "inspectie_foto",
+    "conname": "inspectie_foto_bevinding_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "inspectie_bevinding"
+  },
+  {
+    "tabel": "inspectie_foto",
+    "conname": "inspectie_foto_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "persoon_merge_log",
+    "conname": "persoon_merge_log_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  },
+  {
+    "tabel": "inspectie_ai_suggestie",
+    "conname": "inspectie_ai_suggestie_inspectie_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "inspectie"
+  },
+  {
+    "tabel": "inspectie_ai_suggestie",
+    "conname": "inspectie_ai_suggestie_bevinding_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "inspectie_bevinding"
+  },
+  {
+    "tabel": "inspectie_ai_suggestie",
+    "conname": "inspectie_ai_suggestie_company_id_fkey",
+    "confdeltype": "c",
+    "verwijst_naar": "companies"
+  }
+]
+OK

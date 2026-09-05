@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { DOWNLOAD_GELDIGHEID_SEC } from '@/lib/bewijs'
+import { DOWNLOAD_GELDIGHEID_SEC, signedUrlOpties } from '@/lib/bewijs'
 import { INSPECTIE_FOTO_BUCKET, type InspectieFotoItem } from '@/lib/inspectie-foto'
 
 export const dynamic = 'force-dynamic'
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
   const { data: rijen, error } = await supabase
     .from('inspectie_foto')
-    .select('id, bevinding_id, storage_pad, bestandsnaam, type')
+    .select('id, company_id, bevinding_id, storage_pad, bestandsnaam, type')
     .eq('inspectie_id', inspectieId)
     .order('aangemaakt_op', { ascending: true })
   if (error) return fout('Geen toegang.', 403)
@@ -44,8 +44,17 @@ export async function POST(request: Request) {
       if (typeof r.storage_pad === 'string' && r.storage_pad) {
         const { data: signed } = await service.storage
           .from(INSPECTIE_FOTO_BUCKET)
-          .createSignedUrl(r.storage_pad, DOWNLOAD_GELDIGHEID_SEC)
+          .createSignedUrl(r.storage_pad, DOWNLOAD_GELDIGHEID_SEC, signedUrlOpties(r.type, r.bestandsnaam))
         downloadUrl = signed?.signedUrl ?? null
+        // Legt de UITGIFTE van de signed URL vast, niet het ophalen zelf;
+        // zichtbaar falen (console.error), niet blokkerend.
+        if (downloadUrl) {
+          const { error: logErr } = await supabase.rpc('audit_log_schrijven', {
+            p_actie: 'foto_gedownload', p_entiteit: 'inspectie_foto', p_entiteit_id: r.id,
+            p_company_id: r.company_id ?? null, p_detail: { bestandsnaam: r.bestandsnaam ?? null, inspectie_id: inspectieId },
+          })
+          if (logErr) console.error('[audit_log] foto_gedownload (inspectie) mislukt', r.id, logErr.message)
+        }
       }
       return {
         id: String(r.id),

@@ -71,8 +71,9 @@ export default async function CompanySectionLayout({
       {isAdmin && (
         // Voor een admin is dit de allereerste balk op het scherm (vóór
         // CompanyTopBar), dus deze heeft zelf de top-marge nodig — anders
-        // zou "← Alle bedrijven" onder de notch/systeembalk beginnen.
-        <div className="bg-ink text-white pt-[env(safe-area-inset-top)]">
+        // zou "← Alle bedrijven" onder de notch/systeembalk beginnen. max()
+        // met vaste 12px: env(...) is 0 op de meeste Android-toestellen.
+        <div className="bg-ink text-white pt-[max(env(safe-area-inset-top,0px),12px)]">
           <div className="max-w-5xl mx-auto px-4 flex items-center gap-3">
             <Link
               href="/dashboard"

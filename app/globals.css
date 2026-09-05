@@ -24,9 +24,12 @@
      eigen topbalk (login, gastschermen, admin-overzicht) recht onder de
      notch/systeembalk beginnen. Op <main> in plaats van op body: zo krijgt de
      safe-area-strook de achtergrondkleur van de pagina zelf (huisstijl/glass),
-     niet de generieke body-kleur. */
+     niet de generieke body-kleur.
+     env(safe-area-inset-top) is 0 op de meeste Android-toestellen en overal
+     zonder notch/inset (geen fysieke reden voor marge) — daarom max() met een
+     vaste minimummarge, anders plakt content daar alsnog tegen de rand. */
   main {
-    padding-top: env(safe-area-inset-top, 0px);
+    padding-top: max(env(safe-area-inset-top, 0px), 12px);
     padding-right: env(safe-area-inset-right, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
     padding-left: env(safe-area-inset-left, 0px);

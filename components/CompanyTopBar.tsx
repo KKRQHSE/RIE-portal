@@ -41,8 +41,9 @@ export default function CompanyTopBar({
     // Deze balk is sticky en staat vóór elke pagina's eigen <main> (die zijn
     // eigen safe-area-marge al via globals.css krijgt) — zonder deze regel zou
     // de balk zelf (bedrijfsnaam, menuknop) onder de notch/systeembalk beginnen
-    // zodra de pagina bovenaan staat.
-    <div className="sticky top-0 z-40 bg-white border-b border-ink/10 pt-[env(safe-area-inset-top)]" style={huisstijlStyle(huisstijl)}>
+    // zodra de pagina bovenaan staat. max() met vaste 12px: env(...) is 0 op
+    // de meeste Android-toestellen, dan moet die vaste marge het overnemen.
+    <div className="sticky top-0 z-40 bg-white border-b border-ink/10 pt-[max(env(safe-area-inset-top,0px),12px)]" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-5xl mx-auto px-4">
         {/* Bovenrij: merk/bedrijf + navigatie (desktop) of menuknop (mobiel) */}
         <div className="flex items-center justify-between gap-3 h-14">

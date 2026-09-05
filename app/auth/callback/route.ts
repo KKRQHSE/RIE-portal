@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { veiligRedirectPad } from '@/lib/auth-redirect'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -17,17 +18,11 @@ export async function GET(request: Request) {
   }
 
   // Wachtwoord-reset of uitnodiging: ga naar de opgegeven vervolgpagina — maar
-  // alleen als 'next' een echt eigen, relatief pad is. 'next' komt ongefilterd
-  // uit de query-string van de aanvrager: zonder deze check zou een waarde als
-  // '@evil.com/x' via de URL-parser (userinfo@host-syntax, RFC 3986) naar een
-  // ander domein redirecten in plaats van hierheen — zie
-  // SYSTEEMDOORLICHTING_APPLICATIEBEVEILIGING_2026-09-04.md.
-  if (
-    next &&
-    next.startsWith('/') && !next.startsWith('//') &&
-    !next.includes('@') && !next.includes(':') && !next.includes('\\')
-  ) {
-    return NextResponse.redirect(`${origin}${next}`)
+  // alleen als 'next' een echt eigen, relatief pad is (zie lib/auth-redirect.ts
+  // voor waarom en de regressietest scripts/auth_redirect_test.ts).
+  const veiligeNext = veiligRedirectPad(next)
+  if (veiligeNext) {
+    return NextResponse.redirect(`${origin}${veiligeNext}`)
   }
 
   // Anders: rol-gebaseerde bestemming, met dezelfde client (cookies al gezet).

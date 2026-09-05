@@ -119,5 +119,23 @@ export async function POST(request: Request) {
   }
 
   console.log('[heartbeat] herinneringen verstuurd', JSON.stringify(samenvatting))
+
+  // In-app notificaties verversen (B2): los van het e-mail-ritme hierboven --
+  // dit vult de periodieke dagbundels + de vier scan-soorten voor iedereen die
+  // de app niet elke dag opent (wie 'm wel opent triggert dezelfde scan al
+  // via notificaties_ophalen). Eén bedrijf dat faalt mag de rest niet blokkeren.
+  const { data: alleBedrijven } = await service.from('companies').select('id')
+  let notificatiesOk = 0
+  for (const c of alleBedrijven ?? []) {
+    try {
+      const { error } = await service.rpc('notificaties_genereren', { p_company_id: c.id as string })
+      if (error) throw error
+      notificatiesOk++
+    } catch (e) {
+      console.error('[heartbeat] notificaties_genereren mislukt', c.id, e)
+    }
+  }
+  console.log('[heartbeat] notificaties ververst', notificatiesOk, '/', (alleBedrijven ?? []).length)
+
   return NextResponse.json({ ok: true, bedrijven: samenvatting.length, samenvatting })
 }

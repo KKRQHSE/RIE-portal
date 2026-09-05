@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-05T16:12:04.697Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-05T16:54:56.758Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -542,6 +542,27 @@ CREATE TABLE public.modules (
   rie_versie_id uuid
 );
 
+CREATE TABLE public.notificatie (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  event_type text NOT NULL,
+  titel text NOT NULL,
+  link_pad text,
+  bron_tabel text,
+  bron_id uuid,
+  periode_sleutel text,
+  gelezen_op timestamp with time zone,
+  aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.notificatie_voorkeur (
+  user_id uuid NOT NULL,
+  event_type text NOT NULL,
+  modus text DEFAULT 'direct'::text NOT NULL,
+  updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE public.personen (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
@@ -740,6 +761,8 @@ ALTER TABLE public.inspectie_sjabloon_punt ADD CONSTRAINT inspectie_sjabloon_pun
 ALTER TABLE public.merken ADD CONSTRAINT merken_pkey PRIMARY KEY (id);
 ALTER TABLE public.module_historie ADD CONSTRAINT module_historie_pkey PRIMARY KEY (id);
 ALTER TABLE public.modules ADD CONSTRAINT modules_pkey PRIMARY KEY (id);
+ALTER TABLE public.notificatie ADD CONSTRAINT notificatie_pkey PRIMARY KEY (id);
+ALTER TABLE public.notificatie_voorkeur ADD CONSTRAINT notificatie_voorkeur_pkey PRIMARY KEY (user_id, event_type);
 ALTER TABLE public.personen ADD CONSTRAINT personen_pkey PRIMARY KEY (id);
 ALTER TABLE public.persoon_merge_log ADD CONSTRAINT persoon_merge_log_pkey PRIMARY KEY (id);
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_pkey PRIMARY KEY (id);
@@ -792,6 +815,9 @@ ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT bevinding_hersteld_bewijs 
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT inspectie_bevinding_afhandeling_check CHECK ((afhandeling = ANY (ARRAY['geen'::text, 'meteen_hersteld'::text, 'actie'::text])));
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT inspectie_bevinding_resultaat_check CHECK ((resultaat = ANY (ARRAY['in_orde'::text, 'niet_in_orde'::text, 'nvt'::text])));
 ALTER TABLE public.merken ADD CONSTRAINT merken_lettertype_check CHECK ((lettertype = ANY (ARRAY['grotesk'::text, 'modern'::text, 'klassiek'::text, 'zakelijk'::text])));
+ALTER TABLE public.notificatie ADD CONSTRAINT notificatie_event_type_check CHECK ((event_type = ANY (ARRAY['goedkeuringsverzoek'::text, 'incident_melding'::text, 'actie_over_termijn'::text, 'audit_gepland'::text, 'rie_toetsing_verloopt'::text, 'toolbox_herinnering'::text])));
+ALTER TABLE public.notificatie_voorkeur ADD CONSTRAINT notificatie_voorkeur_event_type_check CHECK ((event_type = ANY (ARRAY['goedkeuringsverzoek'::text, 'incident_melding'::text, 'actie_over_termijn'::text, 'audit_gepland'::text, 'rie_toetsing_verloopt'::text, 'toolbox_herinnering'::text])));
+ALTER TABLE public.notificatie_voorkeur ADD CONSTRAINT notificatie_voorkeur_modus_check CHECK ((modus = ANY (ARRAY['direct'::text, 'periodiek'::text, 'uit'::text])));
 ALTER TABLE public.personen ADD CONSTRAINT personen_status_check CHECK ((status = ANY (ARRAY['actief'::text, 'voorgesteld'::text, 'afgewezen'::text])));
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_status_check CHECK ((status = ANY (ARRAY['Open'::text, 'In behandeling'::text, 'Afgerond'::text])));
 ALTER TABLE public.toolbox_bron ADD CONSTRAINT toolbox_bron_naam_check CHECK ((btrim(naam) <> ''::text));
@@ -876,6 +902,9 @@ ALTER TABLE public.inspectie_sjabloon_punt ADD CONSTRAINT inspectie_sjabloon_pun
 ALTER TABLE public.module_historie ADD CONSTRAINT module_historie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.modules ADD CONSTRAINT modules_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.modules ADD CONSTRAINT modules_rie_versie_id_fkey FOREIGN KEY (rie_versie_id) REFERENCES rie_versies(id);
+ALTER TABLE public.notificatie ADD CONSTRAINT notificatie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.notificatie ADD CONSTRAINT notificatie_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE public.notificatie_voorkeur ADD CONSTRAINT notificatie_voorkeur_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 ALTER TABLE public.personen ADD CONSTRAINT personen_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.personen ADD CONSTRAINT personen_functiegroep_id_fkey FOREIGN KEY (functiegroep_id) REFERENCES functiegroep(id) ON DELETE SET NULL;
 ALTER TABLE public.personen ADD CONSTRAINT personen_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
@@ -949,6 +978,9 @@ CREATE INDEX inspectie_historie_idx ON public.inspectie_historie USING btree (in
 CREATE INDEX isp_punt_sjabloon_idx ON public.inspectie_sjabloon_punt USING btree (sjabloon_id, volgorde);
 CREATE INDEX module_historie_company_idx ON public.module_historie USING btree (company_id, wanneer DESC);
 CREATE INDEX modules_company_idx ON public.modules USING btree (company_id);
+CREATE UNIQUE INDEX notificatie_dedup_direct ON public.notificatie USING btree (user_id, bron_tabel, bron_id) WHERE (bron_id IS NOT NULL);
+CREATE UNIQUE INDEX notificatie_dedup_periodiek ON public.notificatie USING btree (user_id, event_type, periode_sleutel) WHERE (periode_sleutel IS NOT NULL);
+CREATE INDEX notificatie_user_ongelezen_idx ON public.notificatie USING btree (user_id, aangemaakt_op DESC) WHERE (gelezen_op IS NULL);
 CREATE INDEX personen_company_idx ON public.personen USING btree (company_id);
 CREATE INDEX persoon_merge_log_company_idx ON public.persoon_merge_log USING btree (company_id, wanneer DESC);
 CREATE INDEX pva_items_company_idx ON public.pva_items USING btree (company_id);
@@ -1014,6 +1046,8 @@ ALTER TABLE public.inspectie_sjabloon_punt ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.merken ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.module_historie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.modules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notificatie ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notificatie_voorkeur ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.personen ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.persoon_merge_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pva_items ENABLE ROW LEVEL SECURITY;
@@ -1149,6 +1183,10 @@ CREATE POLICY module_historie_sel ON public.module_historie AS PERMISSIVE FOR SE
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY modules_select ON public.modules AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
+CREATE POLICY notificatie_sel ON public.notificatie AS PERMISSIVE FOR SELECT TO public
+  USING ((user_id = auth.uid()));
+CREATE POLICY notificatie_voorkeur_sel ON public.notificatie_voorkeur AS PERMISSIVE FOR SELECT TO public
+  USING ((user_id = auth.uid()));
 CREATE POLICY personen_select ON public.personen AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
 CREATE POLICY personen_write ON public.personen AS PERMISSIVE FOR ALL TO public
@@ -3238,6 +3276,25 @@ BEGIN
   RAISE EXCEPTION 'Dit goedkeuringsverzoek is al behandeld en ligt vast';
 END;
 $function$;
+CREATE OR REPLACE FUNCTION public.goedkeuringsverzoek_notificatie()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_naam text;
+begin
+  select naam into v_naam from personen where id = NEW.persoon_id;
+  perform notificatie_direct_aanmaken(
+    NEW.company_id, 'goedkeuringsverzoek', 'beheer',
+    'Nieuw goedkeuringsverzoek: ' || coalesce(v_naam, 'onbekend'),
+    '/' || NEW.company_id || '/goedkeuringen',
+    'goedkeuringsverzoek', NEW.id
+  );
+  return NEW;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.goedkeuringsverzoek_overzicht(p_company_id uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -3781,6 +3838,22 @@ begin
   end if;
 
   return jsonb_build_object('token', v_link.token, 'ingetrokken', v_link.ingetrokken);
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.incident_notificatie()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  perform notificatie_direct_aanmaken(
+    NEW.company_id, 'incident_melding', 'werk',
+    'Nieuwe incidentmelding: ' || coalesce(nullif(btrim(NEW.locatie), ''), 'onbekende locatie'),
+    '/' || NEW.company_id || '/incidenten',
+    'incident', NEW.id
+  );
+  return NEW;
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.incident_oorzaak_opslaan(p_company_id uuid, p_incident_id uuid, p_status text, p_directe_oorzaken integer[], p_basis_oorzaken integer[], p_oorzaak_toelichting text, p_onderzoeksrapportage_bijgevoegd boolean, p_telefonische_melding_directie boolean, p_telefonische_melding_aan text, p_maatregelen_in_actielijst boolean, p_tra_aanpassen boolean, p_andere_maatregelen text, p_besproken_in_toolbox_datum date)
@@ -4806,6 +4879,281 @@ CREATE OR REPLACE FUNCTION public.my_company_id()
  SET search_path TO 'public'
 AS $function$
   select company_id from public.users where id = auth.uid()
+$function$;
+CREATE OR REPLACE FUNCTION public.notificatie_direct_aanmaken(p_company_id uuid, p_event_type text, p_scope text, p_titel text, p_link_pad text, p_bron_tabel text, p_bron_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  insert into notificatie (company_id, user_id, event_type, titel, link_pad, bron_tabel, bron_id)
+  select p_company_id, o.user_id, p_event_type, p_titel, p_link_pad, p_bron_tabel, p_bron_id
+    from notificatie_ontvangers(p_company_id, p_scope) o
+    join notificatie_voorkeur v on v.user_id = o.user_id and v.event_type = p_event_type
+   where v.modus = 'direct'
+  union all
+  select p_company_id, o.user_id, p_event_type, p_titel, p_link_pad, p_bron_tabel, p_bron_id
+    from notificatie_ontvangers(p_company_id, p_scope) o
+   where not exists (select 1 from notificatie_voorkeur v where v.user_id = o.user_id and v.event_type = p_event_type)
+  on conflict (user_id, bron_tabel, bron_id) where (bron_id is not null) do nothing;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.notificatie_gelezen_zetten(p_id uuid)
+ RETURNS void
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  update notificatie set gelezen_op = now() where id = p_id and user_id = auth.uid() and gelezen_op is null
+$function$;
+CREATE OR REPLACE FUNCTION public.notificatie_ontvangers(p_company_id uuid, p_scope text)
+ RETURNS TABLE(user_id uuid)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  select id from users
+   where role = 'admin'
+      or (company_id = p_company_id and role = 'client')
+      or (p_scope = 'werk' and company_id = p_company_id and role = 'teamleider')
+$function$;
+CREATE OR REPLACE FUNCTION public.notificatie_voorkeur_zetten(p_event_type text, p_modus text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  if p_event_type <> ALL (ARRAY[
+    'goedkeuringsverzoek', 'incident_melding', 'actie_over_termijn',
+    'audit_gepland', 'rie_toetsing_verloopt', 'toolbox_herinnering'
+  ]) then
+    raise exception 'Onbekend event_type: %', p_event_type;
+  end if;
+  if p_modus <> ALL (ARRAY['direct', 'periodiek', 'uit']) then
+    raise exception 'Onbekende modus: %', p_modus;
+  end if;
+
+  insert into notificatie_voorkeur (user_id, event_type, modus, updated_at)
+  values (auth.uid(), p_event_type, p_modus, now())
+  on conflict (user_id, event_type) do update set modus = excluded.modus, updated_at = now();
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.notificatie_voorkeuren_ophalen()
+ RETURNS jsonb
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  select jsonb_agg(jsonb_build_object(
+    'event_type', t.event_type,
+    'modus', coalesce(v.modus, 'direct')
+  ) order by t.event_type)
+  from unnest(ARRAY[
+    'goedkeuringsverzoek', 'incident_melding', 'actie_over_termijn',
+    'audit_gepland', 'rie_toetsing_verloopt', 'toolbox_herinnering'
+  ]) as t(event_type)
+  left join notificatie_voorkeur v on v.user_id = auth.uid() and v.event_type = t.event_type
+$function$;
+CREATE OR REPLACE FUNCTION public.notificaties_alles_gelezen(p_company_id uuid)
+ RETURNS void
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  update notificatie set gelezen_op = now()
+   where company_id = p_company_id and user_id = auth.uid() and gelezen_op is null
+$function$;
+CREATE OR REPLACE FUNCTION public.notificaties_genereren(p_company_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_vandaag text := to_char(current_date, 'YYYY-MM-DD');
+  v_rij record;
+  v_aantal integer;
+begin
+  if not (mag_bedrijf_werken(p_company_id) or auth.role() = 'service_role') then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  -- ---- periodieke bundels voor de insert-gedreven soorten ----
+  select count(*) into v_aantal from goedkeuringsverzoek where company_id = p_company_id and status = 'open';
+  insert into notificatie (company_id, user_id, event_type, titel, link_pad, periode_sleutel)
+  select p_company_id, o.user_id, 'goedkeuringsverzoek',
+         v_aantal || ' openstaand goedkeuringsverzoek' || case when v_aantal = 1 then '' else 'en' end,
+         '/' || p_company_id || '/goedkeuringen', v_vandaag
+    from notificatie_ontvangers(p_company_id, 'beheer') o
+    join notificatie_voorkeur v on v.user_id = o.user_id and v.event_type = 'goedkeuringsverzoek'
+   where v.modus = 'periodiek' and v_aantal > 0
+  on conflict (user_id, event_type, periode_sleutel) where (periode_sleutel is not null)
+    do update set titel = excluded.titel, aangemaakt_op = now(), gelezen_op = null;
+
+  select count(*) into v_aantal from incident where company_id = p_company_id and aangemaakt_op::date = current_date;
+  insert into notificatie (company_id, user_id, event_type, titel, link_pad, periode_sleutel)
+  select p_company_id, o.user_id, 'incident_melding',
+         v_aantal || ' nieuwe incidentmelding' || case when v_aantal = 1 then '' else 'en' end || ' vandaag',
+         '/' || p_company_id || '/incidenten', v_vandaag
+    from notificatie_ontvangers(p_company_id, 'werk') o
+    join notificatie_voorkeur v on v.user_id = o.user_id and v.event_type = 'incident_melding'
+   where v.modus = 'periodiek' and v_aantal > 0
+  on conflict (user_id, event_type, periode_sleutel) where (periode_sleutel is not null)
+    do update set titel = excluded.titel, aangemaakt_op = now(), gelezen_op = null;
+
+  -- ---- acties over termijn (direct = per actie; periodiek = bundel) ----
+  for v_rij in
+    select id, onderwerp from pva_items
+     where company_id = p_company_id and coalesce(status, 'Open') <> 'Afgerond'
+       and termijn_datum is not null and termijn_datum < current_date
+  loop
+    perform notificatie_direct_aanmaken(
+      p_company_id, 'actie_over_termijn', 'werk',
+      'Actie over de termijn: ' || coalesce(v_rij.onderwerp, 'zonder onderwerp'),
+      '/' || p_company_id || '/actielijst#actie-rij-' || v_rij.id,
+      'pva_items', v_rij.id
+    );
+  end loop;
+
+  select count(*) into v_aantal from pva_items
+   where company_id = p_company_id and coalesce(status, 'Open') <> 'Afgerond'
+     and termijn_datum is not null and termijn_datum < current_date;
+  insert into notificatie (company_id, user_id, event_type, titel, link_pad, periode_sleutel)
+  select p_company_id, o.user_id, 'actie_over_termijn',
+         v_aantal || ' actie' || case when v_aantal = 1 then '' else 's' end || ' over de termijn',
+         '/' || p_company_id || '/actielijst', v_vandaag
+    from notificatie_ontvangers(p_company_id, 'werk') o
+    join notificatie_voorkeur v on v.user_id = o.user_id and v.event_type = 'actie_over_termijn'
+   where v.modus = 'periodiek' and v_aantal > 0
+  on conflict (user_id, event_type, periode_sleutel) where (periode_sleutel is not null)
+    do update set titel = excluded.titel, aangemaakt_op = now(), gelezen_op = null;
+
+  -- ---- geplande audits (binnen 7 dagen, nog niet uitgevoerd) ----
+  for v_rij in
+    select id, titel, datum from audit
+     where company_id = p_company_id and status = 'gepland'
+       and datum is not null and datum <= current_date + interval '7 days'
+  loop
+    perform notificatie_direct_aanmaken(
+      p_company_id, 'audit_gepland', 'beheer',
+      'Geplande audit: ' || v_rij.titel || ' op ' || to_char(v_rij.datum, 'DD-MM-YYYY'),
+      '/' || p_company_id || '/audits/' || v_rij.id,
+      'audit', v_rij.id
+    );
+  end loop;
+
+  select count(*) into v_aantal from audit
+   where company_id = p_company_id and status = 'gepland'
+     and datum is not null and datum <= current_date + interval '7 days';
+  insert into notificatie (company_id, user_id, event_type, titel, link_pad, periode_sleutel)
+  select p_company_id, o.user_id, 'audit_gepland',
+         v_aantal || ' geplande audit' || case when v_aantal = 1 then '' else 's' end || ' binnen 7 dagen',
+         '/' || p_company_id || '/audits', v_vandaag
+    from notificatie_ontvangers(p_company_id, 'beheer') o
+    join notificatie_voorkeur v on v.user_id = o.user_id and v.event_type = 'audit_gepland'
+   where v.modus = 'periodiek' and v_aantal > 0
+  on conflict (user_id, event_type, periode_sleutel) where (periode_sleutel is not null)
+    do update set titel = excluded.titel, aangemaakt_op = now(), gelezen_op = null;
+
+  -- ---- RI&E-toetsing verloopt (binnen 30 dagen) ----
+  for v_rij in
+    select id, geldig_tot from rie_versies
+     where company_id = p_company_id and status = 'actief'
+       and geldig_tot is not null and geldig_tot <= now() + interval '30 days'
+  loop
+    perform notificatie_direct_aanmaken(
+      p_company_id, 'rie_toetsing_verloopt', 'beheer',
+      'RI&E-toetsing verloopt op ' || to_char(v_rij.geldig_tot, 'DD-MM-YYYY'),
+      '/' || p_company_id || '/rie',
+      'rie_versies', v_rij.id
+    );
+  end loop;
+
+  select count(*) into v_aantal from rie_versies
+   where company_id = p_company_id and status = 'actief'
+     and geldig_tot is not null and geldig_tot <= now() + interval '30 days';
+  insert into notificatie (company_id, user_id, event_type, titel, link_pad, periode_sleutel)
+  select p_company_id, o.user_id, 'rie_toetsing_verloopt',
+         v_aantal || ' RI&E-toetsing' || case when v_aantal = 1 then '' else 'en' end || ' verloopt binnenkort',
+         '/' || p_company_id || '/rie', v_vandaag
+    from notificatie_ontvangers(p_company_id, 'beheer') o
+    join notificatie_voorkeur v on v.user_id = o.user_id and v.event_type = 'rie_toetsing_verloopt'
+   where v.modus = 'periodiek' and v_aantal > 0
+  on conflict (user_id, event_type, periode_sleutel) where (periode_sleutel is not null)
+    do update set titel = excluded.titel, aangemaakt_op = now(), gelezen_op = null;
+
+  -- ---- toolbox-achterstand (bedrijfsbreed, geen sub-item -- direct en
+  --      periodiek vallen hier voorlopig samen, zie OPENSTAAND_SPOOR_B2.md) ----
+  declare
+    v_doel integer;
+    v_pro_rata numeric;
+    v_gedaan integer;
+    v_module_actief boolean;
+  begin
+    select exists (
+      select 1 from bedrijf_modules
+       where company_id = p_company_id and module = 'toolbox'
+         and module_status = 'actief' and actief = true
+    ) into v_module_actief;
+
+    select coalesce(sessie_doel_per_jaar, 12) into v_doel
+      from bedrijf_toolbox_instelling where company_id = p_company_id;
+    if v_doel is null then v_doel := 12; end if;
+    v_pro_rata := v_doel * (extract(doy from current_date) / 365.0);
+    select count(*) into v_gedaan from toolbox_sessie
+     where company_id = p_company_id and extract(year from datum) = extract(year from current_date);
+
+    if v_module_actief and v_gedaan < floor(v_pro_rata) then
+      insert into notificatie (company_id, user_id, event_type, titel, link_pad, periode_sleutel)
+      select p_company_id, o.user_id, 'toolbox_herinnering',
+             'Toolbox-achterstand: ' || v_gedaan || ' van de ' || v_doel || ' sessies dit jaar gehouden',
+             '/' || p_company_id || '/toolbox/overzicht', v_vandaag
+        from notificatie_ontvangers(p_company_id, 'werk') o
+        join notificatie_voorkeur v on v.user_id = o.user_id and v.event_type = 'toolbox_herinnering'
+       where v.modus in ('direct', 'periodiek')
+      union all
+      select p_company_id, o.user_id, 'toolbox_herinnering',
+             'Toolbox-achterstand: ' || v_gedaan || ' van de ' || v_doel || ' sessies dit jaar gehouden',
+             '/' || p_company_id || '/toolbox/overzicht', v_vandaag
+        from notificatie_ontvangers(p_company_id, 'werk') o
+       where not exists (select 1 from notificatie_voorkeur v where v.user_id = o.user_id and v.event_type = 'toolbox_herinnering')
+      on conflict (user_id, event_type, periode_sleutel) where (periode_sleutel is not null)
+        do update set titel = excluded.titel, aangemaakt_op = now(), gelezen_op = null;
+    end if;
+  end;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.notificaties_ophalen(p_company_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v jsonb;
+begin
+  if not mag_bedrijf_werken(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  perform notificaties_genereren(p_company_id);
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', n.id, 'event_type', n.event_type, 'titel', n.titel, 'link_pad', n.link_pad,
+    'gelezen_op', n.gelezen_op, 'aangemaakt_op', n.aangemaakt_op
+  ) order by n.aangemaakt_op desc), '[]'::jsonb)
+  into v
+  from (
+    select * from notificatie
+     where company_id = p_company_id and user_id = auth.uid()
+     order by aangemaakt_op desc
+     limit 50
+  ) n;
+
+  return v;
+end;
 $function$;
 CREATE OR REPLACE FUNCTION public.personen_correctie_loggen()
  RETURNS trigger
@@ -6359,6 +6707,9 @@ GRANT EXECUTE ON FUNCTION public.gen_deellink_token() TO service_role;
 REVOKE EXECUTE ON FUNCTION public.goedkeuringsverzoek_bevroren_bewaken() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.goedkeuringsverzoek_bevroren_bewaken() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.goedkeuringsverzoek_bevroren_bewaken() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.goedkeuringsverzoek_notificatie() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.goedkeuringsverzoek_notificatie() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.goedkeuringsverzoek_notificatie() TO service_role;
 REVOKE EXECUTE ON FUNCTION public.goedkeuringsverzoek_overzicht(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.goedkeuringsverzoek_overzicht(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.goedkeuringsverzoek_overzicht(p_company_id uuid) TO service_role;
@@ -6406,6 +6757,9 @@ GRANT EXECUTE ON FUNCTION public.incident_meldlink_roteren(p_company_id uuid) TO
 REVOKE EXECUTE ON FUNCTION public.incident_meldlink_zorg(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.incident_meldlink_zorg(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.incident_meldlink_zorg(p_company_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.incident_notificatie() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.incident_notificatie() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.incident_notificatie() TO service_role;
 REVOKE EXECUTE ON FUNCTION public.incident_oorzaak_opslaan(p_company_id uuid, p_incident_id uuid, p_status text, p_directe_oorzaken integer[], p_basis_oorzaken integer[], p_oorzaak_toelichting text, p_onderzoeksrapportage_bijgevoegd boolean, p_telefonische_melding_directie boolean, p_telefonische_melding_aan text, p_maatregelen_in_actielijst boolean, p_tra_aanpassen boolean, p_andere_maatregelen text, p_besproken_in_toolbox_datum date) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.incident_oorzaak_opslaan(p_company_id uuid, p_incident_id uuid, p_status text, p_directe_oorzaken integer[], p_basis_oorzaken integer[], p_oorzaak_toelichting text, p_onderzoeksrapportage_bijgevoegd boolean, p_telefonische_melding_directie boolean, p_telefonische_melding_aan text, p_maatregelen_in_actielijst boolean, p_tra_aanpassen boolean, p_andere_maatregelen text, p_besproken_in_toolbox_datum date) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.incident_oorzaak_opslaan(p_company_id uuid, p_incident_id uuid, p_status text, p_directe_oorzaken integer[], p_basis_oorzaken integer[], p_oorzaak_toelichting text, p_onderzoeksrapportage_bijgevoegd boolean, p_telefonische_melding_directie boolean, p_telefonische_melding_aan text, p_maatregelen_in_actielijst boolean, p_tra_aanpassen boolean, p_andere_maatregelen text, p_besproken_in_toolbox_datum date) TO service_role;
@@ -6501,6 +6855,30 @@ GRANT EXECUTE ON FUNCTION public.module_stopzetten(p_company_id uuid, p_module t
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO anon;
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.notificatie_direct_aanmaken(p_company_id uuid, p_event_type text, p_scope text, p_titel text, p_link_pad text, p_bron_tabel text, p_bron_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.notificatie_direct_aanmaken(p_company_id uuid, p_event_type text, p_scope text, p_titel text, p_link_pad text, p_bron_tabel text, p_bron_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.notificatie_direct_aanmaken(p_company_id uuid, p_event_type text, p_scope text, p_titel text, p_link_pad text, p_bron_tabel text, p_bron_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.notificatie_gelezen_zetten(p_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.notificatie_gelezen_zetten(p_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.notificatie_gelezen_zetten(p_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.notificatie_ontvangers(p_company_id uuid, p_scope text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.notificatie_ontvangers(p_company_id uuid, p_scope text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.notificatie_ontvangers(p_company_id uuid, p_scope text) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.notificatie_voorkeur_zetten(p_event_type text, p_modus text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.notificatie_voorkeur_zetten(p_event_type text, p_modus text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.notificatie_voorkeur_zetten(p_event_type text, p_modus text) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.notificatie_voorkeuren_ophalen() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.notificatie_voorkeuren_ophalen() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.notificatie_voorkeuren_ophalen() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.notificaties_alles_gelezen(p_company_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.notificaties_alles_gelezen(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.notificaties_alles_gelezen(p_company_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.notificaties_genereren(p_company_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.notificaties_genereren(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.notificaties_genereren(p_company_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.notificaties_ophalen(p_company_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.notificaties_ophalen(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.notificaties_ophalen(p_company_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.personen_correctie_loggen() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.personen_correctie_loggen() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.personen_correctie_loggen() TO service_role;
@@ -6644,6 +7022,8 @@ CREATE TRIGGER correctie_log_no_delete BEFORE DELETE ON public.correctie_log FOR
 CREATE TRIGGER correctie_log_no_truncate BEFORE TRUNCATE ON public.correctie_log FOR EACH STATEMENT EXECUTE FUNCTION correctie_log_immutable();
 CREATE TRIGGER correctie_log_no_update BEFORE UPDATE ON public.correctie_log FOR EACH ROW EXECUTE FUNCTION correctie_log_immutable();
 CREATE TRIGGER goedkeuringsverzoek_bevroren BEFORE UPDATE ON public.goedkeuringsverzoek FOR EACH ROW EXECUTE FUNCTION goedkeuringsverzoek_bevroren_bewaken();
+CREATE TRIGGER goedkeuringsverzoek_notificatie_trigger AFTER INSERT ON public.goedkeuringsverzoek FOR EACH ROW EXECUTE FUNCTION goedkeuringsverzoek_notificatie();
+CREATE TRIGGER incident_notificatie_trigger AFTER INSERT ON public.incident FOR EACH ROW EXECUTE FUNCTION incident_notificatie();
 CREATE TRIGGER inspectie_bevroren_no_update BEFORE UPDATE ON public.inspectie FOR EACH ROW EXECUTE FUNCTION inspectie_bevroren_bewaken();
 CREATE TRIGGER inspectie_persoon_correctie_audit AFTER UPDATE ON public.inspectie FOR EACH ROW WHEN ((new.persoon_id IS DISTINCT FROM old.persoon_id)) EXECUTE FUNCTION persoon_koppeling_correctie_loggen();
 CREATE TRIGGER inspectie_bevinding_bevroren_no_update BEFORE DELETE OR UPDATE ON public.inspectie_bevinding FOR EACH ROW EXECUTE FUNCTION inspectie_bevinding_bevroren_bewaken();

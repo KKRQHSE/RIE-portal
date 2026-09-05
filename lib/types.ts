@@ -98,6 +98,18 @@ export type HistorieRegel = {
   created_at: string
 }
 
+// Eén regel uit audit_log (migratie 0068) — admin-only inzage-/actielog, AVG-tab.
+export type AuditLogRegel = {
+  id: string
+  wie: string | null
+  wanneer: string
+  actie: string
+  entiteit: string
+  entiteit_id: string | null
+  company_id: string | null
+  detail: Record<string, unknown> | null
+}
+
 export type Company = {
   id: string
   name: string
@@ -223,6 +235,34 @@ export type Goedkeuringsverzoek = {
   mogelijk_duplicaat: { id: string; naam: string } | null
   gekoppelde_items: GekoppeldItem[]
 }
+
+// ---- Notificaties (migratie 0072, B2) ----
+
+export type NotificatieEventType =
+  | 'goedkeuringsverzoek' | 'incident_melding' | 'actie_over_termijn'
+  | 'audit_gepland' | 'rie_toetsing_verloopt' | 'toolbox_herinnering'
+
+export const NOTIFICATIE_EVENT_TYPES: { code: NotificatieEventType; label: string }[] = [
+  { code: 'goedkeuringsverzoek',    label: 'Goedkeuringsverzoeken' },
+  { code: 'incident_melding',       label: 'Nieuwe incidentmelding' },
+  { code: 'actie_over_termijn',     label: 'Acties over termijn' },
+  { code: 'audit_gepland',          label: 'Geplande audits' },
+  { code: 'rie_toetsing_verloopt', label: 'RI&E-toetsing verloopt' },
+  { code: 'toolbox_herinnering',    label: 'Toolbox-herinneringen' },
+]
+
+export type NotificatieModus = 'direct' | 'periodiek' | 'uit'
+
+export type Notificatie = {
+  id: string
+  event_type: NotificatieEventType
+  titel: string
+  link_pad: string | null
+  gelezen_op: string | null
+  aangemaakt_op: string
+}
+
+export type NotificatieVoorkeur = { event_type: NotificatieEventType; modus: NotificatieModus }
 
 // ---- Werkplekinspectie (module 'inspectie') ----
 

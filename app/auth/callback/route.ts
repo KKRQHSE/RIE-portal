@@ -16,8 +16,17 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=callback_failed`)
   }
 
-  // Wachtwoord-reset of uitnodiging: ga naar de opgegeven vervolgpagina.
-  if (next) {
+  // Wachtwoord-reset of uitnodiging: ga naar de opgegeven vervolgpagina — maar
+  // alleen als 'next' een echt eigen, relatief pad is. 'next' komt ongefilterd
+  // uit de query-string van de aanvrager: zonder deze check zou een waarde als
+  // '@evil.com/x' via de URL-parser (userinfo@host-syntax, RFC 3986) naar een
+  // ander domein redirecten in plaats van hierheen — zie
+  // SYSTEEMDOORLICHTING_APPLICATIEBEVEILIGING_2026-09-04.md.
+  if (
+    next &&
+    next.startsWith('/') && !next.startsWith('//') &&
+    !next.includes('@') && !next.includes(':') && !next.includes('\\')
+  ) {
     return NextResponse.redirect(`${origin}${next}`)
   }
 

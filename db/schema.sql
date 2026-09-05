@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-05T19:53:05.525Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-05T20:07:20.142Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -2656,6 +2656,86 @@ begin
     if_dit_jaar               = coalesce(excluded.if_dit_jaar,   bedrijf_dashboard_instelling.if_dit_jaar),
     if_vorig_jaar             = coalesce(excluded.if_vorig_jaar, bedrijf_dashboard_instelling.if_vorig_jaar),
     updated_at                = now();
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.dashboard_meerjaren(p_company_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_actieve_personen integer;
+  v_doel_totaal integer;
+  v jsonb;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  select count(*) into v_actieve_personen
+    from personen where company_id = p_company_id and archived_at is null;
+
+  select coalesce(sum(doel_per_jaar), 0) into v_doel_totaal
+    from bedrijf_inspectie_doel where company_id = p_company_id;
+
+  with jaren as (
+    select extract(year from current_date)::int as jaar
+    union
+    select extract(year from aangemaakt_op)::int from inspectie where company_id = p_company_id
+    union
+    select extract(year from uitgevoerd_op)::int from inspectie
+      where company_id = p_company_id and uitgevoerd_op is not null
+    union
+    select extract(year from datum)::int from incident where company_id = p_company_id
+    union
+    select extract(year from datum)::int from toolbox_sessie where company_id = p_company_id
+    union
+    select jaar from bedrijf_gewerkte_uren where company_id = p_company_id and uren is not null
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'jaar', j.jaar,
+    'if_getal', if_getal_voor_jaar(p_company_id, j.jaar),
+    'inspecties', jsonb_build_object(
+      'afgerond', (
+        select count(*) from inspectie
+         where company_id = p_company_id and status = 'afgerond'
+           and extract(year from uitgevoerd_op)::int = j.jaar
+      ),
+      'doel_totaal', v_doel_totaal
+    ),
+    'toolbox', jsonb_build_object(
+      'sessies', (
+        select count(*) from toolbox_sessie
+         where company_id = p_company_id and extract(year from datum)::int = j.jaar
+      ),
+      'dekking_pct', (
+        case when v_actieve_personen = 0 then null else (
+          select case when not exists (
+                   select 1 from toolbox_sessie
+                    where company_id = p_company_id and extract(year from datum)::int = j.jaar
+                 ) then null
+                 else round(100.0 * (
+                   select count(distinct d.persoon_id)
+                     from toolbox_deelname d
+                     join toolbox_sessie s on s.id = d.sessie_id
+                    where d.company_id = p_company_id and s.company_id = p_company_id
+                      and extract(year from s.datum)::int = j.jaar
+                      and d.persoon_id is not null
+                 ) / v_actieve_personen)
+                 end
+        ) end
+      )
+    ),
+    'incidenten', (
+      select count(*) from incident
+       where company_id = p_company_id and extract(year from datum)::int = j.jaar
+    )
+  ) order by j.jaar desc), '[]'::jsonb)
+  into v
+  from jaren j;
+
+  return v;
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.dashboard_overzicht(p_company_id uuid)
@@ -6779,6 +6859,9 @@ GRANT EXECUTE ON FUNCTION public.dashboard_if_getal(p_company_id uuid) TO servic
 REVOKE EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text, p_if_dit_jaar numeric, p_if_vorig_jaar numeric) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text, p_if_dit_jaar numeric, p_if_vorig_jaar numeric) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text, p_if_dit_jaar numeric, p_if_vorig_jaar numeric) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.dashboard_meerjaren(p_company_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.dashboard_meerjaren(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.dashboard_meerjaren(p_company_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.dashboard_overzicht(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dashboard_overzicht(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.dashboard_overzicht(p_company_id uuid) TO service_role;

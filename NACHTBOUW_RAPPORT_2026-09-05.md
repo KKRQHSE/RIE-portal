@@ -85,9 +85,57 @@ al correct afgehandeld, nu ook expliciet getest. Suite: 12/12 (was 11/11).
 Geen UI/DB-wijziging nodig; alleen testdekking aangevuld. Tsc + build groen.
 **Gepusht**: ja.
 
-## Fase 3 — Meerjaren-dashboard
+## Fase 3 — Meerjaren-dashboard (voorbereidend)
 
-(wordt aangevuld)
+Migratie `0075_dashboard_meerjaren_overzicht.sql`: nieuwe RPC `dashboard_meerjaren(p_company_id)`,
+zelfde toegangsniveau als het IF-getal (`mag_bedrijf_beheren`: KAM/admin, geen teamleider). Nieuwe
+pagina `/[company_id]/dashboard/meerjaren` (`MeerjarenClient.tsx`), link toegevoegd bij
+"Bedrijfsvoering" op het hoofddashboard.
+
+**Welke jaren:** elk jaar waarin minstens één van de bestaande bronnen een rij heeft
+(inspectie.aangemaakt_op/uitgevoerd_op, incident.datum, toolbox_sessie.datum,
+bedrijf_gewerkte_uren met een ingevulde waarde), plus altijd het huidige jaar — ook leeg. Geen
+enkel cijfer is verzonnen; alles is een directe aggregatie van bestaande, al per-datum
+vastgelegde rijen.
+
+**Vier metrics per jaar:**
+- IF-getal: hergebruikt `if_getal_voor_jaar()` ongewijzigd.
+- Toolbox-dekking: percentage, `null` (toont "nog geen sessie") als er dat jaar geen
+  toolbox-sessie was — nooit een misleidende 0%.
+- Inspecties afgerond: harde jaartelling; toont "x/doel" alleen als er een inspectiedoel is
+  ingesteld.
+- Aantal incidenten: harde jaartelling.
+
+**Twee bewuste ontwerpkeuzes, expliciet zichtbaar in de UI én hier gedocumenteerd voor latere
+verfijning** (dit was de "grotere ontwerpkeuze die ik moet maken"-situatie uit de opdracht; ik
+heb een eenvoudige eerste versie gebouwd i.p.v. te gokken):
+1. **Toolbox-dekking gebruikt het HUIDIGE aantal actieve personen als noemer voor élk jaar** —
+   er wordt geen historische personeelsstand bijgehouden. Voor oudere jaren is dit dus een
+   benadering (bij personeelsgroei/-krimp klopt het percentage voor het verleden niet exact).
+   Voorstel voor verfijning: een snapshot van het aantal actieve personen per jaareinde
+   bijhouden, of expliciet documenteren dat dit cijfer een "huidige-maatstaf"-benadering is.
+2. **Inspectiedoel (`bedrijf_inspectie_doel.doel_per_jaar`) is een lopende instelling, geen
+   jaar-specifieke waarde** — toegepast op elk jaar alsof die instelling altijd al gold. Het
+   aantal afgeronde inspecties zelf is wél een harde, jaar-echte telling; alleen de "/doel"-noemer
+   is een benadering voor jaren vóórdat het doel op de huidige waarde stond.
+3. **Doelstellingen (`bedrijf_dashboard_instelling.doelstelling_tekst`) worden NIET per jaar
+   getoond** — dat veld is nooit per jaar opgeslagen, alleen de actuele tekst bestaat. Het
+   meerjarenoverzicht toont daarom de huidige doelstellingen los onder de tabel, niet per
+   jaarkolom. Voorstel: als een historisch overzicht van doelstellingen per jaar gewenst is, moet
+   dat veld eerst een `jaar`-kolom krijgen (additieve migratie, geen data-verlies) vóórdat het
+   met terugwerkende kracht zinvol per jaar te tonen is.
+
+**Nieuwe test:** `scripts/dashboard_meerjaren_test.mjs` (12/12) — kaal bedrijf toont alleen het
+huidige jaar zonder crash, teamleider/ander-bedrijf dicht, een jaar met data verschijnt met de
+juiste cijfers zonder het huidige jaar te vervuilen, toolbox-dekking null vs. percentage.
+Handmatig ook echt in de browser gecontroleerd (Playwright, wegwerpbedrijf): pagina rendert
+correct, "nog geen urenbasis"/"nog geen sessie" tonen zoals bedoeld. (Twee console-meldingen
+gezien — CSP-geblokkeerde `eval()` in dev-mode en een logo-aspect-ratio-waarschuwing — allebei
+pre-existing en site-breed, niet door deze wijziging veroorzaakt; geen actie ondernomen.)
+
+**Nulmeting na deze fase:** tsc schoon, build groen (nieuwe route `/[company_id]/dashboard/
+meerjaren` gecompileerd), volledige suite **36/36** groen.
+**Gepusht**: ja.
 
 ## Wat te testen in de browser (ook mobiel)
 

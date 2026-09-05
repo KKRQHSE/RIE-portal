@@ -418,12 +418,20 @@ export default function DashboardClient({
         <div className="flex items-center justify-between mt-8 mb-3">
           <h2 className="text-xs font-medium uppercase tracking-wide text-ink/40">Bedrijfsvoering</h2>
           {magBewerken && (
-            <Link
-              href={`/${cid}/dashboard/bedrijfsvoering`}
-              className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors"
-            >
-              Bewerken
-            </Link>
+            <div className="flex gap-2">
+              <Link
+                href={`/${cid}/dashboard/meerjaren`}
+                className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors"
+              >
+                Meerjarenoverzicht
+              </Link>
+              <Link
+                href={`/${cid}/dashboard/bedrijfsvoering`}
+                className="text-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center rounded-full bg-white text-ink/70 border border-ink/20 hover:border-accent hover:text-accent transition-colors"
+              >
+                Bewerken
+              </Link>
+            </div>
           )}
         </div>
 

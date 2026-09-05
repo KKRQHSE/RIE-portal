@@ -707,6 +707,19 @@ export type DashboardInstelling = {
 export type IfGetalJaar = { jaar: number; verzuimongevallen: number; gewerkte_uren: number | null; if_getal: number | null }
 export type IfGetalOverzicht = { dit_jaar: IfGetalJaar; vorig_jaar: IfGetalJaar }
 
+// Resultaat van dashboard_meerjaren() (migratie 0075) -- meta-overzicht per
+// jaar, voorbereidend voor het meerjaren-dashboard (Fase 3). dekking_pct is
+// null zolang er dat jaar geen toolbox-sessie was (geen misleidende 0%);
+// inspecties.doel_totaal is de HUIDIGE doel-instelling toegepast op elk jaar
+// (geen jaar-specifieke historische instelling -- zie rapport).
+export type MeerjarenRegel = {
+  jaar: number
+  if_getal: IfGetalJaar
+  inspecties: { afgerond: number; doel_totaal: number }
+  toolbox: { sessies: number; dekking_pct: number | null }
+  incidenten: number
+}
+
 // Eén regel van de RPC dashboard_admin_overzicht(): per bedrijf voor de admin-roll-up.
 export type DashboardAdminRegel = {
   id: string

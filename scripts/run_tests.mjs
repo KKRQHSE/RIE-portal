@@ -37,6 +37,7 @@ const TESTS = [
   { naam: 'audit_log_test.mjs',                     soort: 'database' },
   { naam: 'token_flows_test.mjs',                   soort: 'database' },
   { naam: 'anon_execute_audit_test.mjs',            soort: 'database' },
+  { naam: 'rate_limiet_test.mjs',                   soort: 'database' },
   { naam: 'onveranderlijkheid_test.mjs',            soort: 'database' },
   { naam: 'nachttest_rls.mjs',                      soort: 'database' },
   { naam: 'nachttest_storage.mjs',                  soort: 'database' },

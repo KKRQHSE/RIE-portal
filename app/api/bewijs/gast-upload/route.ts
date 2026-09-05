@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAnonClient } from '@/lib/supabase/anon'
 import { createServiceClient } from '@/lib/supabase/service'
 import { BEWIJS_BUCKET, parseJson, isVeiligOpslagPad, isServerToegestaanType, isToegestaneGrootte } from '@/lib/bewijs'
+import { rateLimietToegestaan } from '@/lib/rate-limit'
 
 // Nooit cachen/prerenderen: dit is altijd een verse, request-specifieke actie.
 export const dynamic = 'force-dynamic'
@@ -32,8 +33,15 @@ export async function POST(request: Request) {
   if (!isServerToegestaanType(type)) return fout('Alleen jpg/png/webp/gif of pdf zijn toegestaan.', 415)
   if (!isToegestaneGrootte(grootte)) return fout('Bestand te groot of ongeldige grootte opgegeven.', 413)
 
-  // Token + actie-koppeling worden in de RPC gevalideerd; die reserveert een pad.
   const anon = createAnonClient()
+
+  // Rate limit per token (niet per IP: gedeelde/corporate-NAT-IP's zouden
+  // elkaar anders blokkeren) — 20 uploads per 10 minuten is ruim voor een
+  // echte gebruiker, maar begrenst opslagmisbruik met een gelekt token.
+  const magUploaden = await rateLimietToegestaan(anon, `token:${token}`, 'bewijs_gast_upload', 20, 600)
+  if (!magUploaden) return fout('Te veel uploads met deze link, probeer het over een paar minuten opnieuw.', 429)
+
+  // Token + actie-koppeling worden in de RPC gevalideerd; die reserveert een pad.
   const { data, error } = await anon.rpc('deellink_bewijs_pad', {
     p_token: token,
     p_actie_id: actieId,

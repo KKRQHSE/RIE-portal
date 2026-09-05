@@ -3,6 +3,7 @@ import { createAnonClient } from '@/lib/supabase/anon'
 import { createServiceClient } from '@/lib/supabase/service'
 import { parseJson, isVeiligOpslagPad, isServerToegestaanType, isToegestaneGrootte } from '@/lib/bewijs'
 import { INCIDENT_FOTO_BUCKET } from '@/lib/incident'
+import { rateLimietToegestaan } from '@/lib/rate-limit'
 
 // Nooit cachen/prerenderen: altijd een verse, request-specifieke actie.
 export const dynamic = 'force-dynamic'
@@ -33,8 +34,14 @@ export async function POST(request: Request) {
   if (!isServerToegestaanType(type)) return fout('Alleen jpg/png/webp/gif of pdf zijn toegestaan.', 415)
   if (!isToegestaneGrootte(grootte)) return fout('Bestand te groot of ongeldige grootte opgegeven.', 413)
 
-  // Token + incident-koppeling worden in de RPC gevalideerd; die reserveert een pad.
   const anon = createAnonClient()
+
+  // Rate limit per token (het permanente bedrijfstoken, niet per IP — zie
+  // gast-upload voor dezelfde afweging) — 20 uploads per 10 minuten.
+  const magUploaden = await rateLimietToegestaan(anon, `token:${token}`, 'incident_foto_upload', 20, 600)
+  if (!magUploaden) return fout('Te veel uploads met deze link, probeer het over een paar minuten opnieuw.', 429)
+
+  // Token + incident-koppeling worden in de RPC gevalideerd; die reserveert een pad.
   const { data, error } = await anon.rpc('incident_foto_pad_token', {
     p_token: token,
     p_incident_id: incidentId,

@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { INSPECTIE_FOTO_BUCKET } from '@/lib/inspectie-foto'
 import { AI_MAX_FOTO_BYTES, AI_NIET_GECONFIGUREERD, type AiLeverancierStatus } from '@/lib/ai-analyse'
 import { AiStoring, kiesLeverancier } from '@/lib/ai/leverancier'
+import { rateLimietToegestaan } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 // Een vision-model doet er seconden over. De adapter kapt zelf af op 45s, dus
@@ -88,6 +89,13 @@ export async function POST(request: Request) {
   if (toestemming !== true) {
     return fout('Zonder toestemming gaat deze foto niet naar een AI-dienst.', 400)
   }
+
+  // Elke aanroep kost geld bij een externe AI-dienst — rate limit per
+  // gebruiker vóórdat er ook maar iets naar de leverancier gaat. 60 per uur is
+  // ruim voor een echte inspectieronde (en voor herhaalde testruns binnen
+  // hetzelfde uur), begrenst een weggelopen lus/misbruik.
+  const magAnalyseren = await rateLimietToegestaan(supabase, `user:${user.id}`, 'inspectie_ai_analyse', 60, 3600)
+  if (!magAnalyseren) return fout('Te veel AI-analyses binnen een uur, probeer het straks opnieuw.', 429)
 
   const leverancier = kiesLeverancier()
   if (!leverancier || !leverancier.sleutelAanwezig) {

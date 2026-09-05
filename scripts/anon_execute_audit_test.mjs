@@ -103,6 +103,7 @@ const HELPERS = {
   gen_deellink_token: 'tokengenerator, geen data',
   handle_new_user: 'trigger op auth.users',
   toolbox_deelname_immutable: 'BEFORE UPDATE-trigger',
+  rate_limiet_toegestaan: 'rate-limit-teller, geen data, bewust ook voor anon (gast-uploadroutes)',
 }
 
 // INGETROKKEN in migratie 0053 (nachttest 31 aug 2026). Deze per-bedrijf-RPC's

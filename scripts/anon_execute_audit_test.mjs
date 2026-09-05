@@ -7,7 +7,7 @@
 // nieuwe SECURITY DEFINER-functie krijgt van Supabase standaard EXECUTE voor
 // anon én authenticated. Precies het gat dat Beslissing 62 wilde dichten.
 //
-// BELANGRIJK (bevestigd 5 sept 2026, tijdens het bouwen van migratie 0069):
+// BELANGRIJK (bevestigd 5 sept 2026, tijdens het bouwen van migratie 0070):
 // `ALTER DEFAULT PRIVILEGES ... REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC` — het
 // door de Postgres-documentatie voorgeschreven standaardpatroon om dit
 // structureel bij de bron te dichten — heeft in DEZE Supabase-omgeving GEEN
@@ -107,6 +107,13 @@ const TOKENFLOWS = {
   incident_melden_token: 'open meldflow /melden/[token]',
   incident_foto_pad_token: 'open meldflow /melden/[token]',
   incident_foto_registreren_token: 'open meldflow /melden/[token]',
+  // Toegevoegd 5 sept 2026: gevonden via de nieuwe pre-push-gate zelf (zie
+  // scripts/hooks/pre-push) — geen gat, dit is de rate-limiet-RPC (migratie
+  // 0069_rate_limiet.sql op main, lib/rate-limit.ts) die de sessieloze
+  // gast-upload-routes aanroepen MET de anon-client:
+  // app/api/bewijs/gast-upload/route.ts en app/api/incident/foto-upload/
+  // route.ts. Fail-closed bij een lege sleutel/actie (retourneert dan false).
+  rate_limiet_toegestaan: 'rate-limiet voor sessieloze gast-upload-routes (bewijs/incident-foto)',
 }
 
 // RLS-helpers en triggerfuncties: draaien binnen policies/triggers en moeten

@@ -62,6 +62,7 @@ const TESTS = [
   { naam: 'auth_redirect_test.ts',                  soort: 'zelftest' },
   { naam: 'inspectie_ai_route_test.ts',             soort: 'app' },
   { naam: 'inspectie_ai_robuustheid_test.ts',       soort: 'app' },
+  { naam: 'avg_beheer_gate_test.ts',                soort: 'app' },
   { naam: 'browser_smoke_test.mjs',                 soort: 'app' },
 ]
 

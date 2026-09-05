@@ -1,0 +1,43 @@
+-- ============================================================================
+-- Default-ACL: poging tot structurele fix — GEDEELTELIJK, NIET VOLDOENDE
+-- ----------------------------------------------------------------------------
+-- Aanleiding: migratie 0068 (audit_log) toonde dat dit project een default-ACL
+-- heeft (pg_default_acl, defaclrole=postgres, schema public, objecttype 'f')
+-- die elke nieuwe functie standaard EXECUTE geeft aan anon, naast
+-- authenticated/service_role. Vier nieuwe functies in 0068 kregen hierdoor
+-- per ongeluk anon-EXECUTE; met een losse (niet-genummerde) db_run.mjs-query
+-- direct op die vier gecorrigeerd.
+--
+-- Deze migratie probeerde het gat bij de bron te dichten met het door de
+-- Postgres-documentatie voorgeschreven patroon:
+--   ALTER DEFAULT PRIVILEGES ... REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC/anon
+--
+-- BEVESTIGD, LIVE GETEST (5 sept 2026), DAT DIT NIET VOLSTAAT:
+-- na toepassing kreeg een verse test-functie nog steeds een kale `=X/postgres`
+-- (= PUBLIC) in zijn `proacl`, en dus impliciet ook anon-EXECUTE — getest in
+-- vier varianten (zie scripts/anon_execute_audit_test.mjs voor de volledige
+-- toelichting), inclusief atomisch binnen dezelfde transactie als de
+-- ALTER-instructie. `pg_default_acl` zelf toont wél de gewenste, aangepaste
+-- lijst (geen anon meer) — maar een nieuwe functie krijgt PUBLIC-EXECUTE via
+-- een ander mechanisme dat via SQL niet is te achterhalen (vermoedelijk iets
+-- in Supabase's eigen postgres-image). Verder onderzoek hiernaar is niet
+-- gedaan — geen aantoonbare weg gevonden om dit via SQL te verhelpen.
+--
+-- Wat WEL blijft staan, als goedkope, onschadelijke (maar op zichzelf
+-- ONVOLDOENDE) extra laag: expliciet 'anon' uit de default-ACL van de rol
+-- 'postgres' (de rol waaronder elke migratie in dit project draait, bevestigd
+-- met `select current_user`) revoken. Dit raakt geen bestaand object — ALTER
+-- DEFAULT PRIVILEGES werkt uitsluitend op het moment van aanmaken van een
+-- NIEUW object, nooit retroactief. De 21 bestaande, bewust anon-aanroepbare
+-- functies (token-routes, predicate-helpers, handle_new_user,
+-- toolbox_deelname_immutable) zijn hierdoor niet geraakt — geverifieerd:
+-- exact dezelfde 21 functienamen vóór en ná.
+--
+-- HET DAADWERKELIJKE VANGNET is en blijft scripts/anon_execute_audit_test.mjs
+-- (DEEL 1: een handmatig onderhouden allowlist; elke onverklaarde
+-- anon-EXECUTE laat de test falen). Draai die vóór elke merge — er is geen
+-- database-level garantie die dat overbodig maakt.
+-- ============================================================================
+
+alter default privileges in schema public
+  revoke execute on functions from anon;

@@ -7,6 +7,23 @@
 // nieuwe SECURITY DEFINER-functie krijgt van Supabase standaard EXECUTE voor
 // anon én authenticated. Precies het gat dat Beslissing 62 wilde dichten.
 //
+// BELANGRIJK (bevestigd 5 sept 2026, tijdens het bouwen van migratie 0069):
+// `ALTER DEFAULT PRIVILEGES ... REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC` — het
+// door de Postgres-documentatie voorgeschreven standaardpatroon om dit
+// structureel bij de bron te dichten — heeft in DEZE Supabase-omgeving GEEN
+// waarneembaar effect. Getest: vier varianten (impliciete rol, FROM anon,
+// FROM public, expliciet FOR ROLE postgres, en atomisch binnen dezelfde
+// transactie als de proef-CREATE FUNCTION) — een nieuwe functie krijgt
+// telkens toch een kale `=X/<eigenaar>`-vermelding (PUBLIC) in zijn `proacl`,
+// waar `anon` vervolgens automatisch van meeprofiteert. Vermoedelijk hardcoded
+// in Supabase's eigen postgres-image, niet bevestigd waarom. Zie
+// [[default-acl-werkt-niet]] in memory.
+//
+// Conclusie: er is GEEN database-level manier gevonden om dit bij de bron te
+// voorkomen. DEZE TEST (met name DEEL 1's handmatige allowlist) is daarmee niet
+// een backup-slot naast een structurele fix, maar HET ENIGE bestaande vangnet.
+// Vergeet niet: `npm test` (dus deze test) hoort vóór elke merge te draaien.
+//
 // Deze test doet daarom twee dingen die de bestaande test niet doet:
 //
 //   DEEL 1 — INVENTARIS. Leest LIVE uit de database welke public-functies

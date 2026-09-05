@@ -63,7 +63,27 @@ zelfde auto-fill bij `inspectie_start_centraal`.
 
 ## Fase 2 — IF-getal netjes
 
-(wordt aangevuld)
+**Bleek al volledig gebouwd** in migratie 0073 (commit 8d36e42, eerder op 5 sept, vóór deze
+nachtsessie begon). Geverifieerd tegen alle drie de eisen uit de opdracht:
+
+- IF = (verzuimongevallen × 1.000.000) / gewerkte uren — klopt (`if_getal_voor_jaar`).
+- 0 verzuimongevallen + wél gewerkte uren ingevuld → toont "0" (echte prestatie), geen
+  "vul uren in". Bevestigd (Dutch Waste-testgeval, [[dutch-waste-testresidu]]-achtig patroon).
+- Gewerkte uren 0 of leeg → `if_getal` wordt NULL (SQL: `if v_uren is null or v_uren = 0`), UI
+  toont dan netjes "nog geen urenbasis" + link "Vul de gewerkte uren in →"
+  (`components/DashboardClient.tsx`), nooit een gedeeld-door-nul-fout.
+- Gewerkte uren zijn per jaar bewaard (`bedrijf_gewerkte_uren(company_id, jaar)`, PK op beide),
+  niet alleen "dit jaar" — de UI (`BedrijfsvoeringForm.tsx`) toont/bewerkt dit jaar + vorig jaar,
+  maar ieder jaar wordt onder zijn eigen jaartal opgeslagen, dus de IF-historie blijft kloppen
+  naarmate de tijd vordert (dit jaar wordt volgend jaar vanzelf "vorig jaar" met de juiste,
+  nooit overschreven waarde).
+
+**Enige toevoeging:** één ontbrekend randgeval in `if_getal_test.mjs` — expliciet `uren: 0`
+ingevuld (i.p.v. leeg) moet ook `if_getal = null` geven, niet een misleidende 0. Was in de SQL
+al correct afgehandeld, nu ook expliciet getest. Suite: 12/12 (was 11/11).
+
+Geen UI/DB-wijziging nodig; alleen testdekking aangevuld. Tsc + build groen.
+**Gepusht**: ja.
 
 ## Fase 3 — Meerjaren-dashboard
 

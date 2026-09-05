@@ -114,6 +114,15 @@ async function run() {
     check('0 verzuimongevallen + wel urenbasis -> if_getal = 0 (Dutch Waste-geval)', data?.dit_jaar?.if_getal === 0, JSON.stringify(data?.dit_jaar))
   }
 
+  // ===== 3b. Expliciet 0 uren ingevuld (geen deling door nul) -> if_getal weer null =====
+  {
+    await kamA.rpc('gewerkte_uren_zetten', { p_company_id: A, p_jaar: HUIDIG_JAAR, p_uren: 0 })
+    const { data } = await kamA.rpc('dashboard_if_getal', { p_company_id: A })
+    check('expliciet 0 gewerkte uren -> if_getal null, geen misleidende 0', data?.dit_jaar?.if_getal === null, JSON.stringify(data?.dit_jaar))
+    // Terugzetten voor de rest van de test.
+    await kamA.rpc('gewerkte_uren_zetten', { p_company_id: A, p_jaar: HUIDIG_JAAR, p_uren: 100000 })
+  }
+
   // ===== 4. 'letsel'/'ongeval_zonder_verzuim' tellen NIET mee =====
   await maakIncident(A, HUIDIG_JAAR, ['letsel'])
   await maakIncident(A, HUIDIG_JAAR, ['ongeval_zonder_verzuim'])

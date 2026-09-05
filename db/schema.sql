@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-05T06:32:04.194Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-05T08:47:27.983Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -569,6 +569,13 @@ CREATE TABLE public.pva_items (
   termijn_datum date
 );
 
+CREATE TABLE public.rate_limiet_log (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  sleutel text NOT NULL,
+  actie text NOT NULL,
+  wanneer timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE public.rie_versies (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
@@ -706,6 +713,7 @@ ALTER TABLE public.modules ADD CONSTRAINT modules_pkey PRIMARY KEY (id);
 ALTER TABLE public.personen ADD CONSTRAINT personen_pkey PRIMARY KEY (id);
 ALTER TABLE public.persoon_merge_log ADD CONSTRAINT persoon_merge_log_pkey PRIMARY KEY (id);
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_pkey PRIMARY KEY (id);
+ALTER TABLE public.rate_limiet_log ADD CONSTRAINT rate_limiet_log_pkey PRIMARY KEY (id);
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_pkey PRIMARY KEY (id);
 ALTER TABLE public.toolbox_bron ADD CONSTRAINT toolbox_bron_pkey PRIMARY KEY (id);
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_pkey PRIMARY KEY (id);
@@ -905,6 +913,7 @@ CREATE INDEX personen_company_idx ON public.personen USING btree (company_id);
 CREATE INDEX persoon_merge_log_company_idx ON public.persoon_merge_log USING btree (company_id, wanneer DESC);
 CREATE INDEX pva_items_company_idx ON public.pva_items USING btree (company_id);
 CREATE INDEX pva_items_persoon_idx ON public.pva_items USING btree (persoon_id);
+CREATE INDEX rate_limiet_log_sleutel_actie_wanneer_idx ON public.rate_limiet_log USING btree (sleutel, actie, wanneer DESC);
 CREATE UNIQUE INDEX toolbox_bron_naam_uniek ON public.toolbox_bron USING btree (naam);
 CREATE INDEX toolbox_bron_volgorde_idx ON public.toolbox_bron USING btree (volgorde);
 CREATE INDEX toolbox_deelname_afgerond_idx ON public.toolbox_deelname USING btree (company_id, afgerond_op);
@@ -966,6 +975,7 @@ ALTER TABLE public.modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.personen ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.persoon_merge_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pva_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.rate_limiet_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rie_versies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.toolbox_bron ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.toolbox_deelname ENABLE ROW LEVEL SECURITY;
@@ -4747,6 +4757,34 @@ begin
   delete from inspectie_sjabloon_punt where id = p_punt_id;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.rate_limiet_toegestaan(p_sleutel text, p_actie text, p_max integer, p_venster_seconden integer)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_aantal integer;
+begin
+  if coalesce(btrim(p_sleutel), '') = '' or coalesce(btrim(p_actie), '') = '' then
+    -- Zonder bruikbare sleutel geen zinnige telling — fail-closed (weigeren)
+    -- is hier veiliger dan stilzwijgend altijd toestaan.
+    return false;
+  end if;
+
+  select count(*) into v_aantal
+  from public.rate_limiet_log
+  where sleutel = p_sleutel and actie = p_actie
+    and wanneer > now() - make_interval(secs => greatest(p_venster_seconden, 1));
+
+  if v_aantal >= greatest(p_max, 0) then
+    return false;
+  end if;
+
+  insert into public.rate_limiet_log (sleutel, actie) values (p_sleutel, p_actie);
+  return true;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.rol_gewijzigd_loggen()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -6036,6 +6074,10 @@ GRANT EXECUTE ON FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid
 REVOKE EXECUTE ON FUNCTION public.punt_verwijderen(p_punt_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.punt_verwijderen(p_punt_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.punt_verwijderen(p_punt_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.rate_limiet_toegestaan(p_sleutel text, p_actie text, p_max integer, p_venster_seconden integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rate_limiet_toegestaan(p_sleutel text, p_actie text, p_max integer, p_venster_seconden integer) TO anon;
+GRANT EXECUTE ON FUNCTION public.rate_limiet_toegestaan(p_sleutel text, p_actie text, p_max integer, p_venster_seconden integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rate_limiet_toegestaan(p_sleutel text, p_actie text, p_max integer, p_venster_seconden integer) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.rol_gewijzigd_loggen() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.rol_gewijzigd_loggen() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.rol_gewijzigd_loggen() TO service_role;

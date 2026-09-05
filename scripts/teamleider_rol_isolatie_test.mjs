@@ -161,6 +161,22 @@ async function run() {
     check('teamleider van bedrijf B kan GEEN toolbox-sessie van A raken', !!error, error ? 'geweigerd' : 'TOEGESTAAN!')
   }
 
+  // Bevestigd door Kees (5 sept 2026): teamleider mag een individueel
+  // toolbox-bewijsstuk inzien (/toolbox/bewijs/[id]) — geen gezondheidsdata,
+  // wel een handtekening. Was al technisch toegankelijk (mag_bedrijf_werken,
+  // migratie 0063); dit legt het vast als bedoeld gedrag, geen toevalstreffer.
+  {
+    const { data: persoonTB } = await admin.from('personen').insert({ company_id: A, naam: 'TLTEST bewijs-persoon' }).select('id, naam').single()
+    const { data: deelname } = await admin.from('toolbox_deelname').insert({
+      company_id: A, persoon_id: persoonTB.id, bewijssoort: 'fysiek_aanwezig',
+      titel_snap: 'TLTEST toolbox', tekst_snap: 'inhoud', naam_bevestigd: false, bevestigde_naam: persoonTB.naam,
+    }).select('id').single()
+    const { data, error } = await teamleiderA.rpc('toolbox_bewijs', { p_deelname_id: deelname.id })
+    check('teamleider mag een individueel toolbox-bewijsstuk inzien (bevestigd, geen gezondheidsdata)', !error && data?.bevestigde_naam === persoonTB.naam, error?.message ?? JSON.stringify(data))
+    const { error: bError } = await teamleiderB.rpc('toolbox_bewijs', { p_deelname_id: deelname.id })
+    check('teamleider van bedrijf B kan dit bewijsstuk NIET inzien', !!bError, bError ? 'geweigerd' : 'TOEGESTAAN!')
+  }
+
   // ===== 3. Incidenten: masking + oorzaakanalyse zonder medische velden =====
   {
     const { data, error } = await teamleiderA.rpc('incident_overzicht', { p_company_id: A })

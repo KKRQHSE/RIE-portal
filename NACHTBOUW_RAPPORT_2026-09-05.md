@@ -28,7 +28,38 @@ i.p.v. zelf beslissen. Alles op `main`, commit + push per fase.
 
 ## Fase 1 — Datagaten dichten
 
-(wordt aangevuld)
+Migratie `0074_inspectie_project_en_uitvoerder_koppeling.sql`, toegepast op de live DB en
+`db/schema.sql` opnieuw gedumpt.
+
+**1a. Project/locatie op inspecties.**
+- Nieuwe kolom `inspectie.project_locatie` (tekst, nullable — bestaande rijen NULL).
+- Nieuwe RPC `inspectie_project_opslaan(p_inspectie_id, p_project_locatie)`, zelfde patroon als
+  `inspectie_conclusie_opslaan`: alleen terwijl status concept/ingediend, leeg/witruimte wordt
+  NULL. Expliciete `REVOKE ... FROM PUBLIC, anon` + `GRANT ... TO authenticated, service_role`
+  toegevoegd (verplicht per AGENTS.md-regel) — bevestigd met `anon_execute_audit_test.mjs`
+  (nog steeds 22 anon-EXECUTE-functies, allemaal verklaard, niets nieuws onverwacht).
+- `inspectie_bibliotheek` en `inspectie_rapport` geven het veld nu mee.
+- UI: invoerveld "Project / locatie" bovenaan een inspectie tijdens het uitvoeren
+  (`InspectieUitvoeren.tsx`, opslaan on-blur, NL+TR vertaald), filter + weergave op de
+  bibliotheekkaart (`InspectieClient.tsx`, zelfde patroon als het bestaande sjabloon/
+  uitvoerder/jaar-filter), en op het afgeronde rapport (`InspectieRapport.tsx`).
+
+**1b. Persoon-koppeling bij het starten.**
+- `inspectie_start` en `inspectie_start_centraal` vullen `inspectie.persoon_id` nu automatisch
+  vanuit `personen.user_id = auth.uid()` binnen hetzelfde bedrijf (company-scoped — een
+  personen-rij met hetzelfde `user_id` bij een ánder bedrijf telt niet mee). Ontbreekt de
+  koppeling (nog geen personen-rij met dit `user_id`), dan blijft `persoon_id` NULL en werkt de
+  bestaande omweg (inspectie_historie.wie → users → personen) gewoon door — geen breaking change.
+- Vrijgeven-vraag uit de opdracht is met opzet NIET apart gebouwd: afronden door de uitvoerder
+  ís het vrijgeven, geen los KAM-goedkeuringsmoment.
+
+**Nieuwe test:** `scripts/inspectie_project_persoon_test.mjs` (15/15), toegevoegd aan
+`run_tests.mjs`. Dekt: auto-fill mét/zonder koppeling, cross-company-personen-rij telt niet mee,
+project_locatie zichtbaar in bibliotheek+rapport, trim-naar-NULL, geblokkeerd na afronden,
+zelfde auto-fill bij `inspectie_start_centraal`.
+
+**Nulmeting na deze fase:** tsc schoon, build groen, volledige suite **35/35** groen.
+**Gepusht**: ja.
 
 ## Fase 2 — IF-getal netjes
 

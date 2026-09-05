@@ -302,6 +302,7 @@ export type Inspectie = {
   gepland_op: string | null
   uitgevoerd_op: string | null
   conclusie: string | null
+  project_locatie: string | null
   sjabloon_naam_snap: string | null
   controlesoort_snap: string | null
 }
@@ -398,6 +399,7 @@ export type InspectieRapport = {
   uitgevoerd_op: string | null
   aangemaakt_op: string | null
   conclusie: string | null
+  project_locatie: string | null
   uitvoerder_naam: string | null
   bevindingen: RapportBevinding[]
   acties: RapportActie[]

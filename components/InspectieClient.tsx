@@ -141,6 +141,7 @@ export default function InspectieClient({
       uitgevoerd_op: null,
       aangemaakt_op: new Date().toISOString(),
       conclusie: null,
+      project_locatie: null,
       sjabloon_naam_snap: 'Werkplekinspectie (norm)',
       controlesoort_snap: null,
       uitvoerder_naam: null,
@@ -167,6 +168,7 @@ export default function InspectieClient({
       uitgevoerd_op: null,
       aangemaakt_op: new Date().toISOString(),
       conclusie: null,
+      project_locatie: null,
       sjabloon_naam_snap: sjabloon.naam,
       controlesoort_snap: sjabloon.controlesoort,
       uitvoerder_naam: null,
@@ -347,6 +349,7 @@ function Bibliotheek({
   const [fSjabloon, setFSjabloon] = useState(ALLE)
   const [fUitvoerder, setFUitvoerder] = useState(ALLE)
   const [fJaar, setFJaar] = useState(ALLE)
+  const [fProject, setFProject] = useState(ALLE)
 
   const bruikbaar = sjablonen.filter(s => s.punten.length > 0)
   const gekozen = bruikbaar.find(s => s.id === keuze)
@@ -368,18 +371,23 @@ function Bibliotheek({
     () => Array.from(new Set(regels.map(jaarVan).filter((v): v is string => !!v))).sort().reverse(),
     [regels],
   )
+  const projecten = useMemo(
+    () => Array.from(new Set(regels.map(r => r.project_locatie).filter((v): v is string => !!v))).sort(),
+    [regels],
+  )
 
   const zichtbaar = useMemo(
     () => regels.filter(r =>
       (fStatus === ALLE || r.status === fStatus) &&
       (fSjabloon === ALLE || r.sjabloon_naam_snap === fSjabloon) &&
       (fUitvoerder === ALLE || r.uitvoerder_naam === fUitvoerder) &&
-      (fJaar === ALLE || jaarVan(r) === fJaar)
+      (fJaar === ALLE || jaarVan(r) === fJaar) &&
+      (fProject === ALLE || r.project_locatie === fProject)
     ),
-    [regels, fStatus, fSjabloon, fUitvoerder, fJaar],
+    [regels, fStatus, fSjabloon, fUitvoerder, fJaar, fProject],
   )
 
-  const heeftFilters = fStatus !== ALLE || fSjabloon !== ALLE || fUitvoerder !== ALLE || fJaar !== ALLE
+  const heeftFilters = fStatus !== ALLE || fSjabloon !== ALLE || fUitvoerder !== ALLE || fJaar !== ALLE || fProject !== ALLE
 
   const filterSelect = 'text-sm border border-ink/20 rounded px-2 py-2 min-h-[44px] bg-white'
 
@@ -500,9 +508,15 @@ function Bibliotheek({
                 {jaren.map(j => <option key={j} value={j}>{j}</option>)}
               </select>
             )}
+            {projecten.length > 1 && (
+              <select value={fProject} onChange={e => setFProject(e.target.value)} className={filterSelect} aria-label="Filter op project/locatie">
+                <option value={ALLE}>Alle projecten/locaties</option>
+                {projecten.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            )}
             {heeftFilters && (
               <button
-                onClick={() => { setFStatus(ALLE); setFSjabloon(ALLE); setFUitvoerder(ALLE); setFJaar(ALLE) }}
+                onClick={() => { setFStatus(ALLE); setFSjabloon(ALLE); setFUitvoerder(ALLE); setFJaar(ALLE); setFProject(ALLE) }}
                 className="btn text-sm px-3 py-2 min-h-[44px] inline-flex items-center text-ink/50 hover:text-ink"
               >
                 Filters wissen
@@ -541,6 +555,7 @@ function BibliotheekRij({ regel, onOpen }: { regel: BibliotheekRegel; onOpen: ()
             {regel.controlesoort_snap ? `${regel.controlesoort_snap} · ` : ''}
             {datum}
             {regel.uitvoerder_naam ? ` · ${regel.uitvoerder_naam}` : ''}
+            {regel.project_locatie ? ` · ${regel.project_locatie}` : ''}
           </p>
         </div>
         <span className={`text-xs font-medium px-3 py-1 rounded-full shrink-0 ${STATUS_STIJL[regel.status] ?? 'bg-gray-100 text-gray-600'}`}>

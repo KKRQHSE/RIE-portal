@@ -57,6 +57,7 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
   const [bevindingen, setBevindingen] = useState<InspectieBevinding[]>([])
   const [historie, setHistorie] = useState<InspectieHistorieRegel[]>([])
   const [conclusie, setConclusie] = useState(inspectie.conclusie ?? '')
+  const [project, setProject] = useState(inspectie.project_locatie ?? '')
   const [laden, setLaden] = useState(true)
   const [fout, setFout] = useState<string | null>(null)
   const [afrondBezig, setAfrondBezig] = useState(false)
@@ -179,6 +180,14 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
     })
   }
 
+  async function bewaarProject() {
+    if (readOnly) return
+    await supabase.rpc('inspectie_project_opslaan', {
+      p_inspectie_id: inspectie.id,
+      p_project_locatie: project.trim() || null,
+    })
+  }
+
   return (
     <div className="space-y-4">
       {/* Terug + taalschakelaar op één regel; op smal scherm wrapt de toggle mee. */}
@@ -213,6 +222,19 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
             {t('uitgevoerdOp').replace('{datum}', formatDatum(inspectie.uitgevoerd_op, taal))}
           </p>
         )}
+
+        <div className="mt-3">
+          <p className="text-xs font-medium text-ink/40 uppercase tracking-wider mb-1">{t('projectLocatie')}</p>
+          <input
+            type="text"
+            value={project}
+            onChange={e => setProject(e.target.value)}
+            onBlur={bewaarProject}
+            disabled={readOnly}
+            placeholder={t('projectLocatiePlaceholder')}
+            className="w-full text-sm border border-ink/20 rounded px-3 py-2 bg-white disabled:bg-surface/50 disabled:text-ink/60"
+          />
+        </div>
       </div>
 
       {laden && <p className="text-sm text-ink/40">{t('laden')}</p>}

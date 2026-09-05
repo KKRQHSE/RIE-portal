@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-05T17:11:37.149Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-05T19:53:05.525Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -438,7 +438,8 @@ CREATE TABLE public.inspectie (
   conclusie text,
   sjabloon_naam_snap text,
   controlesoort_snap text,
-  aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL
+  aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL,
+  project_locatie text
 );
 
 CREATE TABLE public.inspectie_ai_suggestie (
@@ -4300,6 +4301,7 @@ begin
         'uitgevoerd_op',      i.uitgevoerd_op,
         'aangemaakt_op',      i.aangemaakt_op,
         'conclusie',          i.conclusie,
+        'project_locatie',    i.project_locatie,
         'sjabloon_naam_snap', i.sjabloon_naam_snap,
         'controlesoort_snap', i.controlesoort_snap,
         'uitvoerder_naam', coalesce(
@@ -4484,6 +4486,32 @@ AS $function$
     (select status in ('afgerond', 'geannuleerd') from inspectie where id = p_inspectie_id),
     false)
 $function$;
+CREATE OR REPLACE FUNCTION public.inspectie_project_opslaan(p_inspectie_id uuid, p_project_locatie text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_company uuid;
+  v_status  text;
+begin
+  select company_id, status into v_company, v_status from inspectie where id = p_inspectie_id;
+  if v_company is null then
+    raise exception 'Inspectie niet gevonden';
+  end if;
+  if not mag_bedrijf_werken(v_company) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+  if v_status not in ('concept', 'ingediend') then
+    raise exception 'Inspectie is afgerond of geannuleerd en kan niet meer worden gewijzigd';
+  end if;
+
+  update inspectie
+     set project_locatie = nullif(btrim(coalesce(p_project_locatie, '')), '')
+   where id = p_inspectie_id;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.inspectie_rapport(p_inspectie_id uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -4513,6 +4541,7 @@ begin
     'uitgevoerd_op',  i.uitgevoerd_op,
     'aangemaakt_op',  i.aangemaakt_op,
     'conclusie',      i.conclusie,
+    'project_locatie', i.project_locatie,
     'uitvoerder_naam', (
       select u.naam
         from inspectie_historie h
@@ -4600,6 +4629,7 @@ declare
   v_actief    boolean;
   v_arch      timestamptz;
   v_inspectie uuid;
+  v_persoon   uuid;
 begin
   select company_id, naam, controlesoort, actief, gearchiveerd_op
     into v_company, v_naam, v_soort, v_actief, v_arch
@@ -4615,8 +4645,13 @@ begin
     raise exception 'Sjabloon is gearchiveerd of inactief';
   end if;
 
-  insert into inspectie (company_id, sjabloon_id, status, sjabloon_naam_snap, controlesoort_snap)
-  values (v_company, p_sjabloon_id, 'concept', v_naam, v_soort)
+  select id into v_persoon from personen
+   where user_id = auth.uid() and company_id = v_company and archived_at is null
+   order by created_at asc
+   limit 1;
+
+  insert into inspectie (company_id, sjabloon_id, persoon_id, status, sjabloon_naam_snap, controlesoort_snap)
+  values (v_company, p_sjabloon_id, v_persoon, 'concept', v_naam, v_soort)
   returning id into v_inspectie;
 
   insert into inspectie_bevinding (company_id, inspectie_id, punt_tekst_snap, verplicht, volgorde, afhandeling)
@@ -4640,13 +4675,19 @@ AS $function$
 declare
   v_inspectie uuid;
   v_aantal    integer;
+  v_persoon   uuid;
 begin
   if not mag_bedrijf_werken(p_company_id) then
     raise exception 'Geen toegang tot dit bedrijf';
   end if;
 
-  insert into inspectie (company_id, sjabloon_id, status, sjabloon_naam_snap, controlesoort_snap)
-  values (p_company_id, null, 'concept', 'Werkplekinspectie (norm)', null)
+  select id into v_persoon from personen
+   where user_id = auth.uid() and company_id = p_company_id and archived_at is null
+   order by created_at asc
+   limit 1;
+
+  insert into inspectie (company_id, sjabloon_id, persoon_id, status, sjabloon_naam_snap, controlesoort_snap)
+  values (p_company_id, null, v_persoon, 'concept', 'Werkplekinspectie (norm)', null)
   returning id into v_inspectie;
 
   -- Effectieve vragen: gekoppelde rubrieken; de geldende tekst (lokaal/centraal);
@@ -6889,6 +6930,9 @@ GRANT EXECUTE ON FUNCTION public.inspectie_historie_append_only() TO service_rol
 REVOKE EXECUTE ON FUNCTION public.inspectie_is_bevroren(p_inspectie_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_is_bevroren(p_inspectie_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_is_bevroren(p_inspectie_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.inspectie_project_opslaan(p_inspectie_id uuid, p_project_locatie text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.inspectie_project_opslaan(p_inspectie_id uuid, p_project_locatie text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_project_opslaan(p_inspectie_id uuid, p_project_locatie text) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.inspectie_rapport(p_inspectie_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_rapport(p_inspectie_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_rapport(p_inspectie_id uuid) TO service_role;

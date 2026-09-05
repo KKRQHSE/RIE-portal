@@ -138,6 +138,9 @@ export default function InspectieRapport({ companyId, rapport, huisstijl = VEILI
             )}
             <Veld label={isAfgerond ? 'Uitgevoerd op' : 'Aangemaakt op'} waarde={formatDatum(datum)} />
             <Veld label="Uitvoerder" waarde={rapport.uitvoerder_naam ?? '—'} />
+            {rapport.project_locatie && (
+              <Veld label="Project / locatie" waarde={rapport.project_locatie} />
+            )}
             <div>
               <dt className="text-xs text-ink/40 uppercase tracking-wider">Status</dt>
               <dd className="mt-1">

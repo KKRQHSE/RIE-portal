@@ -92,6 +92,9 @@ export const INSP_TEKST: Woordenboek = {
   conclusie:        { nl: 'Conclusie', tr: 'Sonuç' },
   conclusiePlaceholder: { nl: 'Algemene conclusie of opmerking…', tr: 'Genel sonuç veya not…' },
 
+  projectLocatie:   { nl: 'Project / locatie', tr: 'Proje / konum' },
+  projectLocatiePlaceholder: { nl: 'Bijv. projectnaam of adres…', tr: 'Örn. proje adı veya adres…' },
+
   // NL kent enkelvoud/meervoud, Turks gebruikt na een telwoord het enkelvoud.
   verplichtOpenEnk: { nl: '{n} verplicht punt nog zonder resultaat.', tr: '{n} zorunlu madde henüz sonuçsuz.' },
   verplichtOpenMv:  { nl: '{n} verplichte punten nog zonder resultaat.', tr: '{n} zorunlu madde henüz sonuçsuz.' },

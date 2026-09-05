@@ -56,6 +56,7 @@ const TESTS = [
   { naam: 'module_isolatie_test.mjs',               soort: 'database' },
   { naam: 'persoon_merge_isolatie_test.mjs',        soort: 'database' },
   { naam: 'inspectie_e2e_test.mjs',                 soort: 'database' },
+  { naam: 'inspectie_project_persoon_test.mjs',     soort: 'database' },
   { naam: 'inspectie_foto_selftest.mjs',            soort: 'database' },
   { naam: 'qr_selftest.ts',                         soort: 'zelftest' },
   { naam: 'ai_analyse_selftest.ts',                 soort: 'zelftest' },

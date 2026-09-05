@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import MeerjarenClient from '@/components/MeerjarenClient'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
-import type { MeerjarenRegel, DashboardInstelling } from '@/lib/types'
+import type { MeerjarenRegel } from '@/lib/types'
 
 export default async function MeerjarenPage({
   params,
@@ -19,13 +19,11 @@ export default async function MeerjarenPage({
     { data: profile },
     { data: company },
     { data: jaren, error },
-    { data: instelling },
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
     supabase.from('companies').select('id, name').eq('id', company_id).single(),
     supabase.rpc('dashboard_meerjaren', { p_company_id: company_id }),
-    supabase.from('bedrijf_dashboard_instelling').select('doelstelling_tekst').eq('company_id', company_id).maybeSingle(),
     haalHuisstijl(company_id),
   ])
 
@@ -45,7 +43,6 @@ export default async function MeerjarenPage({
       companyNaam={company.name}
       huisstijl={huisstijl}
       jaren={(jaren ?? []) as MeerjarenRegel[]}
-      doelstellingTekst={(instelling as Pick<DashboardInstelling, 'doelstelling_tekst'> | null)?.doelstelling_tekst ?? null}
     />
   )
 }

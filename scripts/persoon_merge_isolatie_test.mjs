@@ -254,13 +254,59 @@ async function run() {
       (log?.length ?? 0) === 1 && log[0].bron_naam === bronNaam)
   }
 
+  // --- Migratie 0076: inspectiedoel is nu per jaar (PK company_id/persoon_id/
+  //     jaar). Een merge mag rijen voor VERSCHILLENDE jaren niet meer laten
+  //     botsen (beide overleven), maar rijen voor HETZELFDE jaar botsen nog
+  //     wel (de doel-rij wint, de bron-rij vervalt -- geen PK-violation). Ook:
+  //     ontbrekende velden op de doel-persoon (functiegroep/datums/user_id/
+  //     email) worden bij de merge overgenomen van de bron, en de merge wordt
+  //     in audit_log gelogd. ---
+  {
+    const doel2 = await maakPersoon(compA, `MERGETEST doel2 ${TS}`)
+    const bron2 = await maakPersoon(compA, `MERGETEST bron2 ${TS}`)
+
+    // Botsend jaar (2020): allebei een doel -> bron s'n rij moet vervallen.
+    await admin.from('bedrijf_inspectie_doel').insert({ company_id: compA, persoon_id: doel2, jaar: 2020, doel_per_jaar: 3 })
+    await admin.from('bedrijf_inspectie_doel').insert({ company_id: compA, persoon_id: bron2, jaar: 2020, doel_per_jaar: 9 })
+    // Niet-botsend jaar (2021): alleen de bron heeft een rij -> moet meeverhuizen.
+    await admin.from('bedrijf_inspectie_doel').insert({ company_id: compA, persoon_id: bron2, jaar: 2021, doel_per_jaar: 4 })
+
+    // Coalesce-velden: bron heeft een functiegroep, doel niet -> moet overgenomen worden.
+    const { data: functiegroep } = await admin.from('functiegroep')
+      .insert({ company_id: compA, naam: `MERGETEST fg ${TS}` }).select('id').single()
+    await admin.from('personen').update({ functiegroep_id: functiegroep.id }).eq('id', bron2)
+
+    const { error } = await adminClient.rpc('personen_samenvoegen', { p_doel_id: doel2, p_bron_id: bron2 })
+    check('Admin kan de tweede merge uitvoeren', !error, error?.message)
+
+    const { data: doelenNa } = await admin.from('bedrijf_inspectie_doel')
+      .select('jaar, doel_per_jaar').eq('persoon_id', doel2).order('jaar')
+    check('Botsend jaar (2020): de rij van de DOEL-persoon overleeft (3, niet 9)',
+      doelenNa?.find(r => r.jaar === 2020)?.doel_per_jaar === 3, JSON.stringify(doelenNa))
+    check('Niet-botsend jaar (2021): de rij van de BRON-persoon is meeverhuisd (4)',
+      doelenNa?.find(r => r.jaar === 2021)?.doel_per_jaar === 4, JSON.stringify(doelenNa))
+    check('In totaal precies 2 doel-rijen op de doel-persoon (geen dubbele/verloren rij)',
+      (doelenNa?.length ?? 0) === 2, JSON.stringify(doelenNa))
+
+    const { data: doel2Na } = await admin.from('personen').select('functiegroep_id').eq('id', doel2).single()
+    check('Ontbrekend veld (functiegroep_id) is overgenomen van de bron',
+      doel2Na?.functiegroep_id === functiegroep.id, doel2Na?.functiegroep_id)
+
+    const { data: auditRij } = await admin.from('audit_log')
+      .select('actie, entiteit_id').eq('company_id', compA).eq('actie', 'personen_samengevoegd').eq('entiteit_id', doel2)
+    check('Merge is gelogd in audit_log', (auditRij?.length ?? 0) === 1, JSON.stringify(auditRij))
+
+    await admin.from('functiegroep').delete().eq('id', functiegroep.id)
+  }
+
   // --- Het logboek is zichtbaar gemaakt op de personenpagina: dus ook de
   //     leesisolatie ervan moet houden. ---
   {
     const { data, error } = await kamA.from('persoon_merge_log')
       .select('id').eq('company_id', compA)
+    // Twee merges hierboven (de oorspronkelijke + de 0076-collision-test) -> 2 rijen.
     check('KAM van A ziet het merge-logboek van A (positieve controle)',
-      !error && (data?.length ?? 0) === 1, `${data?.length ?? '?'} rijen`)
+      !error && (data?.length ?? 0) === 2, `${data?.length ?? '?'} rijen`)
   }
   {
     const { data, error } = await kamB.from('persoon_merge_log')

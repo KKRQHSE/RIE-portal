@@ -718,6 +718,7 @@ export type MeerjarenRegel = {
   inspecties: { afgerond: number; doel_totaal: number }
   toolbox: { sessies: number; dekking_pct: number | null }
   incidenten: number
+  doelstelling: string | null
 }
 
 // Eén regel van de RPC dashboard_admin_overzicht(): per bedrijf voor de admin-roll-up.

@@ -22,15 +22,20 @@ export default async function BedrijfsvoeringPage({
     { data: company },
     { data: instelling },
     { data: urenRijen },
+    { data: jaardoelstelling },
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
     supabase.from('companies').select('id, name').eq('id', company_id).single(),
     // RLS geeft alleen de eigen-bedrijf-rij; null als er nog niets is ingevuld.
     supabase.from('bedrijf_dashboard_instelling').select('*').eq('company_id', company_id).maybeSingle(),
-    // Gewerkte uren (urenbasis IF-getal, migratie 0073) — dit jaar + vorig jaar.
+    // Gewerkte uren (urenbasis IF-getal, migratie 0073) — ALLE jaren, niet
+    // alleen dit/vorig jaar (migratie 0076: elk jaar los invulbaar/bewerkbaar).
     supabase.from('bedrijf_gewerkte_uren').select('jaar, uren')
-      .eq('company_id', company_id).in('jaar', [huidigJaar, huidigJaar - 1]),
+      .eq('company_id', company_id).order('jaar', { ascending: false }),
+    // Doelstelling van dit jaar (migratie 0076, bedrijf_jaardoelstelling).
+    supabase.from('bedrijf_jaardoelstelling').select('tekst')
+      .eq('company_id', company_id).eq('jaar', huidigJaar).maybeSingle(),
     haalHuisstijl(company_id),
   ])
 
@@ -43,7 +48,15 @@ export default async function BedrijfsvoeringPage({
   if (!company) notFound()
 
   const uren = (urenRijen ?? []) as { jaar: number; uren: number | null }[]
-  const urenVoorJaar = (jaar: number) => uren.find(u => u.jaar === jaar)?.uren ?? null
+
+  // Doelstelling van dit jaar; ontbreekt die nog, val terug op de oude
+  // (nooit-per-jaar-opgeslagen) vrije tekst zodat bestaande klanten hun
+  // huidige tekst gewoon terugzien en die bij de eerste opslag automatisch
+  // onder dit jaar komt te staan.
+  const initialDoelstelling =
+    (jaardoelstelling as { tekst: string | null } | null)?.tekst
+    ?? (instelling as DashboardInstelling | null)?.doelstelling_tekst
+    ?? ''
 
   return (
     <BedrijfsvoeringForm
@@ -52,8 +65,8 @@ export default async function BedrijfsvoeringPage({
       huisstijl={huisstijl}
       initial={(instelling as DashboardInstelling | null) ?? null}
       huidigJaar={huidigJaar}
-      initialUrenDitJaar={urenVoorJaar(huidigJaar)}
-      initialUrenVorigJaar={urenVoorJaar(huidigJaar - 1)}
+      initialGewerkteUren={uren}
+      initialDoelstelling={initialDoelstelling}
     />
   )
 }

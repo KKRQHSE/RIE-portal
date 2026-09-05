@@ -1,17 +1,18 @@
 // Server component (geen interactie): meerjaren-dashboard, Fase 3 (voorbereidend).
 // ----------------------------------------------------------------------------
-// Toont IF-getal, toolbox-dekking, inspectie-voortgang en aantal incidenten
-// per jaar naast elkaar. Alleen data die het systeem al per jaar vastlegt
-// (dashboard_meerjaren, migratie 0075) -- geen verzonnen historie.
+// Toont IF-getal, toolbox-dekking, inspectie-voortgang, aantal incidenten en
+// doelstelling per jaar naast elkaar. Alleen data die het systeem al per jaar
+// vastlegt (dashboard_meerjaren, migratie 0075/0076) -- geen verzonnen
+// historie.
 //
-// Bewuste vereenvoudigingen, hieronder ook zichtbaar voor de gebruiker (niet
-// alleen in het rapport):
-//   - Toolbox-dekking gebruikt het HUIDIGE aantal actieve personen als
-//     noemer voor elk jaar -- voor oudere jaren dus een benadering.
-//   - Inspectie-doel is de huidige instelling, met terugwerkende kracht
-//     toegepast; het aantal afgeronde inspecties zelf is wel jaar-echt.
-//   - Doelstellingen zijn niet per jaar opgeslagen -- alleen de huidige tekst
-//     bestaat, apart getoond onder de tabel.
+// Sinds migratie 0076 zijn de drie eerdere benaderingen opgelost:
+//   - Toolbox-dekking rekent nu met de historisch-correcte headcount per
+//     jaar (personen.datum_in_dienst/datum_uit_dienst), niet meer het
+//     huidige aantal.
+//   - Inspectiedoel is nu een echte jaar-specifieke waarde
+//     (bedrijf_inspectie_doel.jaar), geen terugwerkende toepassing meer.
+//   - Doelstelling is nu een echte jaar-specifieke tekst
+//     (bedrijf_jaardoelstelling), dus gewoon een rij in de tabel.
 import Link from 'next/link'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import HuisstijlLogo from './HuisstijlLogo'
@@ -23,26 +24,18 @@ type Props = {
   companyNaam: string
   huisstijl?: HuisstijlView
   jaren: MeerjarenRegel[]
-  doelstellingTekst: string | null
-}
-
-function parseDoelen(tekst: string | null): string[] {
-  if (!tekst) return []
-  const regels = tekst.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
-  const bron = regels.length > 1 ? regels : tekst.split(/[;•]/)
-  return bron.map(s => s.replace(/^[-*•\s]+/, '').trim()).filter(Boolean)
 }
 
 export default function MeerjarenClient({
-  companyId, companyNaam, huisstijl = VEILIGE_HUISSTIJL, jaren, doelstellingTekst,
+  companyId, companyNaam, huisstijl = VEILIGE_HUISSTIJL, jaren,
 }: Props) {
-  const doelen = parseDoelen(doelstellingTekst)
   const cel = 'px-4 py-3 text-sm text-ink whitespace-nowrap'
-  const label = 'px-4 py-3 text-xs font-medium uppercase tracking-wide text-ink/40 whitespace-nowrap'
+  const doelstellingCel = 'px-4 py-3 text-sm text-ink align-top min-w-[16rem] max-w-xs whitespace-normal'
+  const label = 'px-4 py-3 text-xs font-medium uppercase tracking-wide text-ink/40 whitespace-nowrap align-top'
 
   return (
     <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-4 py-8">
 
         <div className="flex justify-end mb-2">
           <LogoutButton />
@@ -89,7 +82,9 @@ export default function MeerjarenClient({
                 ))}
               </tr>
               <tr className="border-b border-ink/5">
-                <td className={label}>Toolbox-dekking</td>
+                <td className={label} title="Percentage van de in dat jaar effectief in dienst zijnde medewerkers dat minstens één toolbox-sessie bijwoonde.">
+                  Toolbox-dekking
+                </td>
                 {jaren.map(j => (
                   <td key={j.jaar} className={`${cel} text-right tabular-nums`}>
                     {j.toolbox.dekking_pct != null ? (
@@ -115,38 +110,33 @@ export default function MeerjarenClient({
                   </td>
                 ))}
               </tr>
-              <tr>
+              <tr className="border-b border-ink/5">
                 <td className={label}>Incidenten</td>
                 {jaren.map(j => (
                   <td key={j.jaar} className={`${cel} text-right tabular-nums`}>{j.incidenten}</td>
+                ))}
+              </tr>
+              <tr>
+                <td className={label}>Doelstelling</td>
+                {jaren.map(j => (
+                  <td key={j.jaar} className={doelstellingCel}>
+                    {j.doelstelling ? (
+                      <span className="whitespace-pre-line">{j.doelstelling}</span>
+                    ) : (
+                      <span className="text-ink/30 italic text-xs">niet vastgelegd</span>
+                    )}
+                  </td>
                 ))}
               </tr>
             </tbody>
           </table>
         </div>
 
-        {/* Doelstellingen: alleen de HUIDIGE tekst, niet per jaar (zie toelichting onderaan). */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mt-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-ink/40 mb-2">Huidige doelstellingen</p>
-          {doelen.length === 0 ? (
-            <p className="text-sm text-ink/40">Nog niet ingevuld.</p>
-          ) : (
-            <ul className="space-y-1.5">
-              {doelen.map((d, i) => (
-                <li key={i} className="text-sm text-ink flex items-start gap-2">
-                  <span className="text-accent mt-0.5">·</span>{d}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
         <p className="text-xs text-ink/40 mt-4 leading-relaxed">
-          Toelichting: dit overzicht gebruikt uitsluitend gegevens die per jaar zijn vastgelegd —
-          er is niets bijgeschat. Twee kanttekeningen: de toolbox-dekking rekent met het huidige
-          aantal actieve medewerkers als noemer (voor oudere jaren dus een benadering), en het
-          inspectiedoel is de huidige instelling, met terugwerkende kracht toegepast op elk jaar.
-          Doelstellingen worden niet per jaar bewaard — hierboven staat steeds de actuele tekst.
+          Toelichting: dit overzicht gebruikt uitsluitend gegevens die per jaar zijn vastgelegd — er
+          is niets bijgeschat. De toolbox-dekking en het inspectiedoel zijn beide echte
+          jaar-specifieke cijfers (geen huidige instelling met terugwerkende kracht). Een lege
+          doelstelling betekent dat er voor dat jaar niets is vastgelegd, niet dat er geen doel was.
         </p>
 
       </div>

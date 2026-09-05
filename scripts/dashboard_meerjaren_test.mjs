@@ -1,5 +1,5 @@
 // ============================================================================
-// Meerjaren-dashboard (Fase 3, voorbereidend) -- migratie 0075.
+// Meerjaren-dashboard (Fase 3, voorbereidend) -- migratie 0075, verfijnd 0076.
 // ----------------------------------------------------------------------------
 // Dekt:
 //  - Alleen KAM/admin (mag_bedrijf_beheren); teamleider en ander bedrijf dicht.
@@ -12,6 +12,14 @@
 //    percentage zodra er wel een sessie was -- nooit een misleidende 0%.
 //  - IF-getal per jaar volgt exact if_getal_voor_jaar() (hergebruikt, niet
 //    opnieuw uitgevonden).
+//  - (0076) Toolbox-dekking rekent met de HISTORISCH-correcte headcount per
+//    jaar (datum_in_dienst/datum_uit_dienst), niet het huidige aantal: iemand
+//    die pas dit jaar in dienst kwam telt niet mee voor een ouder jaar, en
+//    andersom voor iemand die toen al uit dienst was.
+//  - (0076) Inspectiedoel is een echte jaar-specifieke waarde: een doel gezet
+//    voor jaar X verschijnt NIET bij een ander jaar.
+//  - (0076) Doelstelling is een echte jaar-specifieke tekst: een doelstelling
+//    gezet voor jaar X verschijnt NIET bij een ander jaar.
 //
 // Draaien:  node --use-system-ca scripts/dashboard_meerjaren_test.mjs
 // Vereist SUPABASE_SERVICE_ROLE_KEY. Alles met prefix MJTEST_ wordt opgeruimd.
@@ -108,24 +116,48 @@ async function run() {
   const rCross = await kamB.rpc('dashboard_meerjaren', { p_company_id: companyA })
   check('ander bedrijf krijgt geen toegang', !!rCross.error, rCross.error ? 'geweigerd' : 'TOEGESTAAN!')
 
-  // --- Data toevoegen in een OUD jaar: incident, toolbox-sessie + deelname, gewerkte uren ---
+  // --- Drie personen met verschillende diensttijd, om historische headcount te toetsen ---
+  // persoon: altijd in dienst (geen datums) -> telt mee in elk jaar.
+  // persoonLaat: kwam pas dit jaar in dienst -> telt NIET mee voor OUD_JAAR.
+  // persoonVroeg: al uit dienst vóór OUD_JAAR -> telt NIET mee voor OUD_JAAR of dit jaar.
   const { data: persoon, error: ep } = await admin.from('personen')
     .insert({ company_id: companyA, naam: 'MJTEST Persoon' }).select('id').single()
   if (ep) throw new Error('personen insert: ' + ep.message)
+  const { data: persoonLaat, error: epl } = await admin.from('personen')
+    .insert({ company_id: companyA, naam: 'MJTEST Laat', datum_in_dienst: `${HUIDIG_JAAR}-01-01` }).select('id').single()
+  if (epl) throw new Error('personen insert (laat): ' + epl.message)
+  const { error: epv } = await admin.from('personen')
+    .insert({ company_id: companyA, naam: 'MJTEST Vroeg', datum_uit_dienst: `${OUD_JAAR - 1}-12-31` })
+  if (epv) throw new Error('personen insert (vroeg): ' + epv.message)
 
   await admin.from('incident').insert({
     company_id: companyA, datum: `${OUD_JAAR}-05-01`, locatie: 'MJTEST', omschrijving: 'MJTEST incident', gevolgen: ['letsel'],
   })
-  const { data: sessie, error: es } = await admin.from('toolbox_sessie')
+  const { data: sessieOud, error: es } = await admin.from('toolbox_sessie')
     .insert({ company_id: companyA, datum: `${OUD_JAAR}-06-01`, onderwerp: 'MJTEST onderwerp' }).select('id').single()
   if (es) throw new Error('toolbox_sessie insert: ' + es.message)
   const { error: ed } = await admin.from('toolbox_deelname').insert({
-    company_id: companyA, persoon_id: persoon.id, sessie_id: sessie.id, bewijssoort: 'fysiek_aanwezig',
+    company_id: companyA, persoon_id: persoon.id, sessie_id: sessieOud.id, bewijssoort: 'fysiek_aanwezig',
     titel_snap: 'MJTEST', tekst_snap: 'MJTEST', bevestigde_naam: 'MJTEST Persoon', naam_bevestigd: true,
     afgerond_op: `${OUD_JAAR}-06-01T10:00:00Z`,
   })
   if (ed) throw new Error('toolbox_deelname insert: ' + ed.message)
   await kam.rpc('gewerkte_uren_zetten', { p_company_id: companyA, p_jaar: OUD_JAAR, p_uren: 1000 })
+
+  // Dit jaar: alleen persoonLaat woont een sessie bij (persoon en persoonVroeg niet).
+  const { data: sessieHuidig, error: esh } = await admin.from('toolbox_sessie')
+    .insert({ company_id: companyA, datum: `${HUIDIG_JAAR}-02-01`, onderwerp: 'MJTEST onderwerp huidig' }).select('id').single()
+  if (esh) throw new Error('toolbox_sessie insert (huidig): ' + esh.message)
+  const { error: edh } = await admin.from('toolbox_deelname').insert({
+    company_id: companyA, persoon_id: persoonLaat.id, sessie_id: sessieHuidig.id, bewijssoort: 'fysiek_aanwezig',
+    titel_snap: 'MJTEST', tekst_snap: 'MJTEST', bevestigde_naam: 'MJTEST Laat', naam_bevestigd: true,
+    afgerond_op: `${HUIDIG_JAAR}-02-01T10:00:00Z`,
+  })
+  if (edh) throw new Error('toolbox_deelname insert (huidig): ' + edh.message)
+
+  // Inspectiedoel en doelstelling: allebei alleen voor OUD_JAAR gezet.
+  await kam.rpc('inspectie_doel_zetten', { p_company_id: companyA, p_persoon_id: persoon.id, p_doel_per_jaar: 5, p_jaar: OUD_JAAR })
+  await kam.rpc('jaardoelstelling_zetten', { p_company_id: companyA, p_jaar: OUD_JAAR, p_tekst: 'MJTEST doelstelling van toen' })
 
   const r1 = await kam.rpc('dashboard_meerjaren', { p_company_id: companyA })
   check('geen fout na het toevoegen van oud-jaar-data', !r1.error, r1.error?.message)
@@ -135,9 +167,28 @@ async function run() {
   check('oud jaar: 1 incident', oud?.incidenten === 1, JSON.stringify(oud))
   check('oud jaar: 1 toolbox-sessie', oud?.toolbox?.sessies === 1, JSON.stringify(oud?.toolbox))
   check('oud jaar: toolbox-dekking is een getal (niet null) zodra er een sessie was', typeof oud?.toolbox?.dekking_pct === 'number', JSON.stringify(oud?.toolbox))
+  // Headcount voor OUD_JAAR: alleen 'persoon' was toen in dienst (Laat kwam later,
+  // Vroeg was al weg) -> noemer 1, 1 deelnemer -> 100%.
+  check('oud jaar: toolbox-dekking gebruikt de HISTORISCHE headcount (100%, niet verwaterd door personen die toen niet in dienst waren)', oud?.toolbox?.dekking_pct === 100, JSON.stringify(oud?.toolbox))
   check('oud jaar: if_getal volgt if_getal_voor_jaar (1000 uur, 0 verzuimongevallen -> 0)', oud?.if_getal?.if_getal === 0, JSON.stringify(oud?.if_getal))
+  check('oud jaar: inspectiedoel is de echte jaar-specifieke waarde (5)', oud?.inspecties?.doel_totaal === 5, JSON.stringify(oud?.inspecties))
+  check('oud jaar: doelstelling van dat jaar', oud?.doelstelling === 'MJTEST doelstelling van toen', JSON.stringify(oud?.doelstelling))
+
   const huidigNa = jaren1.find(j => j.jaar === HUIDIG_JAAR)
-  check('huidig jaar blijft ongemoeid door oud-jaar-data', huidigNa?.incidenten === 0, JSON.stringify(huidigNa))
+  check('huidig jaar blijft ongemoeid door oud-jaar-data (0 incidenten)', huidigNa?.incidenten === 0, JSON.stringify(huidigNa))
+  check('huidig jaar: inspectiedoel van OUD_JAAR lekt niet door (0, geen terugwerkende kracht meer)', huidigNa?.inspecties?.doel_totaal === 0, JSON.stringify(huidigNa?.inspecties))
+  check('huidig jaar: doelstelling van OUD_JAAR lekt niet door (null)', huidigNa?.doelstelling === null, JSON.stringify(huidigNa?.doelstelling))
+  // Headcount voor HUIDIG_JAAR: 'persoon' + 'persoonLaat' zijn in dienst (Vroeg niet) -> noemer 2,
+  // 1 deelnemer (Laat) -> 50%.
+  check('huidig jaar: toolbox-dekking gebruikt de headcount van NU (50%, twee in dienst, één deelnemer)', huidigNa?.toolbox?.dekking_pct === 50, JSON.stringify(huidigNa?.toolbox))
+
+  // --- Cross-company/teamleider-guards op de twee (0076-)RPC's zelf, los van dashboard_meerjaren ---
+  const rDoelTl = await teamleider.rpc('jaardoelstelling_zetten', { p_company_id: companyA, p_jaar: HUIDIG_JAAR, p_tekst: 'x' })
+  check('teamleider kan geen doelstelling zetten', !!rDoelTl.error, rDoelTl.error ? 'geweigerd' : 'TOEGESTAAN!')
+  const rDoelCross = await kamB.rpc('jaardoelstelling_zetten', { p_company_id: companyA, p_jaar: HUIDIG_JAAR, p_tekst: 'x' })
+  check('ander bedrijf kan geen doelstelling zetten bij A', !!rDoelCross.error, rDoelCross.error ? 'geweigerd' : 'TOEGESTAAN!')
+  const rDoelIdCross = await kamB.rpc('inspectie_doel_zetten', { p_company_id: companyA, p_persoon_id: persoon.id, p_doel_per_jaar: 1, p_jaar: OUD_JAAR })
+  check('ander bedrijf kan geen inspectiedoel zetten bij A (ook niet met expliciet jaar)', !!rDoelIdCross.error, rDoelIdCross.error ? 'geweigerd' : 'TOEGESTAAN!')
 }
 
 run()

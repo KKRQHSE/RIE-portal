@@ -7,14 +7,16 @@ import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import type { DashboardInstelling } from '@/lib/types'
 
+type GewerkteUrenRegel = { jaar: number; uren: number | null }
+
 type Props = {
   companyId: string
   companyNaam: string
   huisstijl?: HuisstijlView
   initial: DashboardInstelling | null
   huidigJaar: number
-  initialUrenDitJaar: number | null
-  initialUrenVorigJaar: number | null
+  initialGewerkteUren: GewerkteUrenRegel[]
+  initialDoelstelling: string
 }
 
 // Getal-uit-tekst: lege string → leeg laten (voor optionele score) of 0 (voor tellingen).
@@ -27,7 +29,7 @@ function numOrNull(s: string): number | null {
 
 export default function BedrijfsvoeringForm({
   companyId, companyNaam, huisstijl = VEILIGE_HUISSTIJL, initial,
-  huidigJaar, initialUrenDitJaar, initialUrenVorigJaar,
+  huidigJaar, initialGewerkteUren, initialDoelstelling,
 }: Props) {
   const router = useRouter()
 
@@ -38,10 +40,31 @@ export default function BedrijfsvoeringForm({
   const [auditTotaal, setAuditTotaal] = useState(String(initial?.audit_intern_totaal ?? 0))
   const [auditExtern, setAuditExtern] = useState(initial?.audit_extern_omschrijving ?? '')
   const [auditStatus, setAuditStatus] = useState(initial?.audit_status ?? '')
-  const [doelstelling, setDoelstelling] = useState(initial?.doelstelling_tekst ?? '')
+  const [doelstelling, setDoelstelling] = useState(initialDoelstelling)
   const [isoTaken, setIsoTaken] = useState(initial?.iso_taken_tekst ?? '')
-  const [urenDitJaar, setUrenDitJaar] = useState(initialUrenDitJaar != null ? String(initialUrenDitJaar) : '')
-  const [urenVorigJaar, setUrenVorigJaar] = useState(initialUrenVorigJaar != null ? String(initialUrenVorigJaar) : '')
+
+  const vorigJaar = huidigJaar - 1
+  const urenVoorJaar = (jaar: number) => initialGewerkteUren.find(u => u.jaar === jaar)?.uren ?? null
+  const [urenDitJaar, setUrenDitJaar] = useState(urenVoorJaar(huidigJaar) != null ? String(urenVoorJaar(huidigJaar)) : '')
+  const [urenVorigJaar, setUrenVorigJaar] = useState(urenVoorJaar(vorigJaar) != null ? String(urenVoorJaar(vorigJaar)) : '')
+
+  // Overige jaren (los van dit/vorig jaar) -- elk jaar heeft zijn eigen
+  // opslaan-knop, want dit is een losse, dynamisch groeiende lijst en geen
+  // vast onderdeel van de grote "Opslaan"-knop hieronder.
+  const [overigeJaren, setOverigeJaren] = useState<GewerkteUrenRegel[]>(
+    initialGewerkteUren.filter(u => u.jaar !== huidigJaar && u.jaar !== vorigJaar).sort((a, b) => b.jaar - a.jaar),
+  )
+  const [overigeInvoer, setOverigeInvoer] = useState<Record<number, string>>(
+    Object.fromEntries(
+      initialGewerkteUren
+        .filter(u => u.jaar !== huidigJaar && u.jaar !== vorigJaar)
+        .map(u => [u.jaar, u.uren != null ? String(u.uren) : '']),
+    ),
+  )
+  const [overigeBezig, setOverigeBezig] = useState<number | null>(null)
+  const [overigeFout, setOverigeFout] = useState<string | null>(null)
+  const [nieuwJaar, setNieuwJaar] = useState('')
+  const [nieuwUren, setNieuwUren] = useState('')
 
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
@@ -57,22 +80,26 @@ export default function BedrijfsvoeringForm({
         p_klachten_aantal: numOrNull(klachten) ?? 0,
         p_tevredenheid_score: numOrNull(score),
         p_tevredenheid_toelichting: toelichting,
+        // Doelstelling gaat sinds migratie 0076 via jaardoelstelling_zetten (per
+        // jaar); null hier zodat de oude kolom blijft staan zoals hij stond
+        // (dashboard_instelling_zetten bewaart 'm null-veilig, overschrijft niet).
+        p_doelstelling_tekst: null,
         p_audit_intern_gedaan: numOrNull(auditGedaan) ?? 0,
         p_audit_intern_totaal: numOrNull(auditTotaal) ?? 0,
         p_audit_extern_omschrijving: auditExtern,
         p_audit_status: auditStatus,
-        p_doelstelling_tekst: doelstelling,
         p_iso_taken_tekst: isoTaken,
       })
       if (error) {
         setFout('Opslaan mislukt. Probeer het opnieuw.')
         return
       }
-      const [{ error: urenErr1 }, { error: urenErr2 }] = await Promise.all([
+      const [{ error: urenErr1 }, { error: urenErr2 }, { error: doelErr }] = await Promise.all([
         supabase.rpc('gewerkte_uren_zetten', { p_company_id: companyId, p_jaar: huidigJaar, p_uren: numOrNull(urenDitJaar) }),
-        supabase.rpc('gewerkte_uren_zetten', { p_company_id: companyId, p_jaar: huidigJaar - 1, p_uren: numOrNull(urenVorigJaar) }),
+        supabase.rpc('gewerkte_uren_zetten', { p_company_id: companyId, p_jaar: vorigJaar, p_uren: numOrNull(urenVorigJaar) }),
+        supabase.rpc('jaardoelstelling_zetten', { p_company_id: companyId, p_jaar: huidigJaar, p_tekst: doelstelling }),
       ])
-      if (urenErr1 || urenErr2) {
+      if (urenErr1 || urenErr2 || doelErr) {
         setFout('Opslaan mislukt. Probeer het opnieuw.')
         return
       }
@@ -84,6 +111,37 @@ export default function BedrijfsvoeringForm({
     } finally {
       setBezig(false)
     }
+  }
+
+  async function bewaarOverigJaar(jaar: number) {
+    setOverigeBezig(jaar)
+    setOverigeFout(null)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.rpc('gewerkte_uren_zetten', {
+        p_company_id: companyId, p_jaar: jaar, p_uren: numOrNull(overigeInvoer[jaar] ?? ''),
+      })
+      if (error) { setOverigeFout('Opslaan van ' + jaar + ' mislukt.'); return }
+    } finally {
+      setOverigeBezig(null)
+    }
+  }
+
+  function voegJaarToe() {
+    const jaar = Number(nieuwJaar)
+    if (!Number.isInteger(jaar) || jaar < 2000 || jaar > huidigJaar) {
+      setOverigeFout('Vul een geldig jaar in (2000 t/m ' + huidigJaar + ').')
+      return
+    }
+    if (jaar === huidigJaar || jaar === vorigJaar || overigeJaren.some(j => j.jaar === jaar)) {
+      setOverigeFout('Dat jaar staat er al.')
+      return
+    }
+    setOverigeFout(null)
+    setOverigeJaren(prev => [...prev, { jaar, uren: null }].sort((a, b) => b.jaar - a.jaar))
+    setOverigeInvoer(prev => ({ ...prev, [jaar]: nieuwUren }))
+    setNieuwJaar('')
+    setNieuwUren('')
   }
 
   const veld = 'w-full min-h-[44px] rounded-lg border border-ink/20 bg-white px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none'
@@ -139,14 +197,65 @@ export default function BedrijfsvoeringForm({
                   placeholder="bv. 42000" value={urenDitJaar} onChange={e => setUrenDitJaar(e.target.value)} />
               </div>
               <div>
-                <label className={label} htmlFor="urenVorigJaar">Gewerkte uren {huidigJaar - 1}</label>
+                <label className={label} htmlFor="urenVorigJaar">Gewerkte uren {vorigJaar}</label>
                 <input id="urenVorigJaar" type="number" min={0} step="1" inputMode="decimal" className={veld}
                   placeholder="bv. 40000" value={urenVorigJaar} onChange={e => setUrenVorigJaar(e.target.value)} />
               </div>
             </div>
             <p className="text-xs text-ink/40">
               Leeg laten toont op het dashboard &quot;nog geen urenbasis&quot; in plaats van een gedeeld-door-nul-fout.
+              Deze twee jaren worden pas bewaard bij de grote Opslaan-knop onderaan.
             </p>
+
+            {/* Overige jaren: los invulbaar/bewerkbaar, per jaar direct opgeslagen -- zodat
+                het meerjarenoverzicht ook oudere, echt bekende cijfers kan tonen. */}
+            {overigeJaren.length > 0 && (
+              <div className="pt-2 border-t border-ink/10 space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-ink/40">Overige jaren</p>
+                {overigeJaren.map(({ jaar }) => (
+                  <div key={jaar} className="flex items-center gap-2">
+                    <span className="text-sm text-ink w-16 shrink-0">{jaar}</span>
+                    <input
+                      type="number" min={0} step="1" inputMode="decimal" className={`${veld} flex-1`}
+                      placeholder="gewerkte uren"
+                      value={overigeInvoer[jaar] ?? ''}
+                      onChange={e => setOverigeInvoer(prev => ({ ...prev, [jaar]: e.target.value }))}
+                    />
+                    <button
+                      onClick={() => bewaarOverigJaar(jaar)}
+                      disabled={overigeBezig === jaar}
+                      className="text-sm px-3 py-2 min-h-[44px] rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors disabled:opacity-40 shrink-0"
+                    >
+                      {overigeBezig === jaar ? '…' : 'Opslaan'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-ink/10">
+              <p className="text-xs font-medium uppercase tracking-wide text-ink/40 mb-2">Ander jaar toevoegen</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number" inputMode="numeric" className={`${veld} w-24 shrink-0`}
+                  placeholder="jaar" value={nieuwJaar} onChange={e => setNieuwJaar(e.target.value)}
+                />
+                <input
+                  type="number" min={0} step="1" inputMode="decimal" className={`${veld} flex-1`}
+                  placeholder="gewerkte uren" value={nieuwUren} onChange={e => setNieuwUren(e.target.value)}
+                />
+                <button
+                  onClick={voegJaarToe}
+                  className="text-sm px-3 py-2 min-h-[44px] rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors shrink-0"
+                >
+                  Toevoegen
+                </button>
+              </div>
+              <p className="text-xs text-ink/40 mt-1.5">
+                Alleen voor uren die je echt weet — hier vul je geen schattingen in.
+              </p>
+              {overigeFout && <p className="text-xs text-red-600 mt-1.5">{overigeFout}</p>}
+            </div>
           </div>
 
           {/* Audits */}
@@ -177,13 +286,18 @@ export default function BedrijfsvoeringForm({
             </div>
           </div>
 
-          {/* Vrije tekstblokken */}
+          {/* Doelstelling: sinds migratie 0076 per jaar bewaard (bedrijf_jaardoelstelling). */}
           <div className={kaart}>
-            <div>
-              <label className={label} htmlFor="doelstelling">Doelstelling</label>
-              <textarea id="doelstelling" rows={4} className={`${veld} min-h-[104px]`}
-                value={doelstelling} onChange={e => setDoelstelling(e.target.value)} />
-            </div>
+            <p className="text-xs font-medium uppercase tracking-wide text-ink/40">Doelstelling {huidigJaar}</p>
+            <p className="text-xs text-ink/50 -mt-2">
+              Wordt per jaar bewaard — het meerjarenoverzicht toont per jaar wat hier stond.
+            </p>
+            <textarea id="doelstelling" rows={4} className={`${veld} min-h-[104px]`}
+              value={doelstelling} onChange={e => setDoelstelling(e.target.value)} />
+          </div>
+
+          {/* Vrije tekstblok */}
+          <div className={kaart}>
             <div>
               <label className={label} htmlFor="isoTaken">Openstaande ISO-taken</label>
               <textarea id="isoTaken" rows={4} className={`${veld} min-h-[104px]`}

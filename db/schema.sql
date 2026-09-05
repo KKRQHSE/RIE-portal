@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-05T20:07:20.142Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-05T21:44:16.132Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -140,6 +140,14 @@ CREATE TABLE public.bedrijf_inspectie_doel (
   company_id uuid NOT NULL,
   persoon_id uuid NOT NULL,
   doel_per_jaar integer DEFAULT 0 NOT NULL,
+  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+  jaar integer DEFAULT (EXTRACT(year FROM CURRENT_DATE))::integer NOT NULL
+);
+
+CREATE TABLE public.bedrijf_jaardoelstelling (
+  company_id uuid NOT NULL,
+  jaar integer NOT NULL,
+  tekst text,
   updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -733,7 +741,8 @@ ALTER TABLE public.audit_verbeterpunt ADD CONSTRAINT audit_verbeterpunt_pkey PRI
 ALTER TABLE public.bedrijf_dashboard_instelling ADD CONSTRAINT bedrijf_dashboard_instelling_pkey PRIMARY KEY (company_id);
 ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT bedrijf_doelstelling_pkey PRIMARY KEY (company_id, functiegroep_id);
 ALTER TABLE public.bedrijf_gewerkte_uren ADD CONSTRAINT bedrijf_gewerkte_uren_pkey PRIMARY KEY (company_id, jaar);
-ALTER TABLE public.bedrijf_inspectie_doel ADD CONSTRAINT bedrijf_inspectie_doel_pkey PRIMARY KEY (company_id, persoon_id);
+ALTER TABLE public.bedrijf_inspectie_doel ADD CONSTRAINT bedrijf_inspectie_doel_pkey PRIMARY KEY (company_id, persoon_id, jaar);
+ALTER TABLE public.bedrijf_jaardoelstelling ADD CONSTRAINT bedrijf_jaardoelstelling_pkey PRIMARY KEY (company_id, jaar);
 ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_pkey PRIMARY KEY (company_id, module);
 ALTER TABLE public.bedrijf_rubriek ADD CONSTRAINT bedrijf_rubriek_pkey PRIMARY KEY (company_id, rubriek_id);
 ALTER TABLE public.bedrijf_toolbox ADD CONSTRAINT bedrijf_toolbox_pkey PRIMARY KEY (company_id, toolbox_id);
@@ -853,6 +862,7 @@ ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT bedrijf_doelstelling_comp
 ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT bedrijf_doelstelling_functiegroep_id_fkey FOREIGN KEY (functiegroep_id) REFERENCES functiegroep(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_inspectie_doel ADD CONSTRAINT bedrijf_inspectie_doel_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_inspectie_doel ADD CONSTRAINT bedrijf_inspectie_doel_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_jaardoelstelling ADD CONSTRAINT bedrijf_jaardoelstelling_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_rubriek ADD CONSTRAINT bedrijf_rubriek_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_rubriek ADD CONSTRAINT bedrijf_rubriek_rubriek_id_fkey FOREIGN KEY (rubriek_id) REFERENCES centrale_rubriek(id) ON DELETE CASCADE;
@@ -1021,6 +1031,7 @@ ALTER TABLE public.bedrijf_dashboard_instelling ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_doelstelling ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_gewerkte_uren ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_inspectie_doel ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bedrijf_jaardoelstelling ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_rubriek ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_toolbox ENABLE ROW LEVEL SECURITY;
@@ -1094,6 +1105,8 @@ CREATE POLICY bedrijf_gewerkte_uren_sel ON public.bedrijf_gewerkte_uren AS PERMI
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_inspectie_doel_sel ON public.bedrijf_inspectie_doel AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_werken(company_id));
+CREATE POLICY bedrijf_jaardoelstelling_sel ON public.bedrijf_jaardoelstelling AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_modules_sel ON public.bedrijf_modules AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_werken(company_id));
 CREATE POLICY bedrijf_rubriek_sel ON public.bedrijf_rubriek AS PERMISSIVE FOR SELECT TO public
@@ -2650,9 +2663,9 @@ begin
     audit_intern_totaal       = excluded.audit_intern_totaal,
     audit_extern_omschrijving = excluded.audit_extern_omschrijving,
     audit_status              = excluded.audit_status,
-    doelstelling_tekst        = excluded.doelstelling_tekst,
+    -- Niet meegegeven (null) = laat staan wat er stond (zelfde patroon als IF hieronder).
+    doelstelling_tekst        = coalesce(excluded.doelstelling_tekst, bedrijf_dashboard_instelling.doelstelling_tekst),
     iso_taken_tekst           = excluded.iso_taken_tekst,
-    -- Niet meegegeven (null) = laat staan wat er stond.
     if_dit_jaar               = coalesce(excluded.if_dit_jaar,   bedrijf_dashboard_instelling.if_dit_jaar),
     if_vorig_jaar             = coalesce(excluded.if_vorig_jaar, bedrijf_dashboard_instelling.if_vorig_jaar),
     updated_at                = now();
@@ -2665,19 +2678,11 @@ CREATE OR REPLACE FUNCTION public.dashboard_meerjaren(p_company_id uuid)
  SET search_path TO 'public', 'pg_temp'
 AS $function$
 declare
-  v_actieve_personen integer;
-  v_doel_totaal integer;
   v jsonb;
 begin
   if not mag_bedrijf_beheren(p_company_id) then
     raise exception 'Geen toegang tot dit bedrijf';
   end if;
-
-  select count(*) into v_actieve_personen
-    from personen where company_id = p_company_id and archived_at is null;
-
-  select coalesce(sum(doel_per_jaar), 0) into v_doel_totaal
-    from bedrijf_inspectie_doel where company_id = p_company_id;
 
   with jaren as (
     select extract(year from current_date)::int as jaar
@@ -2692,6 +2697,20 @@ begin
     select extract(year from datum)::int from toolbox_sessie where company_id = p_company_id
     union
     select jaar from bedrijf_gewerkte_uren where company_id = p_company_id and uren is not null
+    union
+    select jaar from bedrijf_inspectie_doel where company_id = p_company_id
+  ),
+  -- Effectief actieve personen per jaar: overlap van [datum_in_dienst, datum_uit_dienst]
+  -- met [1 jan, 31 dec] van dat jaar. Onbekende datum_in_dienst = "al vóór dit jaar";
+  -- onbekende datum_uit_dienst = "nog steeds". Zelfde aanpak als toolbox_dashboard(),
+  -- hier per willekeurig jaar i.p.v. alleen het huidige.
+  headcount as (
+    select j.jaar, count(*) as n
+    from jaren j
+    join personen p on p.company_id = p_company_id
+      and (p.datum_in_dienst is null or p.datum_in_dienst <= make_date(j.jaar, 12, 31))
+      and (p.datum_uit_dienst is null or p.datum_uit_dienst >= make_date(j.jaar, 1, 1))
+    group by j.jaar
   )
   select coalesce(jsonb_agg(jsonb_build_object(
     'jaar', j.jaar,
@@ -2702,7 +2721,10 @@ begin
          where company_id = p_company_id and status = 'afgerond'
            and extract(year from uitgevoerd_op)::int = j.jaar
       ),
-      'doel_totaal', v_doel_totaal
+      'doel_totaal', (
+        select coalesce(sum(doel_per_jaar), 0) from bedrijf_inspectie_doel
+         where company_id = p_company_id and jaar = j.jaar
+      )
     ),
     'toolbox', jsonb_build_object(
       'sessies', (
@@ -2710,7 +2732,7 @@ begin
          where company_id = p_company_id and extract(year from datum)::int = j.jaar
       ),
       'dekking_pct', (
-        case when v_actieve_personen = 0 then null else (
+        case when coalesce((select n from headcount where headcount.jaar = j.jaar), 0) = 0 then null else (
           select case when not exists (
                    select 1 from toolbox_sessie
                     where company_id = p_company_id and extract(year from datum)::int = j.jaar
@@ -2722,7 +2744,7 @@ begin
                     where d.company_id = p_company_id and s.company_id = p_company_id
                       and extract(year from s.datum)::int = j.jaar
                       and d.persoon_id is not null
-                 ) / v_actieve_personen)
+                 ) / (select n from headcount where headcount.jaar = j.jaar))
                  end
         ) end
       )
@@ -2730,6 +2752,15 @@ begin
     'incidenten', (
       select count(*) from incident
        where company_id = p_company_id and extract(year from datum)::int = j.jaar
+    ),
+    -- Doelstelling: per jaar als vastgelegd; voor het HUIDIGE jaar valt dit terug op de
+    -- (nooit-per-jaar-opgeslagen) legacy tekst zodra er nog geen jaar-specifieke rij is --
+    -- geen historie verzonnen voor oudere jaren, alleen continuiteit voor "nu".
+    'doelstelling', coalesce(
+      (select tekst from bedrijf_jaardoelstelling where company_id = p_company_id and jaar = j.jaar),
+      case when j.jaar = extract(year from current_date)::int
+           then (select doelstelling_tekst from bedrijf_dashboard_instelling where company_id = p_company_id)
+           else null end
     )
   ) order by j.jaar desc), '[]'::jsonb)
   into v
@@ -2825,7 +2856,8 @@ begin
       )
     ),
 
-    -- Inspectie-doel per persoon (bedrijf_inspectie_doel) vs afgeronde inspecties dit jaar.
+    -- Inspectie-doel per persoon (bedrijf_inspectie_doel, nu jaar-specifiek) vs
+    -- afgeronde inspecties dit jaar.
     'inspectie_doel', (
       select jsonb_build_object(
         'totaal_doel',   coalesce(sum(idl.doel_per_jaar), 0),
@@ -2842,7 +2874,7 @@ begin
         where i.company_id = idl.company_id and i.persoon_id = idl.persoon_id
           and i.status = 'afgerond' and extract(year from i.uitgevoerd_op)::int = v_jaar
       ) g on true
-      where idl.company_id = p_company_id
+      where idl.company_id = p_company_id and idl.jaar = v_jaar
     ),
 
     -- Toolbox-aanwezigheid per sessie (tweede telwijze, los van naar-rato/toolbox_dashboard).
@@ -2907,6 +2939,8 @@ begin
 
     -- Handmatige bedrijfsvoering-velden — NOOIT voor teamleider (klachten/
     -- tevredenheid/audit-status/doelstelling-tekst/ISO-taken/IF-getal).
+    -- doelstelling_tekst valt terug op bedrijf_jaardoelstelling (dit jaar) zodra
+    -- die is ingevuld; de kolom hier blijft de stille terugval (migratie 0076).
     'instellingen', case when is_teamleider() then null else (
       select case when di.company_id is null then null else jsonb_build_object(
         'klachten_aantal',           di.klachten_aantal,
@@ -2916,7 +2950,10 @@ begin
         'audit_intern_totaal',       di.audit_intern_totaal,
         'audit_extern_omschrijving', di.audit_extern_omschrijving,
         'audit_status',              di.audit_status,
-        'doelstelling_tekst',        di.doelstelling_tekst,
+        'doelstelling_tekst',        coalesce(
+          (select tekst from bedrijf_jaardoelstelling where company_id = p_company_id and jaar = v_jaar),
+          di.doelstelling_tekst
+        ),
         'iso_taken_tekst',           di.iso_taken_tekst,
         'updated_at',                di.updated_at
       ) end
@@ -4430,11 +4467,11 @@ begin
    where id = p_inspectie_id;
 end;
 $function$;
-CREATE OR REPLACE FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer)
+CREATE OR REPLACE FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer, p_jaar integer DEFAULT (EXTRACT(year FROM CURRENT_DATE))::integer)
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'public'
+ SET search_path TO 'public', 'pg_temp'
 AS $function$
 begin
   if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
@@ -4442,9 +4479,9 @@ begin
   if not exists (select 1 from personen where id = p_persoon_id and company_id = p_company_id and archived_at is null) then
     raise exception 'Persoon hoort niet bij dit bedrijf';
   end if;
-  insert into bedrijf_inspectie_doel (company_id, persoon_id, doel_per_jaar, updated_at)
-  values (p_company_id, p_persoon_id, coalesce(p_doel_per_jaar,0), now())
-  on conflict (company_id, persoon_id) do update
+  insert into bedrijf_inspectie_doel (company_id, persoon_id, jaar, doel_per_jaar, updated_at)
+  values (p_company_id, p_persoon_id, coalesce(p_jaar, extract(year from current_date)::int), coalesce(p_doel_per_jaar, 0), now())
+  on conflict (company_id, persoon_id, jaar) do update
     set doel_per_jaar = excluded.doel_per_jaar, updated_at = now();
 end;
 $function$;
@@ -4849,6 +4886,22 @@ CREATE OR REPLACE FUNCTION public.jaar_utc(p_ts timestamp with time zone)
  IMMUTABLE
 AS $function$
   select extract(year from (p_ts at time zone 'UTC'))::int
+$function$;
+CREATE OR REPLACE FUNCTION public.jaardoelstelling_zetten(p_company_id uuid, p_jaar integer, p_tekst text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if p_jaar is null then raise exception 'Jaar is verplicht'; end if;
+
+  insert into bedrijf_jaardoelstelling (company_id, jaar, tekst, updated_at)
+  values (p_company_id, p_jaar, nullif(btrim(coalesce(p_tekst, '')), ''), now())
+  on conflict (company_id, jaar) do update
+    set tekst = excluded.tekst, updated_at = now();
+end;
 $function$;
 CREATE OR REPLACE FUNCTION public.koppel_mij_als_persoon(p_company_id uuid)
  RETURNS uuid
@@ -5476,10 +5529,10 @@ begin
   update toolbox_deelname set persoon_id = p_doel_id where persoon_id = p_bron_id;
   get diagnostics n_toolbox = row_count;
 
-  delete from bedrijf_inspectie_doel
-   where persoon_id = p_bron_id
+  delete from bedrijf_inspectie_doel bron
+   where bron.persoon_id = p_bron_id
      and exists (select 1 from bedrijf_inspectie_doel d
-                  where d.company_id = v_company and d.persoon_id = p_doel_id);
+                  where d.company_id = v_company and d.persoon_id = p_doel_id and d.jaar = bron.jaar);
   update bedrijf_inspectie_doel set persoon_id = p_doel_id where persoon_id = p_bron_id;
   get diagnostics n_doel = row_count;
 
@@ -6993,9 +7046,9 @@ GRANT EXECUTE ON FUNCTION public.inspectie_bibliotheek(p_company_id uuid) TO ser
 REVOKE EXECUTE ON FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid, p_conclusie text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid, p_conclusie text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_conclusie_opslaan(p_inspectie_id uuid, p_conclusie text) TO service_role;
-REVOKE EXECUTE ON FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer, p_jaar integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer, p_jaar integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_doel_zetten(p_company_id uuid, p_persoon_id uuid, p_doel_per_jaar integer, p_jaar integer) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.inspectie_foto_context(p_inspectie_id uuid, p_bevinding_id uuid, p_moet_lopen boolean) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_foto_context(p_inspectie_id uuid, p_bevinding_id uuid, p_moet_lopen boolean) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.inspectie_foto_pad(p_inspectie_id uuid, p_bevinding_id uuid, p_bestandsnaam text) FROM PUBLIC;
@@ -7037,6 +7090,9 @@ GRANT EXECUTE ON FUNCTION public.is_teamleider() TO service_role;
 GRANT EXECUTE ON FUNCTION public.jaar_utc(p_ts timestamp with time zone) TO anon;
 GRANT EXECUTE ON FUNCTION public.jaar_utc(p_ts timestamp with time zone) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.jaar_utc(p_ts timestamp with time zone) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.jaardoelstelling_zetten(p_company_id uuid, p_jaar integer, p_tekst text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.jaardoelstelling_zetten(p_company_id uuid, p_jaar integer, p_tekst text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.jaardoelstelling_zetten(p_company_id uuid, p_jaar integer, p_tekst text) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.koppel_mij_als_persoon(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.koppel_mij_als_persoon(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.koppel_mij_als_persoon(p_company_id uuid) TO service_role;

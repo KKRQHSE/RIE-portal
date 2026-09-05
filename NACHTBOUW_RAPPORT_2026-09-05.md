@@ -1,5 +1,68 @@
 # Nachtbouw-rapport — 5/6 september 2026
 
+## Naschrift — opvolging op eigen advies (later op de avond, zelfde dag)
+
+Op verzoek ("los alles op en doe alles wat openstaat conform je eigen advies") de vier
+openstaande punten uit de sectie "Openstaand voor jou" hieronder alsnog opgelost, in plaats van
+ze te laten liggen. Migratie `0076_meerjaren_verfijningen.sql`.
+
+**Punt 1 — toolbox-dekking-noemer.** Opgelost: `dashboard_meerjaren` rekent nu met de
+historisch-correcte headcount per jaar, via `personen.datum_in_dienst`/`datum_uit_dienst`
+(dezelfde eff_start/eff_end-aanpak als het bestaande `toolbox_dashboard()`, hier voor een
+willekeurig jaar). Iemand die pas dit jaar in dienst kwam telt niet meer mee voor een ouder
+jaar; iemand die toen al weg was evenmin. Geen schema-wijziging nodig — de data bestond al.
+
+**Punt 2 — inspectiedoel-historie.** Opgelost: `bedrijf_inspectie_doel` heeft nu een
+`jaar`-kolom (PK company_id/persoon_id/jaar). `inspectie_doel_zetten` kreeg een `p_jaar`-param
+(default huidig jaar, dus bestaande aanroepen blijven werken). Het meerjarenoverzicht toont nu
+een ECHTE jaar-specifieke doelwaarde, geen terugwerkende toepassing meer.
+
+**Punt 3 — doelstellingen-per-jaar.** Opgelost: nieuwe tabel `bedrijf_jaardoelstelling`
+(company_id, jaar, tekst) — bewust een ANDERE naam dan de al bestaande `bedrijf_doelstelling`
+(dat is een ongerelateerd concept: een toolbox-doelaantal per functiegroep, zie
+`toolbox_dashboard()`). Bestaande vrije tekst is gekopieerd naar het huidige jaar (verplaatst,
+niet verzonnen). `BedrijfsvoeringForm` heeft nu een eigen "Doelstelling {jaar}"-veld dat via de
+nieuwe RPC `jaardoelstelling_zetten` opslaat; het meerjarenoverzicht toont de doelstelling nu
+gewoon als rij in de tabel, per jaar.
+
+**Punt 4 — gewerkte-uren-UI voor willekeurige jaren.** Opgelost als pure UI-uitbreiding (geen
+schema-wijziging: `bedrijf_gewerkte_uren` ondersteunde al elk jaar). `BedrijfsvoeringForm` heeft
+naast de vaste dit-jaar/vorig-jaar-velden nu een "Overige jaren"-lijst (elk jaar los opslaanbaar)
+en een "ander jaar toevoegen"-control. Nadrukkelijk: dit laat de KAM zelf ECHTE, bekende
+historische uren invullen — er wordt niets door mij verzonnen of ingevuld.
+
+**Bijvangst tijdens het werk — twee bugs gevonden en gefixt vóór ze live gingen:**
+- Bij het herschrijven van `dashboard_overzicht` had ik een niet-bestaande kolom
+  (`q.norm_gewijzigd_op`) verzonnen voor de `norm_bijgewerkt`-teller; de échte logica gebruikt
+  `q.versie > a.basis_versie`. Ontdekt doordat `dashboard_test.mjs` meteen faalde met "column
+  does not exist" — gecorrigeerd vóór het gecommit werd.
+- Bij het herschrijven van `personen_samenvoegen` (voor de per-jaar-collision-fix) had ik de
+  bestaande `insert into audit_log`-regel en het slot-blok dat ontbrekende persoonsvelden
+  (email/functiegroep/datums/user_id) van de bron naar de doel-persoon overneemt, WEGGELATEN.
+  De bestaande test (`persoon_merge_isolatie_test.mjs`) testte dit gedrag niet, dus het ging
+  niet vanzelf stuk — pas ontdekt door de gereconstrueerde functie regel-voor-regel te diffen
+  tegen de laatst gecommitte versie vóór ik verderging. Beide keren hersteld vóór commit, met
+  een diff-verificatie tegen de originele broncode als vaste stap sindsdien.
+  **Les voor mezelf (en toekomstige sessies):** een bestaande database-functie herschrijven
+  vanuit het geheugen is riskant; altijd de actuele tekst opvragen en alleen het beoogde stukje
+  wijzigen, nooit de hele functie retypen zonder diff-controle achteraf.
+
+**Nieuwe/uitgebreide tests:** `dashboard_meerjaren_test.mjs` uitgebreid naar 21 tests (historische
+headcount met drie personen met verschillende diensttijd, per-jaar inspectiedoel/doelstelling
+lekt niet tussen jaren, guards op de twee RPC's). `persoon_merge_isolatie_test.mjs` uitgebreid
+naar 26 tests (botsend vs. niet-botsend jaar bij een merge, coalesce van ontbrekende
+persoonsvelden, audit_log-regel). Handmatig ook in een echte browser doorlopen: bedrijfsvoering
+invullen (doelstelling + "ander jaar" 2022) → opslaan → terugzien op zowel het hoofddashboard
+als het meerjarenoverzicht → pagina verversen → nog steeds aanwezig (écht opgeslagen, geen
+client-only state).
+
+**Eindstand:** tsc schoon, build groen, volledige suite **36/36** groen, migratie idempotent
+geverifieerd (tweede keer toepassen = 0 wijzigingen). **Gepusht**: ja (zie commit hierna).
+
+Met deze opvolging zijn alle vier de punten uit "Openstaand voor jou" hieronder verholpen; die
+sectie blijft origineel staan als geschiedenis van wat er speelde vóór dit naschrift.
+
+
 Zelfstandige bouwsessie, ik werk door zonder tussentijdse bevestiging. Harde grenzen: geen
 destructieve SQL, geen echte klantdata aanraken, alleen additief, ontwerpkeuzes documenteren
 i.p.v. zelf beslissen. Alles op `main`, commit + push per fase.

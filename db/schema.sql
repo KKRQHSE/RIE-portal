@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-05T08:47:27.983Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-05T16:12:04.697Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -274,6 +274,19 @@ CREATE TABLE public.companies (
   accent_kleur_override text
 );
 
+CREATE TABLE public.correctie_log (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  tabel text NOT NULL,
+  record_id uuid NOT NULL,
+  veld text NOT NULL,
+  van_waarde text,
+  naar_waarde text,
+  reden text,
+  wie uuid,
+  wanneer timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE public.deellinks (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
@@ -306,6 +319,21 @@ CREATE TABLE public.functiegroep (
   volgorde integer DEFAULT 0 NOT NULL,
   gearchiveerd_op timestamp with time zone,
   created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.goedkeuringsverzoek (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  type text NOT NULL,
+  persoon_id uuid,
+  mogelijk_duplicaat_van uuid,
+  status text DEFAULT 'open'::text NOT NULL,
+  aangemaakt_door uuid NOT NULL,
+  aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL,
+  behandeld_door uuid,
+  behandeld_op timestamp with time zone,
+  reden_afwijzing text,
+  actie_pva_item_id uuid
 );
 
 CREATE TABLE public.herinner_instelling (
@@ -689,9 +717,11 @@ ALTER TABLE public.centrale_toolbox ADD CONSTRAINT centrale_toolbox_pkey PRIMARY
 ALTER TABLE public.centrale_toolbox_vraag ADD CONSTRAINT centrale_toolbox_vraag_pkey PRIMARY KEY (id);
 ALTER TABLE public.centrale_vraag ADD CONSTRAINT centrale_vraag_pkey PRIMARY KEY (id);
 ALTER TABLE public.companies ADD CONSTRAINT companies_pkey PRIMARY KEY (id);
+ALTER TABLE public.correctie_log ADD CONSTRAINT correctie_log_pkey PRIMARY KEY (id);
 ALTER TABLE public.deellinks ADD CONSTRAINT deellinks_pkey PRIMARY KEY (id);
 ALTER TABLE public.fotos ADD CONSTRAINT fotos_pkey PRIMARY KEY (id);
 ALTER TABLE public.functiegroep ADD CONSTRAINT functiegroep_pkey PRIMARY KEY (id);
+ALTER TABLE public.goedkeuringsverzoek ADD CONSTRAINT goedkeuringsverzoek_pkey PRIMARY KEY (id);
 ALTER TABLE public.herinner_instelling ADD CONSTRAINT herinner_instelling_pkey PRIMARY KEY (company_id);
 ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_pkey PRIMARY KEY (id);
 ALTER TABLE public.incident ADD CONSTRAINT incident_pkey PRIMARY KEY (id);
@@ -748,6 +778,8 @@ ALTER TABLE public.centrale_toolbox ADD CONSTRAINT toolbox_slaaggrens_check CHEC
 ALTER TABLE public.centrale_toolbox ADD CONSTRAINT toolbox_toegang_check CHECK ((toegang = ANY (ARRAY['link'::text, 'login'::text])));
 ALTER TABLE public.centrale_toolbox ADD CONSTRAINT toolbox_uitleg_modus_check CHECK ((quiz_uitleg_modus = ANY (ARRAY['per_vraag'::text, 'aan_eind'::text])));
 ALTER TABLE public.companies ADD CONSTRAINT companies_huisstijl_modus_check CHECK ((huisstijl_modus = ANY (ARRAY['default'::text, 'co_branding'::text, 'white_label'::text])));
+ALTER TABLE public.goedkeuringsverzoek ADD CONSTRAINT goedkeuringsverzoek_status_check CHECK ((status = ANY (ARRAY['open'::text, 'goedgekeurd'::text, 'afgewezen'::text])));
+ALTER TABLE public.goedkeuringsverzoek ADD CONSTRAINT goedkeuringsverzoek_type_check CHECK ((type = ANY (ARRAY['nieuw_concept'::text, 'koppel_bestaand'::text])));
 ALTER TABLE public.herinner_instelling ADD CONSTRAINT herinner_instelling_ritme_check CHECK ((ritme = ANY (ARRAY['uit'::text, 'dagelijks'::text, 'wekelijks'::text, 'maandelijks'::text])));
 ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_bron_check CHECK ((bron = ANY (ARRAY['handmatig'::text, 'automatisch'::text])));
 ALTER TABLE public.incident ADD CONSTRAINT incident_medische_dienst_check CHECK (((medische_dienst_bezocht IS NULL) OR (medische_dienst_bezocht = ANY (ARRAY['ja'::text, 'nee'::text, 'onbekend'::text]))));
@@ -760,7 +792,7 @@ ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT bevinding_hersteld_bewijs 
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT inspectie_bevinding_afhandeling_check CHECK ((afhandeling = ANY (ARRAY['geen'::text, 'meteen_hersteld'::text, 'actie'::text])));
 ALTER TABLE public.inspectie_bevinding ADD CONSTRAINT inspectie_bevinding_resultaat_check CHECK ((resultaat = ANY (ARRAY['in_orde'::text, 'niet_in_orde'::text, 'nvt'::text])));
 ALTER TABLE public.merken ADD CONSTRAINT merken_lettertype_check CHECK ((lettertype = ANY (ARRAY['grotesk'::text, 'modern'::text, 'klassiek'::text, 'zakelijk'::text])));
-ALTER TABLE public.personen ADD CONSTRAINT personen_status_check CHECK ((status = ANY (ARRAY['actief'::text, 'voorgesteld'::text])));
+ALTER TABLE public.personen ADD CONSTRAINT personen_status_check CHECK ((status = ANY (ARRAY['actief'::text, 'voorgesteld'::text, 'afgewezen'::text])));
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_status_check CHECK ((status = ANY (ARRAY['Open'::text, 'In behandeling'::text, 'Afgerond'::text])));
 ALTER TABLE public.toolbox_bron ADD CONSTRAINT toolbox_bron_naam_check CHECK ((btrim(naam) <> ''::text));
 ALTER TABLE public.toolbox_bron ADD CONSTRAINT toolbox_bron_url_https CHECK ((url ~~ 'https://%'::text));
@@ -805,6 +837,10 @@ ALTER TABLE public.deellinks ADD CONSTRAINT deellinks_persoon_id_fkey FOREIGN KE
 ALTER TABLE public.fotos ADD CONSTRAINT fotos_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.fotos ADD CONSTRAINT fotos_rie_versie_id_fkey FOREIGN KEY (rie_versie_id) REFERENCES rie_versies(id);
 ALTER TABLE public.functiegroep ADD CONSTRAINT functiegroep_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.goedkeuringsverzoek ADD CONSTRAINT goedkeuringsverzoek_actie_pva_item_id_fkey FOREIGN KEY (actie_pva_item_id) REFERENCES pva_items(id) ON DELETE SET NULL;
+ALTER TABLE public.goedkeuringsverzoek ADD CONSTRAINT goedkeuringsverzoek_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.goedkeuringsverzoek ADD CONSTRAINT goedkeuringsverzoek_mogelijk_duplicaat_van_fkey FOREIGN KEY (mogelijk_duplicaat_van) REFERENCES personen(id) ON DELETE SET NULL;
+ALTER TABLE public.goedkeuringsverzoek ADD CONSTRAINT goedkeuringsverzoek_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE SET NULL;
 ALTER TABLE public.herinner_instelling ADD CONSTRAINT herinner_instelling_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.herinner_instelling ADD CONSTRAINT herinner_instelling_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
@@ -883,9 +919,13 @@ CREATE INDEX bewijs_company_idx ON public.bewijs USING btree (company_id);
 CREATE INDEX bewijs_item_idx ON public.bewijs USING btree (pva_item_id);
 CREATE INDEX centrale_toolbox_vraag_idx ON public.centrale_toolbox_vraag USING btree (toolbox_id, volgorde);
 CREATE INDEX centrale_vraag_rubriek_idx ON public.centrale_vraag USING btree (rubriek_id, volgorde);
+CREATE INDEX correctie_log_company_wanneer_idx ON public.correctie_log USING btree (company_id, wanneer DESC);
+CREATE INDEX correctie_log_record_idx ON public.correctie_log USING btree (tabel, record_id);
 CREATE INDEX deellinks_token_idx ON public.deellinks USING btree (token);
 CREATE INDEX fotos_company_idx ON public.fotos USING btree (company_id);
 CREATE INDEX functiegroep_company_idx ON public.functiegroep USING btree (company_id, volgorde);
+CREATE INDEX goedkeuringsverzoek_company_status_idx ON public.goedkeuringsverzoek USING btree (company_id, status);
+CREATE UNIQUE INDEX goedkeuringsverzoek_een_open_per_persoon ON public.goedkeuringsverzoek USING btree (persoon_id) WHERE (status = 'open'::text);
 CREATE INDEX herinnering_log_company_idx ON public.herinnering_log USING btree (company_id, verzonden_op DESC);
 CREATE INDEX herinnering_log_persoon_idx ON public.herinnering_log USING btree (persoon_id, verzonden_op DESC);
 CREATE INDEX idx_fotos_rie_versie ON public.fotos USING btree (rie_versie_id);
@@ -951,9 +991,11 @@ ALTER TABLE public.centrale_toolbox ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.centrale_toolbox_vraag ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.centrale_vraag ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.correctie_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.deellinks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.fotos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.functiegroep ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.goedkeuringsverzoek ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.herinner_instelling ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.herinnering_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.incident ENABLE ROW LEVEL SECURITY;
@@ -1049,12 +1091,16 @@ CREATE POLICY companies_admin_update ON public.companies AS PERMISSIVE FOR UPDAT
   WITH CHECK (is_admin());
 CREATE POLICY companies_select ON public.companies AS PERMISSIVE FOR SELECT TO public
   USING (((id = my_company_id()) OR is_admin()));
+CREATE POLICY correctie_log_sel ON public.correctie_log AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY deellinks_select ON public.deellinks AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
 CREATE POLICY fotos_select ON public.fotos AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
 CREATE POLICY functiegroep_sel ON public.functiegroep AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
+CREATE POLICY goedkeuringsverzoek_sel ON public.goedkeuringsverzoek AS PERMISSIVE FOR SELECT TO public
+  USING ((mag_bedrijf_beheren(company_id) OR (aangemaakt_door = auth.uid())));
 CREATE POLICY herinner_instelling_select ON public.herinner_instelling AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY herinnering_log_select ON public.herinnering_log AS PERMISSIVE FOR SELECT TO public
@@ -2176,6 +2222,257 @@ begin
   return p_id;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.concept_medewerker_aanmaken(p_company_id uuid, p_naam text, p_email text DEFAULT NULL::text, p_functiegroep_id uuid DEFAULT NULL::uuid, p_negeer_duplicaat_waarschuwing boolean DEFAULT false)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_naam       text := btrim(coalesce(p_naam, ''));
+  v_email      text := nullif(btrim(coalesce(p_email, '')), '');
+  v_duplicaten jsonb;
+  v_top_id     uuid;
+  v_persoon_id uuid;
+  v_verzoek_id uuid;
+  v_nr         integer;
+  v_actie_id   uuid;
+begin
+  if not (is_teamleider() and mag_bedrijf_werken(p_company_id)) then
+    raise exception 'Geen toegang';
+  end if;
+  if v_naam = '' then
+    raise exception 'Naam is verplicht';
+  end if;
+  if p_functiegroep_id is not null and not exists (
+    select 1 from functiegroep where id = p_functiegroep_id and company_id = p_company_id and gearchiveerd_op is null
+  ) then
+    raise exception 'Functiegroep hoort niet bij dit bedrijf';
+  end if;
+
+  with kandidaten as (
+    select p.id, p.naam,
+           fg.naam as functiegroep_naam,
+           (p.datum_uit_dienst is null or p.datum_uit_dienst >= current_date) as in_dienst,
+           (v_email is not null and p.email is not null and lower(p.email) = lower(v_email)) as email_match
+    from personen p
+    left join functiegroep fg on fg.id = p.functiegroep_id and fg.gearchiveerd_op is null
+    where p.company_id = p_company_id and p.status = 'actief' and p.archived_at is null
+      and (lower(btrim(p.naam)) = lower(v_naam)
+           or (v_email is not null and p.email is not null and lower(p.email) = lower(v_email)))
+  )
+  select
+    coalesce(jsonb_agg(jsonb_build_object(
+      'id', id, 'naam', naam, 'functiegroep_naam', functiegroep_naam, 'in_dienst', in_dienst
+    ) order by email_match desc, naam), '[]'::jsonb),
+    (array_agg(id order by email_match desc, naam))[1]
+  into v_duplicaten, v_top_id
+  from kandidaten;
+
+  if v_duplicaten <> '[]'::jsonb and not coalesce(p_negeer_duplicaat_waarschuwing, false) then
+    return jsonb_build_object('aangemaakt', false, 'mogelijke_duplicaten', v_duplicaten);
+  end if;
+
+  insert into personen (company_id, naam, email, status, functiegroep_id)
+  values (p_company_id, v_naam, v_email, 'voorgesteld', p_functiegroep_id)
+  returning id into v_persoon_id;
+
+  insert into goedkeuringsverzoek (company_id, type, persoon_id, mogelijk_duplicaat_van, aangemaakt_door)
+  values (p_company_id, 'nieuw_concept', v_persoon_id,
+          case when v_duplicaten <> '[]'::jsonb then v_top_id else null end, auth.uid())
+  returning id into v_verzoek_id;
+
+  select coalesce(max(case when nr ~ '^[0-9]+$' then nr::int end), 0) + 1 into v_nr
+    from pva_items where company_id = p_company_id;
+  insert into pva_items (company_id, nr, onderwerp, status, prio, bron_type, bron_id, updated_at)
+  values (p_company_id, v_nr::text, 'Goedkeuring nieuwe medewerker: ' || v_naam, 'Open', 'Middel',
+          'concept_medewerker', v_persoon_id, now())
+  returning id into v_actie_id;
+  update goedkeuringsverzoek set actie_pva_item_id = v_actie_id where id = v_verzoek_id;
+
+  return jsonb_build_object(
+    'aangemaakt', true, 'persoon_id', v_persoon_id, 'goedkeuringsverzoek_id', v_verzoek_id,
+    'mogelijk_duplicaat_van', case when v_duplicaten <> '[]'::jsonb then v_top_id else null end
+  );
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.concept_medewerker_afwijzen(p_goedkeuringsverzoek_id uuid, p_item_keuzes jsonb, p_reden text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_verzoek    public.goedkeuringsverzoek;
+  v_verwacht   uuid[];
+  v_gegeven    uuid[];
+  v_ontbrekend uuid[];
+  v_item       jsonb;
+  v_item_type  text;
+  v_item_id    uuid;
+  v_keuze      text;
+begin
+  select * into v_verzoek from goedkeuringsverzoek where id = p_goedkeuringsverzoek_id;
+  if v_verzoek.id is null then raise exception 'Verzoek niet gevonden'; end if;
+  if not mag_bedrijf_beheren(v_verzoek.company_id) then raise exception 'Geen toegang'; end if;
+  if v_verzoek.status <> 'open' then raise exception 'Dit verzoek is al behandeld'; end if;
+
+  select array_agg(id) into v_verwacht from (
+    select id from toolbox_deelname where persoon_id = v_verzoek.persoon_id and company_id = v_verzoek.company_id
+    union all
+    select id from inspectie where persoon_id = v_verzoek.persoon_id and company_id = v_verzoek.company_id
+    union all
+    select id from pva_items where persoon_id = v_verzoek.persoon_id and company_id = v_verzoek.company_id
+      and id is distinct from v_verzoek.actie_pva_item_id
+  ) alles;
+
+  select array_agg((elem->>'item_id')::uuid) into v_gegeven
+  from jsonb_array_elements(coalesce(p_item_keuzes, '[]'::jsonb)) elem;
+
+  select array_agg(id) into v_ontbrekend
+  from unnest(coalesce(v_verwacht, '{}'::uuid[])) id
+  where not (id = any (coalesce(v_gegeven, '{}'::uuid[])));
+
+  if v_ontbrekend is not null and array_length(v_ontbrekend, 1) > 0 then
+    raise exception 'Niet alle gekoppelde items zijn afgehandeld (% ontbreken)', array_length(v_ontbrekend, 1);
+  end if;
+
+  for v_item in select * from jsonb_array_elements(coalesce(p_item_keuzes, '[]'::jsonb))
+  loop
+    v_item_type := v_item->>'item_type';
+    v_item_id   := (v_item->>'item_id')::uuid;
+    v_keuze     := v_item->>'keuze';
+    if v_keuze not in ('terug_naar_aanmaker', 'opnieuw_aanmaken', 'weggooien') then
+      raise exception 'Ongeldige keuze: %', v_keuze;
+    end if;
+
+    perform set_config('app.correctie_reden',
+      'concept_medewerker_afwijzen: ' || v_keuze || coalesce(' — ' || p_reden, ''), true);
+
+    if v_item_type = 'toolbox_deelname' then
+      update toolbox_deelname set persoon_id = null
+       where id = v_item_id and company_id = v_verzoek.company_id and persoon_id = v_verzoek.persoon_id;
+    elsif v_item_type = 'inspectie' then
+      update inspectie set persoon_id = null
+       where id = v_item_id and company_id = v_verzoek.company_id and persoon_id = v_verzoek.persoon_id;
+    elsif v_item_type = 'actie' then
+      update pva_items set persoon_id = null
+       where id = v_item_id and company_id = v_verzoek.company_id and persoon_id = v_verzoek.persoon_id;
+      if v_keuze = 'weggooien' then
+        update pva_items
+           set status = 'Afgerond',
+               opm = nullif(btrim(coalesce(opm, '') || E'\nGesloten: concept-medewerker afgewezen.'), ''),
+               updated_at = now()
+         where id = v_item_id;
+        insert into actie_historie
+          (company_id, pva_item_id, gebeurtenis, van_status, naar_status, opmerking, actor_naam, actor_type)
+        values
+          (v_verzoek.company_id, v_item_id, 'concept_medewerker_afgewezen_gesloten', 'Open', 'Afgerond', p_reden,
+           coalesce((select naam from users where id = auth.uid()), null), 'beheerder');
+      end if;
+    else
+      raise exception 'Onbekend item_type: %', v_item_type;
+    end if;
+  end loop;
+
+  perform set_config('app.correctie_reden', '', true);
+
+  if v_verzoek.type = 'nieuw_concept' and v_verzoek.persoon_id is not null then
+    update personen set status = 'afgewezen' where id = v_verzoek.persoon_id;
+  end if;
+
+  update goedkeuringsverzoek
+     set status = 'afgewezen', behandeld_door = auth.uid(), behandeld_op = now(), reden_afwijzing = p_reden
+   where id = p_goedkeuringsverzoek_id;
+
+  if v_verzoek.actie_pva_item_id is not null then
+    update pva_items set status = 'Afgerond', updated_at = now() where id = v_verzoek.actie_pva_item_id;
+    insert into actie_historie (company_id, pva_item_id, gebeurtenis, van_status, naar_status, opmerking, actor_naam, actor_type)
+    values (v_verzoek.company_id, v_verzoek.actie_pva_item_id, 'concept_medewerker_afgewezen', 'Open', 'Afgerond', p_reden,
+            coalesce((select naam from users where id = auth.uid()), null), 'beheerder');
+  end if;
+
+  return jsonb_build_object('status', 'afgewezen');
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.concept_medewerker_goedkeuren(p_goedkeuringsverzoek_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_verzoek public.goedkeuringsverzoek;
+begin
+  select * into v_verzoek from goedkeuringsverzoek where id = p_goedkeuringsverzoek_id;
+  if v_verzoek.id is null then raise exception 'Verzoek niet gevonden'; end if;
+  if not mag_bedrijf_beheren(v_verzoek.company_id) then raise exception 'Geen toegang'; end if;
+  if v_verzoek.status <> 'open' then raise exception 'Dit verzoek is al behandeld'; end if;
+
+  if v_verzoek.type = 'nieuw_concept' and v_verzoek.persoon_id is not null then
+    update personen set status = 'actief' where id = v_verzoek.persoon_id;
+  end if;
+
+  update goedkeuringsverzoek
+     set status = 'goedgekeurd', behandeld_door = auth.uid(), behandeld_op = now()
+   where id = p_goedkeuringsverzoek_id;
+
+  if v_verzoek.actie_pva_item_id is not null then
+    update pva_items set status = 'Afgerond', updated_at = now() where id = v_verzoek.actie_pva_item_id;
+    insert into actie_historie (company_id, pva_item_id, gebeurtenis, van_status, naar_status, actor_naam, actor_type)
+    values (v_verzoek.company_id, v_verzoek.actie_pva_item_id, 'concept_medewerker_goedgekeurd', 'Open', 'Afgerond',
+            coalesce((select naam from users where id = auth.uid()), null), 'beheerder');
+  end if;
+
+  return jsonb_build_object('status', 'goedgekeurd');
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.concept_medewerker_koppelen(p_company_id uuid, p_persoon_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_naam       text;
+  v_verzoek_id uuid;
+  v_nr         integer;
+  v_actie_id   uuid;
+begin
+  if not (is_teamleider() and mag_bedrijf_werken(p_company_id)) then
+    raise exception 'Geen toegang';
+  end if;
+
+  select naam into v_naam from personen
+   where id = p_persoon_id and company_id = p_company_id and status = 'actief' and archived_at is null;
+  if v_naam is null then
+    raise exception 'Persoon niet gevonden of hoort niet bij dit bedrijf';
+  end if;
+
+  insert into goedkeuringsverzoek (company_id, type, persoon_id, aangemaakt_door)
+  values (p_company_id, 'koppel_bestaand', p_persoon_id, auth.uid())
+  returning id into v_verzoek_id;
+
+  select coalesce(max(case when nr ~ '^[0-9]+$' then nr::int end), 0) + 1 into v_nr
+    from pva_items where company_id = p_company_id;
+  insert into pva_items (company_id, nr, onderwerp, status, prio, bron_type, bron_id, updated_at)
+  values (p_company_id, v_nr::text, 'Bevestig koppeling: ' || v_naam, 'Open', 'Middel',
+          'concept_medewerker', p_persoon_id, now())
+  returning id into v_actie_id;
+  update goedkeuringsverzoek set actie_pva_item_id = v_actie_id where id = v_verzoek_id;
+
+  return jsonb_build_object('goedkeuringsverzoek_id', v_verzoek_id);
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.correctie_log_immutable()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+BEGIN
+  RAISE EXCEPTION 'correctie_log is append-only: wijzigen, verwijderen of legen kan niet, ook niet met service-role';
+END;
+$function$;
 CREATE OR REPLACE FUNCTION public.create_deellink(p_persoon_id uuid, p_vervalt_op timestamp with time zone DEFAULT NULL::timestamp with time zone)
  RETURNS text
  LANGUAGE plpgsql
@@ -2928,6 +3225,66 @@ CREATE OR REPLACE FUNCTION public.gen_deellink_token()
  LANGUAGE sql
 AS $function$
   select encode(gen_random_bytes(18), 'hex')
+$function$;
+CREATE OR REPLACE FUNCTION public.goedkeuringsverzoek_bevroren_bewaken()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+BEGIN
+  IF OLD.status = 'open' THEN
+    RETURN NEW;
+  END IF;
+  RAISE EXCEPTION 'Dit goedkeuringsverzoek is al behandeld en ligt vast';
+END;
+$function$;
+CREATE OR REPLACE FUNCTION public.goedkeuringsverzoek_overzicht(p_company_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v jsonb;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', g.id,
+    'type', g.type,
+    'status', g.status,
+    'aangemaakt_op', g.aangemaakt_op,
+    'aangemaakt_door_naam', u.naam,
+    'persoon', jsonb_build_object('id', p.id, 'naam', p.naam, 'email', p.email),
+    'mogelijk_duplicaat', case when d.id is not null then jsonb_build_object('id', d.id, 'naam', d.naam) else null end,
+    'gekoppelde_items', (
+      select coalesce(jsonb_agg(x), '[]'::jsonb) from (
+        select jsonb_build_object('item_type', 'toolbox_deelname', 'item_id', t.id, 'omschrijving', t.titel_snap) as x
+          from toolbox_deelname t where t.persoon_id = g.persoon_id and t.company_id = g.company_id
+        union all
+        select jsonb_build_object('item_type', 'inspectie', 'item_id', i.id,
+                 'omschrijving', coalesce(i.sjabloon_naam_snap, 'inspectie'))
+          from inspectie i where i.persoon_id = g.persoon_id and i.company_id = g.company_id
+        union all
+        select jsonb_build_object('item_type', 'actie', 'item_id', a.id, 'omschrijving', a.onderwerp)
+          from pva_items a where a.persoon_id = g.persoon_id and a.company_id = g.company_id
+           and a.id is distinct from g.actie_pva_item_id
+      ) items
+    )
+  ) order by g.aangemaakt_op)
+  , '[]'::jsonb)
+  into v
+  from goedkeuringsverzoek g
+  left join personen p on p.id = g.persoon_id
+  left join personen d on d.id = g.mogelijk_duplicaat_van
+  left join users u on u.id = g.aangemaakt_door
+  where g.company_id = p_company_id
+    and g.status = 'open';
+
+  return v;
+end;
 $function$;
 CREATE OR REPLACE FUNCTION public.handle_new_user()
  RETURNS trigger
@@ -4450,6 +4807,26 @@ CREATE OR REPLACE FUNCTION public.my_company_id()
 AS $function$
   select company_id from public.users where id = auth.uid()
 $function$;
+CREATE OR REPLACE FUNCTION public.personen_correctie_loggen()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+BEGIN
+  IF NEW.naam IS DISTINCT FROM OLD.naam THEN
+    INSERT INTO public.correctie_log (company_id, tabel, record_id, veld, van_waarde, naar_waarde, reden, wie)
+    VALUES (NEW.company_id, 'personen', NEW.id, 'naam', OLD.naam, NEW.naam,
+            nullif(current_setting('app.correctie_reden', true), ''), auth.uid());
+  END IF;
+  IF NEW.email IS DISTINCT FROM OLD.email THEN
+    INSERT INTO public.correctie_log (company_id, tabel, record_id, veld, van_waarde, naar_waarde, reden, wie)
+    VALUES (NEW.company_id, 'personen', NEW.id, 'email', OLD.email, NEW.email,
+            nullif(current_setting('app.correctie_reden', true), ''), auth.uid());
+  END IF;
+  RETURN NEW;
+END;
+$function$;
 CREATE OR REPLACE FUNCTION public.personen_merge_voorbeeld(p_doel_id uuid, p_bron_id uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -4643,6 +5020,20 @@ begin
   update personen set functiegroep_id = p_functiegroep_id where id = p_persoon_id;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.persoon_koppeling_correctie_loggen()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+BEGIN
+  INSERT INTO public.correctie_log (company_id, tabel, record_id, veld, van_waarde, naar_waarde, reden, wie)
+  VALUES (NEW.company_id, TG_TABLE_NAME, NEW.id, 'persoon_id',
+          OLD.persoon_id::text, NEW.persoon_id::text,
+          nullif(current_setting('app.correctie_reden', true), ''), auth.uid());
+  RETURN NEW;
+END;
+$function$;
 CREATE OR REPLACE FUNCTION public.persoon_merge_context(p_doel_id uuid, p_bron_id uuid)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -4676,6 +5067,41 @@ begin
   end if;
 
   return v_doel.company_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.persoon_zoeken_voor_koppeling(p_company_id uuid, p_zoekterm text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v jsonb;
+begin
+  if not (is_teamleider() and mag_bedrijf_werken(p_company_id)) then
+    raise exception 'Geen toegang';
+  end if;
+  if coalesce(btrim(p_zoekterm), '') = '' then
+    return '[]'::jsonb;
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', p.id,
+    'naam', p.naam,
+    'functiegroep_naam', fg.naam,
+    'in_dienst', (p.datum_uit_dienst is null or p.datum_uit_dienst >= current_date)
+  ) order by p.naam), '[]'::jsonb)
+  into v
+  from personen p
+  left join functiegroep fg on fg.id = p.functiegroep_id and fg.gearchiveerd_op is null
+  where p.company_id = p_company_id
+    and p.status = 'actief'
+    and p.archived_at is null
+    and (p.naam ilike '%' || btrim(p_zoekterm) || '%'
+         or (p.email is not null and p.email ilike '%' || btrim(p_zoekterm) || '%'))
+  limit 20;
+
+  return v;
 end;
 $function$;
 CREATE OR REPLACE FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid, p_tekst text, p_verplicht boolean DEFAULT false, p_volgorde integer DEFAULT NULL::integer)
@@ -5864,6 +6290,21 @@ GRANT EXECUTE ON FUNCTION public.centrale_vraag_archiveren(p_id uuid) TO service
 REVOKE EXECUTE ON FUNCTION public.centrale_vraag_opslaan(p_id uuid, p_rubriek_id uuid, p_tekst text, p_volgorde integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.centrale_vraag_opslaan(p_id uuid, p_rubriek_id uuid, p_tekst text, p_volgorde integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.centrale_vraag_opslaan(p_id uuid, p_rubriek_id uuid, p_tekst text, p_volgorde integer) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.concept_medewerker_aanmaken(p_company_id uuid, p_naam text, p_email text, p_functiegroep_id uuid, p_negeer_duplicaat_waarschuwing boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.concept_medewerker_aanmaken(p_company_id uuid, p_naam text, p_email text, p_functiegroep_id uuid, p_negeer_duplicaat_waarschuwing boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.concept_medewerker_aanmaken(p_company_id uuid, p_naam text, p_email text, p_functiegroep_id uuid, p_negeer_duplicaat_waarschuwing boolean) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.concept_medewerker_afwijzen(p_goedkeuringsverzoek_id uuid, p_item_keuzes jsonb, p_reden text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.concept_medewerker_afwijzen(p_goedkeuringsverzoek_id uuid, p_item_keuzes jsonb, p_reden text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.concept_medewerker_afwijzen(p_goedkeuringsverzoek_id uuid, p_item_keuzes jsonb, p_reden text) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.concept_medewerker_goedkeuren(p_goedkeuringsverzoek_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.concept_medewerker_goedkeuren(p_goedkeuringsverzoek_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.concept_medewerker_goedkeuren(p_goedkeuringsverzoek_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.concept_medewerker_koppelen(p_company_id uuid, p_persoon_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.concept_medewerker_koppelen(p_company_id uuid, p_persoon_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.concept_medewerker_koppelen(p_company_id uuid, p_persoon_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.correctie_log_immutable() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.correctie_log_immutable() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.correctie_log_immutable() TO service_role;
 REVOKE EXECUTE ON FUNCTION public.create_deellink(p_persoon_id uuid, p_vervalt_op timestamp with time zone) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.create_deellink(p_persoon_id uuid, p_vervalt_op timestamp with time zone) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_deellink(p_persoon_id uuid, p_vervalt_op timestamp with time zone) TO service_role;
@@ -5915,6 +6356,12 @@ GRANT EXECUTE ON FUNCTION public.geef_actie_vrij(p_actie_id uuid, p_opmerking te
 GRANT EXECUTE ON FUNCTION public.gen_deellink_token() TO anon;
 GRANT EXECUTE ON FUNCTION public.gen_deellink_token() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gen_deellink_token() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.goedkeuringsverzoek_bevroren_bewaken() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.goedkeuringsverzoek_bevroren_bewaken() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.goedkeuringsverzoek_bevroren_bewaken() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.goedkeuringsverzoek_overzicht(p_company_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.goedkeuringsverzoek_overzicht(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.goedkeuringsverzoek_overzicht(p_company_id uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.handle_new_user() TO anon;
 GRANT EXECUTE ON FUNCTION public.handle_new_user() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.handle_new_user() TO service_role;
@@ -6054,6 +6501,9 @@ GRANT EXECUTE ON FUNCTION public.module_stopzetten(p_company_id uuid, p_module t
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO anon;
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.my_company_id() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.personen_correctie_loggen() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.personen_correctie_loggen() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.personen_correctie_loggen() TO service_role;
 REVOKE EXECUTE ON FUNCTION public.personen_merge_voorbeeld(p_doel_id uuid, p_bron_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.personen_merge_voorbeeld(p_doel_id uuid, p_bron_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.personen_merge_voorbeeld(p_doel_id uuid, p_bron_id uuid) TO service_role;
@@ -6066,8 +6516,14 @@ GRANT EXECUTE ON FUNCTION public.personen_verwijderd_loggen() TO service_role;
 REVOKE EXECUTE ON FUNCTION public.persoon_functiegroep_zetten(p_persoon_id uuid, p_functiegroep_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.persoon_functiegroep_zetten(p_persoon_id uuid, p_functiegroep_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.persoon_functiegroep_zetten(p_persoon_id uuid, p_functiegroep_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.persoon_koppeling_correctie_loggen() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.persoon_koppeling_correctie_loggen() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.persoon_koppeling_correctie_loggen() TO service_role;
 REVOKE EXECUTE ON FUNCTION public.persoon_merge_context(p_doel_id uuid, p_bron_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.persoon_merge_context(p_doel_id uuid, p_bron_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.persoon_zoeken_voor_koppeling(p_company_id uuid, p_zoekterm text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.persoon_zoeken_voor_koppeling(p_company_id uuid, p_zoekterm text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.persoon_zoeken_voor_koppeling(p_company_id uuid, p_zoekterm text) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid, p_tekst text, p_verplicht boolean, p_volgorde integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid, p_tekst text, p_verplicht boolean, p_volgorde integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.punt_opslaan(p_punt_id uuid, p_sjabloon_id uuid, p_tekst text, p_verplicht boolean, p_volgorde integer) TO service_role;
@@ -6184,12 +6640,20 @@ GRANT EXECUTE ON FUNCTION public.zet_mijn_naam(p_naam text) TO service_role;
 CREATE TRIGGER audit_log_no_delete BEFORE DELETE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_immutable();
 CREATE TRIGGER audit_log_no_truncate BEFORE TRUNCATE ON public.audit_log FOR EACH STATEMENT EXECUTE FUNCTION audit_log_immutable();
 CREATE TRIGGER audit_log_no_update BEFORE UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_immutable();
+CREATE TRIGGER correctie_log_no_delete BEFORE DELETE ON public.correctie_log FOR EACH ROW EXECUTE FUNCTION correctie_log_immutable();
+CREATE TRIGGER correctie_log_no_truncate BEFORE TRUNCATE ON public.correctie_log FOR EACH STATEMENT EXECUTE FUNCTION correctie_log_immutable();
+CREATE TRIGGER correctie_log_no_update BEFORE UPDATE ON public.correctie_log FOR EACH ROW EXECUTE FUNCTION correctie_log_immutable();
+CREATE TRIGGER goedkeuringsverzoek_bevroren BEFORE UPDATE ON public.goedkeuringsverzoek FOR EACH ROW EXECUTE FUNCTION goedkeuringsverzoek_bevroren_bewaken();
 CREATE TRIGGER inspectie_bevroren_no_update BEFORE UPDATE ON public.inspectie FOR EACH ROW EXECUTE FUNCTION inspectie_bevroren_bewaken();
+CREATE TRIGGER inspectie_persoon_correctie_audit AFTER UPDATE ON public.inspectie FOR EACH ROW WHEN ((new.persoon_id IS DISTINCT FROM old.persoon_id)) EXECUTE FUNCTION persoon_koppeling_correctie_loggen();
 CREATE TRIGGER inspectie_bevinding_bevroren_no_update BEFORE DELETE OR UPDATE ON public.inspectie_bevinding FOR EACH ROW EXECUTE FUNCTION inspectie_bevinding_bevroren_bewaken();
 CREATE TRIGGER inspectie_historie_append_only_trg BEFORE DELETE OR UPDATE ON public.inspectie_historie FOR EACH ROW EXECUTE FUNCTION inspectie_historie_append_only();
 CREATE TRIGGER module_historie_append_only_trg BEFORE DELETE OR UPDATE ON public.module_historie FOR EACH ROW EXECUTE FUNCTION module_historie_append_only();
+CREATE TRIGGER personen_correctie_audit AFTER UPDATE ON public.personen FOR EACH ROW WHEN (((new.naam IS DISTINCT FROM old.naam) OR (new.email IS DISTINCT FROM old.email))) EXECUTE FUNCTION personen_correctie_loggen();
 CREATE TRIGGER personen_verwijderd_audit AFTER DELETE ON public.personen FOR EACH ROW EXECUTE FUNCTION personen_verwijderd_loggen();
+CREATE TRIGGER pva_items_persoon_correctie_audit AFTER UPDATE ON public.pva_items FOR EACH ROW WHEN ((new.persoon_id IS DISTINCT FROM old.persoon_id)) EXECUTE FUNCTION persoon_koppeling_correctie_loggen();
 CREATE TRIGGER toolbox_deelname_no_update BEFORE UPDATE ON public.toolbox_deelname FOR EACH ROW EXECUTE FUNCTION toolbox_deelname_immutable();
+CREATE TRIGGER toolbox_deelname_persoon_correctie_audit AFTER UPDATE ON public.toolbox_deelname FOR EACH ROW WHEN ((new.persoon_id IS DISTINCT FROM old.persoon_id)) EXECUTE FUNCTION persoon_koppeling_correctie_loggen();
 CREATE TRIGGER users_rol_audit AFTER UPDATE OF role, company_id ON public.users FOR EACH ROW EXECUTE FUNCTION rol_gewijzigd_loggen();
 
 -- ============================================================

@@ -210,6 +210,20 @@ export type Deellink = {
   ingetrokken: boolean
 }
 
+// Resultaat van goedkeuringsverzoek_overzicht (migratie 0070) — één rij per
+// open verzoek, met de items die bij afwijzen elk een keuze nodig hebben.
+export type GekoppeldItem = { item_type: 'toolbox_deelname' | 'inspectie' | 'actie'; item_id: string; omschrijving: string | null }
+export type Goedkeuringsverzoek = {
+  id: string
+  type: 'nieuw_concept' | 'koppel_bestaand'
+  status: string
+  aangemaakt_op: string
+  aangemaakt_door_naam: string | null
+  persoon: { id: string; naam: string; email: string | null } | null
+  mogelijk_duplicaat: { id: string; naam: string } | null
+  gekoppelde_items: GekoppeldItem[]
+}
+
 // ---- Werkplekinspectie (module 'inspectie') ----
 
 export type InspectieSjabloon = {

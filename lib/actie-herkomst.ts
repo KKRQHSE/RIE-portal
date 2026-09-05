@@ -3,7 +3,7 @@ import type { PvaItem } from './types'
 // De bronnen waaruit een actie in de centrale actielijst kan komen. 'audit' is
 // een aparte bron (lijkend op werkplekinspectie); de audit-module zelf volgt in
 // fase 2 — de herkomst is nu al herkenbaar zodat die er straks op aansluit.
-export type BronSoort = 'rie' | 'inspectie' | 'audit' | 'incident' | 'los'
+export type BronSoort = 'rie' | 'inspectie' | 'audit' | 'incident' | 'los' | 'concept_medewerker'
 
 export type Herkomst = {
   soort: BronSoort
@@ -18,6 +18,7 @@ export const BRON_FILTERS: { code: BronSoort | 'alle'; label: string }[] = [
   { code: 'audit',     label: 'Audit' },
   { code: 'incident',  label: 'Incident' },
   { code: 'los',       label: 'Los' },
+  { code: 'concept_medewerker', label: 'Goedkeuring medewerker' },
 ]
 
 // Is dit een uit de RI&E voortgekomen actie? Zelfde definitie als de 'rie'-tak
@@ -66,6 +67,10 @@ export function bepaalHerkomst(
   if (bt === 'audit_bevinding') {
     // bron_id = het audit-id → klikbare herkomst terug naar de bronaudit.
     return { soort: 'audit', label: 'uit audit', href: item.bron_id ? `/${companyId}/audits/${item.bron_id}` : `/${companyId}/audits` }
+  }
+  if (bt === 'concept_medewerker') {
+    // bron_id = het persoon_id van de concept-/te-koppelen medewerker.
+    return { soort: 'concept_medewerker', label: 'goedkeuring medewerker', href: `/${companyId}/goedkeuringen` }
   }
 
   const inc = incidentPerActie.get(item.id)

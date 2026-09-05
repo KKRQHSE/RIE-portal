@@ -51,6 +51,8 @@ export default async function CompanySectionLayout({
       ...(actief.has('incidenten') ? [maak('incidenten', 'Incidenten', 'incidenten')] : []),
       ...(magBeheren && actief.has('audit') ? [maak('audits', 'Audits', 'audits')] : []),
       ...(magBeheren ? [maak('personen', 'Personen', 'personen'), maak('modules', 'Modules', 'modules')] : []),
+      ...(isTeamleider ? [maak('medewerker-toevoegen', 'Medewerker toevoegen', 'medewerker-toevoegen')] : []),
+      ...(magBeheren ? [maak('goedkeuringen', 'Verzoeken', 'goedkeuringen')] : []),
     ]
 
     topBar = (

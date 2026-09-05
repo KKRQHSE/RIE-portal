@@ -37,6 +37,7 @@ const BRON_BADGE: Record<BronSoort, string> = {
   audit:     'bg-purple-100 text-purple-800',
   incident:  'bg-amber-100 text-amber-800',
   los:       'bg-gray-100 text-gray-600',
+  concept_medewerker: 'bg-yellow-100 text-yellow-800',
 }
 
 const STATUS_OPTS = ['Alle', 'Open', 'In behandeling', 'Afgerond']

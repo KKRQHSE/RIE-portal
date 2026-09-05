@@ -50,6 +50,7 @@ const TESTS = [
   { naam: 'dashboard_test.mjs',                     soort: 'database' },
   { naam: 'incident_isolatie_test.mjs',             soort: 'database' },
   { naam: 'teamleider_rol_isolatie_test.mjs',       soort: 'database' },
+  { naam: 'concept_medewerkers_test.mjs',           soort: 'database' },
   { naam: 'module_isolatie_test.mjs',               soort: 'database' },
   { naam: 'persoon_merge_isolatie_test.mjs',        soort: 'database' },
   { naam: 'inspectie_e2e_test.mjs',                 soort: 'database' },

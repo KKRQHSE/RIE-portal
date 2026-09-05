@@ -8,6 +8,11 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // Niet 'true' vast: lokale dev draait over http://localhost, waar een
+      // Secure-cookie nooit verzonden wordt (dan kun je niet meer inloggen).
+      // Op Vercel (productie) is NODE_ENV altijd 'production' en gaat alles
+      // over https — daar hoort de cookie dus wél Secure te zijn.
+      cookieOptions: { secure: process.env.NODE_ENV === 'production' },
       cookies: {
         getAll() {
           return cookieStore.getAll()

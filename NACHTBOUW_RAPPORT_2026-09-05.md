@@ -139,8 +139,65 @@ meerjaren` gecompileerd), volledige suite **36/36** groen.
 
 ## Wat te testen in de browser (ook mobiel)
 
-(wordt aangevuld per fase)
+1. **Project/locatie bij inspecties** (`/[bedrijf]/inspecties`): start een inspectie, vul
+   bovenaan "Project / locatie" in, verlaat het veld (onBlur bewaart) — ververs de pagina en
+   check dat het blijft staan. Rond de inspectie af en check dat het veld ook op het
+   afgeronde rapport staat. Test het filter "Alle projecten/locaties" in de bibliotheeklijst
+   zodra er 2+ verschillende waarden zijn.
+2. **Automatische persoon-koppeling**: log in als een gebruiker die een gekoppelde
+   personen-rij heeft (personen.user_id = jouw account) en start een inspectie — dit is niet
+   zichtbaar in de UI, maar bepaalt straks (Fase 3-achtig) of "uitvoerder" en toekomstige
+   per-persoon-rapportages goed werken. Geen zichtbare UI-wijziging, dus vooral relevant als
+   achtergrondcontrole (getest in `inspectie_project_persoon_test.mjs`).
+3. **Meerjarenoverzicht** (`/[bedrijf]/dashboard` → knop "Meerjarenoverzicht" bij
+   Bedrijfsvoering, alleen zichtbaar voor KAM/admin): open de pagina, check de tabel
+   (IF-getal/toolbox-dekking/inspecties/incidenten per jaar), en check dat een kaal bedrijf
+   nette "nog geen..."-teksten toont i.p.v. nullen. Test ook op mobiel — de tabel scrolt
+   horizontaal binnen zijn eigen kader; check dat de rest van de pagina niet meescrollt.
+4. **IF-getal op het hoofddashboard**: ongewijzigd, maar goed om te bevestigen dat "0" en "nog
+   geen urenbasis" zich nog steeds correct gedragen na de schema-wijzigingen van vannacht.
+
+Alle bovenstaande zijn ECHTE, geteste RPC's/schermen — geen mockdata. Test bij voorkeur op een
+testbedrijf (Alpha/Bravo), niet op Dutch Waste/Geissler.
 
 ## Openstaand voor jou (met voorstel)
 
-(wordt aangevuld)
+1. **Toolbox-dekking in het meerjarenoverzicht rekent met het HUIDIGE personeelsaantal voor
+   elk jaar** (geen historische personeelsstand bijgehouden) — voor oudere jaren dus een
+   benadering. *Voorstel:* als dit precies moet kloppen, een jaarlijkse personeels-snapshot
+   toevoegen (additief); anders is de huidige benadering prima voor een "voorbereidend"
+   overzicht — ik zou het zo laten tot iemand er concreet op vertrouwt.
+2. **Inspectiedoel in het meerjarenoverzicht is de huidige instelling, met terugwerkende
+   kracht toegepast** op elk jaar (geen jaar-specifieke doel-historie). *Voorstel:* alleen
+   relevant zodra doelen echt jaarlijks wijzigen; dan `bedrijf_inspectie_doel` een `jaar`-kolom
+   geven (additief, geen bestaande data verwijderen).
+3. **Doelstellingen (`doelstelling_tekst`) zijn niet per jaar opgeslagen** — het
+   meerjarenoverzicht toont daarom alleen de huidige tekst, los van de jaartabel. *Voorstel:*
+   als een historisch overzicht van doelstellingen per jaar gewenst is, dat veld eerst een
+   `jaar`-kolom geven (additieve migratie) vóórdat het met terugwerkende kracht te tonen is —
+   verzin in de tussentijd geen historische doelstellingen.
+4. **Gewerkte-uren-UI blijft beperkt tot "dit jaar" + "vorig jaar"** (Fase 2). De onderliggende
+   tabel (`bedrijf_gewerkte_uren`) ondersteunt elk jaar al, en het venster schuift vanzelf mee
+   naarmate de tijd vordert, dus de IF-historie blijft kloppen. Alleen als je ooit uren van
+   3+ jaar terug met terugwerkende kracht wilt invullen (bijv. bij migratie van een ander
+   systeem) is een los invoerscherm per jaar nodig — dat heb ik NIET gebouwd, want dat zou
+   "oude data invoeren" zijn geweest, expliciet buiten de opdracht.
+5. **Gedeelde working-directory-coördinatie**: halverwege de nulmeting bleek een NIET-van-mij
+   dev-server op poort 3000 te zijn weggevallen (drie app-tests faalden tijdelijk op "geen
+   respons"); een andere sessie was tegelijk bezig met een mobiele safe-area-fix (commit
+   f7c2e06, niet van mij, inmiddels afgerond en gepusht vóórdat ik aan Fase 1 begon). Geen
+   actie nodig — puur ter info voor de ochtend, mocht je je afvragen waar die commit vandaan
+   komt.
+
+## Top-lijst voor vanochtend
+
+1. Lees dit rapport door; alle drie de fases staan **gecommit én gepusht** op `main`
+   (commits `31ae099`, `0d0f681`, `3912dd2`, bovenop `42fd3de` voor Fase 0).
+2. Bekijk het meerjarenoverzicht op een testbedrijf en oordeel of de twee benaderingen
+   (toolbox-dekking, inspectiedoel) voor jou acceptabel zijn zoals ze nu zijn, of dat je een
+   van de verfijningen uit "Openstaand" alsnog wilt.
+3. Vul bij een testbedrijf een keer project/locatie in bij een inspectie en bevestig dat het
+   filter/de weergave bevalt.
+4. Niets is stilzwijgend blijven staan: geen destructieve SQL, geen echte klant-data
+   aangeraakt (Dutch Waste/Geissler ongemoeid), alles additief. Volledige testsuite bij
+   afronden: **36/36 groen**, tsc + build groen.

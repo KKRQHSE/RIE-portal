@@ -698,6 +698,13 @@ export type DashboardInstelling = {
   updated_at: string
 }
 
+// Resultaat van if_getal_voor_jaar()/dashboard_if_getal() (migratie 0073) --
+// het IF-getal is nu berekend, niet meer handmatig ingevuld. if_getal is null
+// zolang er nog geen gewerkte-urenbasis is ingevuld ("nog geen urenbasis" in
+// de UI); 0 verzuimongevallen met een ingevulde urenbasis geeft gewoon 0.
+export type IfGetalJaar = { jaar: number; verzuimongevallen: number; gewerkte_uren: number | null; if_getal: number | null }
+export type IfGetalOverzicht = { dit_jaar: IfGetalJaar; vorig_jaar: IfGetalJaar }
+
 // Eén regel van de RPC dashboard_admin_overzicht(): per bedrijf voor de admin-roll-up.
 export type DashboardAdminRegel = {
   id: string

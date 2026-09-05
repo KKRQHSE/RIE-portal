@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-05T16:54:56.758Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-05T17:11:37.149Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -126,6 +126,13 @@ CREATE TABLE public.bedrijf_doelstelling (
   company_id uuid NOT NULL,
   functiegroep_id uuid NOT NULL,
   doel_per_jaar integer DEFAULT 0 NOT NULL,
+  updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.bedrijf_gewerkte_uren (
+  company_id uuid NOT NULL,
+  jaar integer NOT NULL,
+  uren numeric(12,2),
   updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -724,6 +731,7 @@ ALTER TABLE public.audit_vca_bevinding ADD CONSTRAINT audit_vca_bevinding_pkey P
 ALTER TABLE public.audit_verbeterpunt ADD CONSTRAINT audit_verbeterpunt_pkey PRIMARY KEY (id);
 ALTER TABLE public.bedrijf_dashboard_instelling ADD CONSTRAINT bedrijf_dashboard_instelling_pkey PRIMARY KEY (company_id);
 ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT bedrijf_doelstelling_pkey PRIMARY KEY (company_id, functiegroep_id);
+ALTER TABLE public.bedrijf_gewerkte_uren ADD CONSTRAINT bedrijf_gewerkte_uren_pkey PRIMARY KEY (company_id, jaar);
 ALTER TABLE public.bedrijf_inspectie_doel ADD CONSTRAINT bedrijf_inspectie_doel_pkey PRIMARY KEY (company_id, persoon_id);
 ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_pkey PRIMARY KEY (company_id, module);
 ALTER TABLE public.bedrijf_rubriek ADD CONSTRAINT bedrijf_rubriek_pkey PRIMARY KEY (company_id, rubriek_id);
@@ -790,6 +798,7 @@ ALTER TABLE public.bedrijf_dashboard_instelling ADD CONSTRAINT bedrijf_dashboard
 ALTER TABLE public.bedrijf_dashboard_instelling ADD CONSTRAINT bedrijf_dashboard_instelling_audit_intern_totaal_check CHECK ((audit_intern_totaal >= 0));
 ALTER TABLE public.bedrijf_dashboard_instelling ADD CONSTRAINT bedrijf_dashboard_instelling_klachten_aantal_check CHECK ((klachten_aantal >= 0));
 ALTER TABLE public.bedrijf_doelstelling ADD CONSTRAINT doelstelling_niet_negatief CHECK ((doel_per_jaar >= 0));
+ALTER TABLE public.bedrijf_gewerkte_uren ADD CONSTRAINT gewerkte_uren_niet_negatief CHECK (((uren IS NULL) OR (uren >= (0)::numeric)));
 ALTER TABLE public.bedrijf_inspectie_doel ADD CONSTRAINT inspectie_doel_niet_negatief CHECK ((doel_per_jaar >= 0));
 ALTER TABLE public.bedrijf_modules ADD CONSTRAINT bedrijf_modules_module_status_check CHECK ((module_status = ANY (ARRAY['geen'::text, 'actief'::text, 'gestopt'::text])));
 ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT toolbox_afw_lokaal_check CHECK ((((modus = 'lokaal'::text) AND (lokale_tekst IS NOT NULL) AND (btrim(lokale_tekst) <> ''::text)) OR ((modus = 'uit'::text) AND (lokale_titel IS NULL) AND (lokale_tekst IS NULL) AND (lokale_video_url IS NULL))));
@@ -1009,6 +1018,7 @@ ALTER TABLE public.audit_vca_bevinding ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_verbeterpunt ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_dashboard_instelling ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_doelstelling ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bedrijf_gewerkte_uren ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_inspectie_doel ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_rubriek ENABLE ROW LEVEL SECURITY;
@@ -1079,6 +1089,8 @@ CREATE POLICY bedrijf_dashboard_instelling_sel ON public.bedrijf_dashboard_inste
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_doelstelling_sel ON public.bedrijf_doelstelling AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_werken(company_id));
+CREATE POLICY bedrijf_gewerkte_uren_sel ON public.bedrijf_gewerkte_uren AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_inspectie_doel_sel ON public.bedrijf_inspectie_doel AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_werken(company_id));
 CREATE POLICY bedrijf_modules_sel ON public.bedrijf_modules AS PERMISSIVE FOR SELECT TO public
@@ -2588,6 +2600,23 @@ begin
   return v;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.dashboard_if_getal(p_company_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_jaar integer := extract(year from current_date)::int;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+
+  return jsonb_build_object(
+    'dit_jaar', if_getal_voor_jaar(p_company_id, v_jaar),
+    'vorig_jaar', if_getal_voor_jaar(p_company_id, v_jaar - 1)
+  );
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text, p_if_dit_jaar numeric DEFAULT NULL::numeric, p_if_vorig_jaar numeric DEFAULT NULL::numeric)
  RETURNS void
  LANGUAGE plpgsql
@@ -3264,6 +3293,21 @@ CREATE OR REPLACE FUNCTION public.gen_deellink_token()
 AS $function$
   select encode(gen_random_bytes(18), 'hex')
 $function$;
+CREATE OR REPLACE FUNCTION public.gewerkte_uren_zetten(p_company_id uuid, p_jaar integer, p_uren numeric)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  if not mag_bedrijf_beheren(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
+  if p_uren is not null and p_uren < 0 then raise exception 'Gewerkte uren mag niet negatief zijn'; end if;
+
+  insert into bedrijf_gewerkte_uren (company_id, jaar, uren, updated_at)
+  values (p_company_id, p_jaar, p_uren, now())
+  on conflict (company_id, jaar) do update set uren = excluded.uren, updated_at = now();
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.goedkeuringsverzoek_bevroren_bewaken()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3484,6 +3528,35 @@ begin
     'klant_logo',    v_comp.klant_logo_pad,
     'accent_kleur',  coalesce(nullif(v_comp.accent_kleur_override, ''), v_merk.accent_kleur, '#FF5200'),
     'lettertype',    coalesce(v_merk.lettertype, 'grotesk')
+  );
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.if_getal_voor_jaar(p_company_id uuid, p_jaar integer)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_ongevallen integer;
+  v_uren       numeric;
+  v_if         numeric;
+begin
+  select count(*) into v_ongevallen from incident
+   where company_id = p_company_id
+     and extract(year from datum) = p_jaar
+     and 'ongeval_met_verzuim' = any(gevolgen);
+
+  select uren into v_uren from bedrijf_gewerkte_uren where company_id = p_company_id and jaar = p_jaar;
+
+  if v_uren is null or v_uren = 0 then
+    v_if := null;
+  else
+    v_if := round((v_ongevallen::numeric * 1000000) / v_uren, 2);
+  end if;
+
+  return jsonb_build_object(
+    'jaar', p_jaar, 'verzuimongevallen', v_ongevallen, 'gewerkte_uren', v_uren, 'if_getal', v_if
   );
 end;
 $function$;
@@ -6659,6 +6732,9 @@ GRANT EXECUTE ON FUNCTION public.create_deellink(p_persoon_id uuid, p_vervalt_op
 REVOKE EXECUTE ON FUNCTION public.dashboard_admin_overzicht() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dashboard_admin_overzicht() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.dashboard_admin_overzicht() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.dashboard_if_getal(p_company_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.dashboard_if_getal(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.dashboard_if_getal(p_company_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text, p_if_dit_jaar numeric, p_if_vorig_jaar numeric) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text, p_if_dit_jaar numeric, p_if_vorig_jaar numeric) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.dashboard_instelling_zetten(p_company_id uuid, p_klachten_aantal integer, p_tevredenheid_score numeric, p_tevredenheid_toelichting text, p_audit_intern_gedaan integer, p_audit_intern_totaal integer, p_audit_extern_omschrijving text, p_audit_status text, p_doelstelling_tekst text, p_iso_taken_tekst text, p_if_dit_jaar numeric, p_if_vorig_jaar numeric) TO service_role;
@@ -6704,6 +6780,9 @@ GRANT EXECUTE ON FUNCTION public.geef_actie_vrij(p_actie_id uuid, p_opmerking te
 GRANT EXECUTE ON FUNCTION public.gen_deellink_token() TO anon;
 GRANT EXECUTE ON FUNCTION public.gen_deellink_token() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gen_deellink_token() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.gewerkte_uren_zetten(p_company_id uuid, p_jaar integer, p_uren numeric) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.gewerkte_uren_zetten(p_company_id uuid, p_jaar integer, p_uren numeric) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.gewerkte_uren_zetten(p_company_id uuid, p_jaar integer, p_uren numeric) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.goedkeuringsverzoek_bevroren_bewaken() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.goedkeuringsverzoek_bevroren_bewaken() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.goedkeuringsverzoek_bevroren_bewaken() TO service_role;
@@ -6725,6 +6804,9 @@ GRANT EXECUTE ON FUNCTION public.herinnering_loggen(p_persoon_id uuid, p_bron te
 REVOKE EXECUTE ON FUNCTION public.huisstijl_van_bedrijf(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.huisstijl_van_bedrijf(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.huisstijl_van_bedrijf(p_company_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.if_getal_voor_jaar(p_company_id uuid, p_jaar integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.if_getal_voor_jaar(p_company_id uuid, p_jaar integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.if_getal_voor_jaar(p_company_id uuid, p_jaar integer) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.import_company(p_dataset jsonb) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.import_company(p_dataset jsonb) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.import_rie_content(p_company_id uuid) FROM PUBLIC;

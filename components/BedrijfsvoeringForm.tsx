@@ -12,6 +12,9 @@ type Props = {
   companyNaam: string
   huisstijl?: HuisstijlView
   initial: DashboardInstelling | null
+  huidigJaar: number
+  initialUrenDitJaar: number | null
+  initialUrenVorigJaar: number | null
 }
 
 // Getal-uit-tekst: lege string → leeg laten (voor optionele score) of 0 (voor tellingen).
@@ -24,6 +27,7 @@ function numOrNull(s: string): number | null {
 
 export default function BedrijfsvoeringForm({
   companyId, companyNaam, huisstijl = VEILIGE_HUISSTIJL, initial,
+  huidigJaar, initialUrenDitJaar, initialUrenVorigJaar,
 }: Props) {
   const router = useRouter()
 
@@ -36,8 +40,8 @@ export default function BedrijfsvoeringForm({
   const [auditStatus, setAuditStatus] = useState(initial?.audit_status ?? '')
   const [doelstelling, setDoelstelling] = useState(initial?.doelstelling_tekst ?? '')
   const [isoTaken, setIsoTaken] = useState(initial?.iso_taken_tekst ?? '')
-  const [ifDitJaar, setIfDitJaar] = useState(initial?.if_dit_jaar != null ? String(initial.if_dit_jaar) : '')
-  const [ifVorigJaar, setIfVorigJaar] = useState(initial?.if_vorig_jaar != null ? String(initial.if_vorig_jaar) : '')
+  const [urenDitJaar, setUrenDitJaar] = useState(initialUrenDitJaar != null ? String(initialUrenDitJaar) : '')
+  const [urenVorigJaar, setUrenVorigJaar] = useState(initialUrenVorigJaar != null ? String(initialUrenVorigJaar) : '')
 
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
@@ -59,10 +63,16 @@ export default function BedrijfsvoeringForm({
         p_audit_status: auditStatus,
         p_doelstelling_tekst: doelstelling,
         p_iso_taken_tekst: isoTaken,
-        p_if_dit_jaar: numOrNull(ifDitJaar),
-        p_if_vorig_jaar: numOrNull(ifVorigJaar),
       })
       if (error) {
+        setFout('Opslaan mislukt. Probeer het opnieuw.')
+        return
+      }
+      const [{ error: urenErr1 }, { error: urenErr2 }] = await Promise.all([
+        supabase.rpc('gewerkte_uren_zetten', { p_company_id: companyId, p_jaar: huidigJaar, p_uren: numOrNull(urenDitJaar) }),
+        supabase.rpc('gewerkte_uren_zetten', { p_company_id: companyId, p_jaar: huidigJaar - 1, p_uren: numOrNull(urenVorigJaar) }),
+      ])
+      if (urenErr1 || urenErr2) {
         setFout('Opslaan mislukt. Probeer het opnieuw.')
         return
       }
@@ -115,26 +125,27 @@ export default function BedrijfsvoeringForm({
             </div>
           </div>
 
-          {/* IF-getal (Incident Frequency) */}
+          {/* Gewerkte uren — urenbasis voor het berekende IF-getal (migratie 0073) */}
           <div className={kaart}>
-            <p className="text-xs font-medium uppercase tracking-wide text-ink/40">IF-getal (Incident Frequency)</p>
-            <p className="text-xs text-ink/50 -mt-2">Aantal verzuimongevallen per miljoen gewerkte uren. Puur invoer, geen berekening.</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-ink/40">Gewerkte uren (urenbasis IF-getal)</p>
+            <p className="text-xs text-ink/50 -mt-2">
+              Het IF-getal op het dashboard wordt nu automatisch berekend uit de incidentmodule en deze uren
+              — geen handmatige invoer van het IF-getal zelf meer.
+            </p>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={label} htmlFor="ifDitJaar">IF dit jaar</label>
-                <input id="ifDitJaar" type="number" step="0.01" inputMode="decimal" className={veld}
-                  placeholder="bv. 0" value={ifDitJaar} onChange={e => setIfDitJaar(e.target.value)} />
+                <label className={label} htmlFor="urenDitJaar">Gewerkte uren {huidigJaar}</label>
+                <input id="urenDitJaar" type="number" min={0} step="1" inputMode="decimal" className={veld}
+                  placeholder="bv. 42000" value={urenDitJaar} onChange={e => setUrenDitJaar(e.target.value)} />
               </div>
               <div>
-                <label className={label} htmlFor="ifVorigJaar">IF vorig jaar</label>
-                <input id="ifVorigJaar" type="number" step="0.01" inputMode="decimal" className={veld}
-                  placeholder="bv. 2.5" value={ifVorigJaar} onChange={e => setIfVorigJaar(e.target.value)} />
+                <label className={label} htmlFor="urenVorigJaar">Gewerkte uren {huidigJaar - 1}</label>
+                <input id="urenVorigJaar" type="number" min={0} step="1" inputMode="decimal" className={veld}
+                  placeholder="bv. 40000" value={urenVorigJaar} onChange={e => setUrenVorigJaar(e.target.value)} />
               </div>
             </div>
-            {/* Gevolg van 0042: een leeg veld laat de opgeslagen waarde staan i.p.v.
-                hem te wissen. Dat is niet te raden aan het formulier, dus zeg het. */}
             <p className="text-xs text-ink/40">
-              Een veld leeglaten wist een eerder ingevuld getal niet — de laatste waarde blijft staan.
+              Leeg laten toont op het dashboard &quot;nog geen urenbasis&quot; in plaats van een gedeeld-door-nul-fout.
             </p>
           </div>
 

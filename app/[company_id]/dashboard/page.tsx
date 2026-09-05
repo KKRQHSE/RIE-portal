@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import DashboardClient, { type ToolboxNaarRato, type PvaRieVoortgang } from '@/components/DashboardClient'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
-import type { DashboardOverzicht } from '@/lib/types'
+import type { DashboardOverzicht, IfGetalOverzicht } from '@/lib/types'
 
 export default async function CompanyDashboardPage({
   params,
@@ -37,7 +37,7 @@ export default async function CompanyDashboardPage({
     { data: incidentenModule },
     { data: auditModule },
     { data: toolboxDash },
-    { data: ifRij },
+    { data: ifGetal },
     { data: pvaRie },
     { data: auditRows },
     huisstijl,
@@ -56,9 +56,8 @@ export default async function CompanyDashboardPage({
     moduleActief('audit'),
     // Toolbox naar-rato (doel-per-persoon) hergebruikt de al-geteste toolbox_dashboard-RPC.
     supabase.rpc('toolbox_dashboard', { p_company_id: company_id }),
-    // IF-getal (Incident Frequency) — RLS geeft alleen de eigen-bedrijf-rij.
-    supabase.from('bedrijf_dashboard_instelling')
-      .select('if_dit_jaar, if_vorig_jaar').eq('company_id', company_id).maybeSingle(),
+    // IF-getal (Incident Frequency) — nu berekend (migratie 0073), niet meer handmatig.
+    supabase.rpc('dashboard_if_getal', { p_company_id: company_id }),
     // RI&E-gescopete PvA-voortgang (los van de centrale actielijst).
     supabase.rpc('dashboard_pva_rie', { p_company_id: company_id }),
     // Interne audits van dit jaar (voor de "X van N"-tegel).
@@ -91,8 +90,8 @@ export default async function CompanyDashboardPage({
       toonAudits={!!auditModule}
       toolbox={toolboxBedrijf}
       magBewerken={magBeheren}
-      ifDitJaar={(ifRij as { if_dit_jaar: number | null } | null)?.if_dit_jaar ?? null}
-      ifVorigJaar={(ifRij as { if_vorig_jaar: number | null } | null)?.if_vorig_jaar ?? null}
+      ifDitJaar={(ifGetal as IfGetalOverzicht | null)?.dit_jaar ?? null}
+      ifVorigJaar={(ifGetal as IfGetalOverzicht | null)?.vorig_jaar ?? null}
       pvaRie={pvaRie as PvaRieVoortgang}
       auditsTotaal={(auditRows as { status: string }[] | null)?.length ?? 0}
       // "0 van 5" = hoeveel er écht klaar zijn. 'uitgevoerd' telt bewust niet mee:

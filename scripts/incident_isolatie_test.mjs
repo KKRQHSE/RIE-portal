@@ -85,11 +85,12 @@ async function run() {
   const tokenA = await maakMeldlink(A)
   const tokenB = await maakMeldlink(B)
 
-  // 1. Meldcontext via token: bedrijf + 6 gevolg-labels, geen incident-data.
+  // 1. Meldcontext via token: bedrijf + 7 gevolg-labels (migratie 0073 voegde
+  //    'ongeval_met_verzuim' toe aan de catalogus), geen incident-data.
   {
     const { data } = await anon.rpc('incident_meldcontext_token', { p_token: tokenA })
     const ctx = typeof data === 'string' ? JSON.parse(data) : data
-    const ok = !!ctx && ctx.bedrijf === `INCTEST_A_${TS}` && Array.isArray(ctx.gevolg_opties) && ctx.gevolg_opties.length === 6
+    const ok = !!ctx && ctx.bedrijf === `INCTEST_A_${TS}` && Array.isArray(ctx.gevolg_opties) && ctx.gevolg_opties.length === 7
     check('meldcontext via token levert bedrijf + gevolg-labels', ok, ctx ? `bedrijf=${ctx.bedrijf}, gevolgen=${ctx.gevolg_opties?.length}` : 'geen context')
   }
 

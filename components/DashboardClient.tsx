@@ -4,7 +4,7 @@
 // De echt interactieve kinderen houden hun eigen 'use client': Gauge (animatie
 // met useEffect/useState) en LogoutButton (klik + supabase-browserclient).
 import Link from 'next/link'
-import type { Company, DashboardOverzicht } from '@/lib/types'
+import type { Company, DashboardOverzicht, IfGetalJaar } from '@/lib/types'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import Gauge from './Gauge'
 import HuisstijlLogo from './HuisstijlLogo'
@@ -27,8 +27,8 @@ type Props = {
   toonAudits?: boolean
   toolbox?: ToolboxNaarRato | null
   magBewerken?: boolean
-  ifDitJaar?: number | null
-  ifVorigJaar?: number | null
+  ifDitJaar?: IfGetalJaar | null
+  ifVorigJaar?: IfGetalJaar | null
   pvaRie?: PvaRieVoortgang | null
   auditsTotaal?: number
   auditsGedaan?: number
@@ -149,33 +149,38 @@ export default function DashboardClient({
           )}
         </div>
 
-        {/* IF-getal (Incident Frequency) — prominent bovenaan. Puur invoer. */}
+        {/* IF-getal (Incident Frequency) — prominent bovenaan. Nu berekend
+            (migratie 0073): (verzuimongevallen x 1.000.000) / gewerkte uren. */}
         <div className="glass-tile rounded-3xl p-6 mb-6">
           <div className="flex items-center gap-2 mb-4">
             <span className="h-3.5 w-0.5 rounded-full bg-accent shrink-0" aria-hidden="true" />
             <p
               className="text-xs font-medium uppercase tracking-wide text-ink/40 cursor-help"
-              title="Incident Frequency: het aantal verzuimongevallen per miljoen gewerkte uren. Een veiligheidskengetal — lager is beter."
+              title="Incident Frequency: (aantal ongevallen met verzuim x 1.000.000) / totaal gewerkte uren. Automatisch berekend uit de incidentmodule en de ingevulde gewerkte uren bij bedrijfsvoering. Een veiligheidskengetal — lager is beter."
             >
               IF-getal · Incident Frequency
             </p>
           </div>
           <div className="flex flex-wrap items-end gap-x-10 gap-y-4">
             <div>
-              <p className="text-4xl font-semibold text-ink tabular-nums leading-none">
-                {ifDitJaar != null ? ifDitJaar : '—'}
-              </p>
+              {ifDitJaar?.if_getal != null ? (
+                <p className="text-4xl font-semibold text-ink tabular-nums leading-none">{ifDitJaar.if_getal}</p>
+              ) : (
+                <p className="text-sm text-ink/40 italic leading-none py-1.5">nog geen urenbasis</p>
+              )}
               <p className="text-xs text-ink/50 mt-1.5">Dit jaar</p>
             </div>
             <div>
-              <p className="text-3xl font-semibold text-ink/50 tabular-nums leading-none">
-                {ifVorigJaar != null ? ifVorigJaar : '—'}
-              </p>
+              {ifVorigJaar?.if_getal != null ? (
+                <p className="text-3xl font-semibold text-ink/50 tabular-nums leading-none">{ifVorigJaar.if_getal}</p>
+              ) : (
+                <p className="text-sm text-ink/40 italic leading-none py-1">nog geen urenbasis</p>
+              )}
               <p className="text-xs text-ink/40 mt-1.5">Vorig jaar</p>
             </div>
-            {ifDitJaar == null && ifVorigJaar == null && magBewerken && (
+            {(ifDitJaar?.if_getal == null || ifVorigJaar?.if_getal == null) && magBewerken && (
               <Link href={`/${cid}/dashboard/bedrijfsvoering`} className="text-xs text-accent hover:underline mb-1">
-                Vul het IF-getal in →
+                Vul de gewerkte uren in →
               </Link>
             )}
           </div>

@@ -32,6 +32,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...behalve het gedeelde documentatiesjabloon zelf: geen geheimen, alleen
+# placeholders, en juist bedoeld om gecommit te worden (was tot 2026-09-06
+# per ongeluk al die tijd door de brede .env*-regel hierboven genegeerd).
+!.env.local.example
 
 # vercel
 .vercel

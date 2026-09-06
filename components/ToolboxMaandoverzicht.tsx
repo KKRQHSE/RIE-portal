@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import ModuleStatuskop from './ModuleStatuskop'
-import type { ToolboxSessiesOverzicht, ToolboxSessieRegel, ToolboxSessiePersoon, ToolboxOverzichtItem, ToolboxBron } from '@/lib/types'
+import ToolboxSuggesties, { type ToolboxVoorstel } from './ToolboxSuggesties'
+import type { ToolboxSessiesOverzicht, ToolboxSessieRegel, ToolboxSessiePersoon, ToolboxOverzichtItem, ToolboxBron, ToolboxSuggestie } from '@/lib/types'
 
 type Supa = ReturnType<typeof createClient>
 
@@ -21,7 +22,7 @@ function maandVan(iso: string) { return parseInt(iso.slice(5, 7), 10) - 1 }
 
 // Antwoord op de hoofdvraag: wat is er per maand gehouden en zitten we op target?
 export default function ToolboxMaandoverzicht({
-  companyId, initial, gekoppeldeToolboxen, bronnen = [],
+  companyId, initial, gekoppeldeToolboxen, bronnen = [], suggesties = [],
   magAlleSessiesBeheren = true, huidigeGebruikerId = null,
 }: {
   companyId: string
@@ -29,6 +30,8 @@ export default function ToolboxMaandoverzicht({
   gekoppeldeToolboxen: ToolboxOverzichtItem[]
   // Onderwerpenbibliotheek (0043): alleen-lezen inspiratie bij het aanmaken.
   bronnen?: ToolboxBron[]
+  // "Aanbevolen deze periode" (0077): trefwoord-matching, geen AI.
+  suggesties?: ToolboxSuggestie[]
   // Default true: bestaand gedrag (admin/KAM) ongewijzigd. Teamleider krijgt
   // false — dan mag alleen de sessie-EIGENAAR (aangemaakt_door) verwijderen.
   magAlleSessiesBeheren?: boolean
@@ -40,6 +43,16 @@ export default function ToolboxMaandoverzicht({
   const [jaar, setJaar] = useState<number>(() => new Date().getFullYear())
   const [openSessie, setOpenSessie] = useState<string | null>(null)
   const [nieuwVoor, setNieuwVoor] = useState<string | null>(null) // maandsleutel of 'los'
+  // Voorgeselecteerd vanuit een suggestiekaart hierboven — alleen voor de
+  // ÉÉN keer dat de "losse sessie"-vorm daarna opent (zie kiesUitSuggestie).
+  const [voorstel, setVoorstel] = useState<ToolboxVoorstel | null>(null)
+
+  function kiesUitSuggestie(v: ToolboxVoorstel) {
+    setFout(null)
+    setVoorstel(v)
+    setNieuwVoor('los')
+    document.getElementById('nieuwe-sessie')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   const herlaad = useCallback(async () => {
     const { data: d, error } = await supabase.rpc('toolbox_sessies_overzicht', { p_company_id: companyId })
@@ -74,6 +87,9 @@ export default function ToolboxMaandoverzicht({
     <div className="space-y-4">
       {fout && <p className="text-sm text-red-600">{fout}</p>}
 
+      {/* Aanbevolen deze periode — bovenaan, vóór de target-kop (0077) */}
+      <ToolboxSuggesties companyId={companyId} suggesties={suggesties} onKiesToolbox={kiesUitSuggestie} />
+
       {/* Target-kop */}
       <TargetKop
         companyId={companyId} supabase={supabase}
@@ -86,12 +102,12 @@ export default function ToolboxMaandoverzicht({
         {nieuwVoor === 'los' ? (
           <NieuweSessie
             companyId={companyId} supabase={supabase} gekoppeldeToolboxen={gekoppeldeToolboxen}
-            bronnen={bronnen} setFout={setFout}
-            onKlaar={async (id) => { setNieuwVoor(null); await herlaad(); if (id) setOpenSessie(id) }}
-            onAnnuleer={() => setNieuwVoor(null)}
+            bronnen={bronnen} setFout={setFout} voorstel={voorstel}
+            onKlaar={async (id) => { setNieuwVoor(null); setVoorstel(null); await herlaad(); if (id) setOpenSessie(id) }}
+            onAnnuleer={() => { setNieuwVoor(null); setVoorstel(null) }}
           />
         ) : (
-          <button type="button" onClick={() => { setFout(null); setNieuwVoor('los') }}
+          <button type="button" onClick={() => { setFout(null); setVoorstel(null); setNieuwVoor('los') }}
             className="btn btn-accent text-sm px-4 py-2 min-h-[44px] rounded-full bg-accent text-white font-medium">
             + Nieuwe sessie
           </button>
@@ -362,18 +378,21 @@ function SessieRij({
 }
 
 function NieuweSessie({
-  companyId, supabase, gekoppeldeToolboxen, bronnen = [], setFout, onKlaar, onAnnuleer, bestaand, startDatum,
+  companyId, supabase, gekoppeldeToolboxen, bronnen = [], voorstel = null, setFout, onKlaar, onAnnuleer, bestaand, startDatum,
 }: {
   companyId: string; supabase: Supa; gekoppeldeToolboxen: ToolboxOverzichtItem[]
   bronnen?: ToolboxBron[]
+  // Voorinvulling vanuit een suggestiekaart (0077) — alleen relevant bij een
+  // NIEUWE sessie; een bestaande sessie bewerken negeert dit (bestaand wint).
+  voorstel?: ToolboxVoorstel | null
   setFout: (v: string | null) => void
   onKlaar: (nieuwId?: string) => void | Promise<void>; onAnnuleer: () => void
   bestaand?: ToolboxSessieRegel; startDatum?: string
 }) {
   const [datum, setDatum] = useState(bestaand?.datum ?? startDatum ?? '')
-  const [onderwerp, setOnderwerp] = useState(bestaand?.onderwerp ?? '')
+  const [onderwerp, setOnderwerp] = useState(bestaand?.onderwerp ?? voorstel?.onderwerp ?? '')
   const [notitie, setNotitie] = useState(bestaand?.notitie ?? '')
-  const [toolboxId, setToolboxId] = useState<string>(bestaand?.toolbox_id ?? '')
+  const [toolboxId, setToolboxId] = useState<string>(bestaand?.toolbox_id ?? voorstel?.toolboxId ?? '')
   const [bezig, setBezig] = useState(false)
 
   async function opslaan() {

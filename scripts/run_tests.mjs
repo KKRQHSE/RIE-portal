@@ -42,6 +42,7 @@ const TESTS = [
   { naam: 'nachttest_rls.mjs',                      soort: 'database' },
   { naam: 'nachttest_storage.mjs',                  soort: 'database' },
   { naam: 'toolbox_isolatie_test.mjs',              soort: 'database' },
+  { naam: 'toolbox_suggesties_test.mjs',            soort: 'database' },
   { naam: 'inspectie_isolatie_test.mjs',            soort: 'database' },
   { naam: 'inspectie_ai_isolatie_test.mjs',         soort: 'database' },
   { naam: 'centrale_bibliotheek_isolatie_test.mjs', soort: 'database' },

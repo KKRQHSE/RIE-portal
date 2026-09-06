@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import ToolboxClient from '@/components/ToolboxClient'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
-import type { ToolboxOverzichtItem, ToolboxSessiesOverzicht, ToolboxBron } from '@/lib/types'
+import type { ToolboxOverzichtItem, ToolboxSessiesOverzicht, ToolboxBron, ToolboxSuggestie } from '@/lib/types'
 
 export default async function ToolboxPage({
   params,
@@ -22,6 +22,7 @@ export default async function ToolboxPage({
     { data: overzicht },
     { data: sessies },
     { data: bronnen },
+    { data: suggesties },
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
@@ -35,6 +36,10 @@ export default async function ToolboxPage({
     supabase.from('toolbox_bron')
       .select('id, naam, url, omschrijving, volgorde, gearchiveerd_op')
       .is('gearchiveerd_op', null).order('volgorde', { ascending: true }),
+    // "Aanbevolen deze periode" (0077): trefwoord-matching uit RI&E/inspectie/
+    // incident, alleen een voorstel — de RPC beslist niets, de pagina toont
+    // het bovenaan het maandoverzicht.
+    supabase.rpc('toolbox_suggesties', { p_company_id: company_id }),
     haalHuisstijl(company_id),
   ])
 
@@ -55,6 +60,7 @@ export default async function ToolboxPage({
       magSessiesBeheren={magBeheren}
       huidigeGebruikerId={user.id}
       bronnen={(bronnen ?? []) as ToolboxBron[]}
+      suggesties={(suggesties ?? []) as ToolboxSuggestie[]}
     />
   )
 }

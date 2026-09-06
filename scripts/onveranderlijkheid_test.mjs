@@ -505,6 +505,7 @@ async function run() {
       incident_basis_oorzaak: 'admin-only referentietabel',
       incident_directe_oorzaak: 'admin-only referentietabel',
       incident_gevolg_soort: 'admin-only referentietabel',
+      toolbox_onderwerp: 'admin-only referentietabel (0077, toolbox-suggesties)',
     }
 
     // In 0055/0056/0058 dichtgezet. Duikt een van deze weer op, dan is er een

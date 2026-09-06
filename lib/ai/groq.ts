@@ -10,9 +10,17 @@
 // daarom als regio: 'buiten_eu' hieronder. Zet dit vlaggetje mee om zodra er
 // een EU-leverancier komt; de waarschuwing in het scherm volgt vanzelf.
 import 'server-only'
-import { AiStoring, type FotoAnalyseInvoer, type FotoAnalyseUitkomst, type Leverancier } from './leverancier'
-import { GROQ_ENDPOINT, GROQ_STANDAARD_MODEL, bouwGroqBody } from './groq-bericht'
-import { SYSTEEM_PROMPT, gebruikersPrompt, leesAntwoord } from './prompt'
+import {
+  AiStoring,
+  type FotoAnalyseInvoer, type FotoAnalyseUitkomst,
+  type OnderwerpAdviesInvoer, type OnderwerpAdviesUitkomst,
+  type Leverancier,
+} from './leverancier'
+import { GROQ_ENDPOINT, GROQ_STANDAARD_MODEL, bouwGroqBody, bouwGroqTekstBody } from './groq-bericht'
+import {
+  SYSTEEM_PROMPT, gebruikersPrompt, leesAntwoord,
+  SYSTEEM_PROMPT_ONDERWERP_ADVIES, onderwerpAdviesPrompt, leesOnderwerpAdvies,
+} from './prompt'
 
 // Een trage AI mag een inspecteur niet laten hangen. Ruim onder de maxDuration
 // van de route, zodat we zelf nog een nette melding kunnen teruggeven.
@@ -42,54 +50,7 @@ export function maakGroqLeverancier(): Leverancier {
         systeemPrompt: SYSTEEM_PROMPT,
         gebruikersTekst: gebruikersPrompt(invoer.puntTekst),
       })
-
-      let response: Response
-      try {
-        response = await fetch(GROQ_ENDPOINT, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${sleutel}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-          signal: AbortSignal.timeout(TIJDSLIMIET_MS),
-        })
-      } catch (e) {
-        const reden = e instanceof Error ? e.message : String(e)
-        throw new AiStoring(
-          /timeout|abort/i.test(reden)
-            ? 'De AI-dienst reageerde niet op tijd. Probeer het zo nog eens.'
-            : 'De AI-dienst is nu niet bereikbaar. Probeer het zo nog eens.',
-          `fetch naar Groq mislukt: ${reden}`,
-        )
-      }
-
-      if (!response.ok) {
-        // De ruwe body kan endpoints, modelnamen of accountdetails bevatten en
-        // gaat daarom alleen naar het serverlog, nooit naar de browser.
-        const tekst = await response.text().catch(() => '')
-        throw new AiStoring(
-          response.status === 401 || response.status === 403
-            ? 'De AI-sleutel wordt niet geaccepteerd. Controleer de instelling.'
-            : response.status === 429 || response.status === 503
-              ? 'De AI-dienst is nu druk bezet. Probeer het over een minuut nog eens.'
-              : 'De AI-analyse is niet gelukt.',
-          `Groq HTTP ${response.status}: ${tekst.slice(0, 500)}`,
-        )
-      }
-
-      let json: unknown
-      try {
-        json = await response.json()
-      } catch (e) {
-        throw new AiStoring('De AI-analyse is niet gelukt.',
-          `Groq gaf geen leesbaar JSON-antwoord: ${e instanceof Error ? e.message : String(e)}`)
-      }
-
-      const inhoud = leesInhoud(json)
-      if (!inhoud) {
-        throw new AiStoring('De AI gaf geen bruikbaar antwoord.', 'Groq-antwoord zonder message.content')
-      }
+      const inhoud = await groqChatVoltooiing(sleutel, body)
 
       const uitkomst = leesAntwoord(inhoud)
       if (!uitkomst.beschrijving && uitkomst.bevindingen.length === 0 && uitkomst.acties.length === 0) {
@@ -97,7 +58,81 @@ export function maakGroqLeverancier(): Leverancier {
       }
       return uitkomst
     },
+
+    async adviseerOnderwerp(invoer: OnderwerpAdviesInvoer): Promise<OnderwerpAdviesUitkomst> {
+      if (!sleutel) {
+        throw new AiStoring('AI-advies is nog niet geconfigureerd.', 'GROQ_API_KEY ontbreekt')
+      }
+
+      const body = bouwGroqTekstBody({
+        model,
+        systeemPrompt: SYSTEEM_PROMPT_ONDERWERP_ADVIES,
+        gebruikersTekst: onderwerpAdviesPrompt(invoer.onderwerpNaam, invoer.redenen),
+      })
+      const inhoud = await groqChatVoltooiing(sleutel, body)
+
+      const uitkomst = leesOnderwerpAdvies(inhoud)
+      if (!uitkomst.advies && uitkomst.bronnenSuggestie.length === 0) {
+        throw new AiStoring('De AI gaf geen bruikbaar antwoord.', 'leeg antwoord na parsen (onderwerp-advies)')
+      }
+      return uitkomst
+    },
   }
+}
+
+// Gedeeld transport voor élke Groq chat-completion (foto-analyse én
+// onderwerp-advies): fetch + statuscode- + JSON-afhandeling, identiek voor
+// beide aanroepen. Alleen de body (met of zonder afbeelding) verschilt, dus
+// die blijft bij de aanroeper.
+async function groqChatVoltooiing(sleutel: string, body: unknown): Promise<string> {
+  let response: Response
+  try {
+    response = await fetch(GROQ_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${sleutel}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(TIJDSLIMIET_MS),
+    })
+  } catch (e) {
+    const reden = e instanceof Error ? e.message : String(e)
+    throw new AiStoring(
+      /timeout|abort/i.test(reden)
+        ? 'De AI-dienst reageerde niet op tijd. Probeer het zo nog eens.'
+        : 'De AI-dienst is nu niet bereikbaar. Probeer het zo nog eens.',
+      `fetch naar Groq mislukt: ${reden}`,
+    )
+  }
+
+  if (!response.ok) {
+    // De ruwe body kan endpoints, modelnamen of accountdetails bevatten en
+    // gaat daarom alleen naar het serverlog, nooit naar de browser.
+    const tekst = await response.text().catch(() => '')
+    throw new AiStoring(
+      response.status === 401 || response.status === 403
+        ? 'De AI-sleutel wordt niet geaccepteerd. Controleer de instelling.'
+        : response.status === 429 || response.status === 503
+          ? 'De AI-dienst is nu druk bezet. Probeer het over een minuut nog eens.'
+          : 'De AI-analyse is niet gelukt.',
+      `Groq HTTP ${response.status}: ${tekst.slice(0, 500)}`,
+    )
+  }
+
+  let json: unknown
+  try {
+    json = await response.json()
+  } catch (e) {
+    throw new AiStoring('De AI-analyse is niet gelukt.',
+      `Groq gaf geen leesbaar JSON-antwoord: ${e instanceof Error ? e.message : String(e)}`)
+  }
+
+  const inhoud = leesInhoud(json)
+  if (!inhoud) {
+    throw new AiStoring('De AI gaf geen bruikbaar antwoord.', 'Groq-antwoord zonder message.content')
+  }
+  return inhoud
 }
 
 // choices[0].message.content, maar null-veilig door de hele keten heen.

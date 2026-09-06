@@ -43,3 +43,22 @@ export function bouwGroqBody(opties: {
     ],
   }
 }
+
+// Tekst-only variant (0077, toolbox-onderwerp-advies) — geen afbeelding, dus
+// geen image_url-content nodig. Kortere max_completion_tokens: het antwoord is
+// een duiding van 1-2 zinnen plus een korte bronnenlijst, geen vrije analyse.
+export function bouwGroqTekstBody(opties: {
+  model: string
+  systeemPrompt: string
+  gebruikersTekst: string
+}) {
+  return {
+    model: opties.model,
+    temperature: 0.2,
+    max_completion_tokens: 400,
+    messages: [
+      { role: 'system', content: opties.systeemPrompt },
+      { role: 'user', content: opties.gebruikersTekst },
+    ],
+  }
+}

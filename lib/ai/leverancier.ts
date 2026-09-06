@@ -12,7 +12,7 @@
 // of indirect) in een clientbundel, dan FAALT de build. Zo kan een API-sleutel
 // nooit per ongeluk in de browser belanden.
 import 'server-only'
-import type { AiRegio } from '@/lib/ai-analyse'
+import type { AiLeverancierStatus, AiRegio } from '@/lib/ai-analyse'
 import { maakGroqLeverancier } from './groq'
 
 // Wat de leverancier krijgt. De foto gaat als bytes mee, niet als URL: de server
@@ -47,6 +47,22 @@ export class AiStoring extends Error {
   }
 }
 
+// Toolbox-onderwerp-advies (0077, aanvulling op de trefwoord-matching in
+// toolbox_suggesties): alleen voor een onderwerp waar de trefwoord-koppeling
+// GEEN eigen toolbox en GEEN bibliotheekbron voor vond. Bewust tekst-only,
+// geen foto — de invoer is puur wat de matching al had gevonden.
+export type OnderwerpAdviesInvoer = {
+  onderwerpNaam: string
+  // Waarom dit onderwerp naar boven kwam (uit toolbox_suggesties.redenen) —
+  // context voor de AI, geen persoonsgegeven.
+  redenen: string[]
+}
+
+export type OnderwerpAdviesUitkomst = {
+  advies: string
+  bronnenSuggestie: string[]
+}
+
 export type Leverancier = {
   naam: string           // technische naam, komt zo in de database
   weergavenaam: string   // wat de inspecteur op het scherm ziet
@@ -56,6 +72,7 @@ export type Leverancier = {
   // alleen nog niets ingesteld, en dat zegt de route ook zo.
   sleutelAanwezig: boolean
   analyseerFoto(invoer: FotoAnalyseInvoer): Promise<FotoAnalyseUitkomst>
+  adviseerOnderwerp(invoer: OnderwerpAdviesInvoer): Promise<OnderwerpAdviesUitkomst>
 }
 
 // De beschikbare adapters. Eén regel per leverancier.
@@ -76,13 +93,37 @@ export function kiesLeverancier(): Leverancier | null {
   return maak ? maak() : null
 }
 
+// Gedeelde GET-status voor elke AI-route (welke leverancier, geconfigureerd of
+// niet) — nooit de sleutel. Eén plek, zodat een nieuwe AI-route (zoals
+// app/api/toolbox/onderwerp-advies) 'm hergebruikt in plaats van de
+// bekabeling van app/api/inspectie/ai-analyse te kopiëren.
+export function leverancierStatus(): AiLeverancierStatus {
+  const leverancier = kiesLeverancier()
+  return leverancier
+    ? {
+        geconfigureerd: leverancier.sleutelAanwezig,
+        leverancier: leverancier.naam,
+        weergavenaam: leverancier.weergavenaam,
+        model: leverancier.model,
+        regio: leverancier.regio,
+      }
+    : {
+        geconfigureerd: false,
+        leverancier: 'onbekend',
+        weergavenaam: 'AI-dienst',
+        model: '',
+        regio: 'buiten_eu',
+      }
+}
+
 // ---------------------------------------------------------------------------
 // EEN NIEUWE LEVERANCIER TOEVOEGEN
 // ---------------------------------------------------------------------------
 // 1. Maak lib/ai/<naam>.ts met een maak<Naam>Leverancier(): Leverancier.
 //    Vul naam/weergavenaam/model/regio/sleutelAanwezig en implementeer
-//    analyseerFoto(). Gooi bij storing een AiStoring met een NEDERLANDS
-//    gebruikersbericht; zet het technische detail in het tweede argument.
+//    analyseerFoto() ÉN adviseerOnderwerp(). Gooi bij storing een AiStoring
+//    met een NEDERLANDS gebruikersbericht; zet het technische detail in het
+//    tweede argument.
 // 2. Zet hem in KIES hierboven: <naam>: maak<Naam>Leverancier.
 // 3. Zet AI_LEVERANCIER=<naam> en de bijbehorende sleutel in de omgeving
 //    (.env.local lokaal, projectinstellingen op Vercel).

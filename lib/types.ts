@@ -500,6 +500,23 @@ export type ToolboxBron = {
   gearchiveerd_op: string | null
 }
 
+// Eén regel uit toolbox_suggesties (0077): "aanbevolen deze periode" bovenaan
+// de toolboxmodule. Puur trefwoord-matching over RI&E/inspectie/incident tegen
+// de eigen gekoppelde toolboxen en de onderwerpenbibliotheek — geen AI. Alleen
+// redenen zijn de tekstuele "waarom", nooit een besluit: het systeem beslist
+// niets, de uitvoerder klikt zelf.
+export type ToolboxSuggestie = {
+  onderwerp_code: string
+  onderwerp_naam: string
+  redenen: string[]
+  toolbox_id: string | null
+  toolbox_titel: string | null
+  bron_id: string | null
+  bron_naam: string | null
+  bron_url: string | null
+  heeft_match: boolean
+}
+
 // Eén regel uit bedrijf_toolbox_overzicht (KAM-zijde: koppeling + lokale afwijking).
 export type ToolboxOverzichtItem = {
   toolbox_id: string

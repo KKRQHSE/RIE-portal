@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
-import type { Company, ToolboxOverzichtItem, ToolboxSessiesOverzicht, ToolboxBron } from '@/lib/types'
+import type { Company, ToolboxOverzichtItem, ToolboxSessiesOverzicht, ToolboxBron, ToolboxSuggestie } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
 import ToolboxMaandoverzicht from './ToolboxMaandoverzicht'
@@ -19,7 +19,7 @@ const WAARSCHUWING =
 
 export default function ToolboxClient({
   company, huisstijl = VEILIGE_HUISSTIJL, initialOverzicht, sessies, isAdmin = false,
-  magSessiesBeheren = false, huidigeGebruikerId = null, bronnen = [],
+  magSessiesBeheren = false, huidigeGebruikerId = null, bronnen = [], suggesties = [],
 }: {
   company: Company
   huisstijl?: HuisstijlView
@@ -34,6 +34,8 @@ export default function ToolboxClient({
   huidigeGebruikerId?: string | null
   // Onderwerpenbibliotheek: leesbaar voor elke ingelogde gebruiker (0043).
   bronnen?: ToolboxBron[]
+  // "Aanbevolen deze periode" (0077) — trefwoord-matching, geen AI.
+  suggesties?: ToolboxSuggestie[]
 }) {
   const [supabase] = useState<Supa>(() => createClient())
   const [view, setView] = useState<View>('maandoverzicht')
@@ -76,6 +78,7 @@ export default function ToolboxClient({
         {!isAdmin || view === 'maandoverzicht' ? (
           <ToolboxMaandoverzicht companyId={company.id} initial={sessies}
             gekoppeldeToolboxen={overzicht.filter(t => t.gekoppeld)} bronnen={bronnen}
+            suggesties={suggesties}
             magAlleSessiesBeheren={magSessiesBeheren} huidigeGebruikerId={huidigeGebruikerId} />
         ) : view === 'toolboxen' ? (
           <KoppelBeheer companyId={company.id} supabase={supabase} overzicht={overzicht} onPatch={patch} setFout={setFout} />

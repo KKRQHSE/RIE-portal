@@ -9,6 +9,7 @@ import { INCIDENT_FOTO_BUCKET, type GevolgOptie } from '@/lib/incident'
 import { MELD_TEKST, vertaal } from '@/lib/i18n-werknemer'
 import TaalWissel, { useTaal } from './TaalWissel'
 import HuisstijlLogo from './HuisstijlLogo'
+import BewaarKnop from './BewaarKnop'
 
 // Datum/tijd voor de <input>-velden, vooringevuld op nu (aanpasbaar).
 function nuDatum(): string {
@@ -211,7 +212,21 @@ export default function IncidentMeldClient({
                 {fotos.map((f, i) => (
                   <li key={i} className="flex items-center justify-between gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
                     <span className="truncate text-ink/70">{f.name}</span>
-                    <button type="button" onClick={() => verwijderFoto(i)} className="btn text-ink/40 hover:text-red-600 shrink-0" aria-label={t('verwijderFoto')}>✕</button>
+                    <span className="flex items-center gap-2 shrink-0">
+                      {/* "Bewaar op mijn telefoon" (0078) -- de foto zelf staat al
+                          lokaal in het geheugen (nog niet geüpload), dus direct
+                          delen/downloaden zonder netwerk-aanroep. */}
+                      <BewaarKnop
+                        bron={f}
+                        bestandsnaam={f.name}
+                        mimeType={f.type}
+                        label={t('fotoBewaren')}
+                        bezigLabel={t('bezig')}
+                        opgeslagenLabel={t('fotoBewarenOpgeslagen')}
+                        mislukLabel={t('fotoBewarenMislukt')}
+                      />
+                      <button type="button" onClick={() => verwijderFoto(i)} className="btn text-ink/40 hover:text-red-600" aria-label={t('verwijderFoto')}>✕</button>
+                    </span>
                   </li>
                 ))}
               </ul>

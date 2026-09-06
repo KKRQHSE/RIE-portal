@@ -10,6 +10,7 @@ import { INSPECTIE_FOTO_BUCKET, type InspectieFotoItem } from '@/lib/inspectie-f
 import type { AiLeverancierStatus, AiSuggestie } from '@/lib/ai-analyse'
 import TaalWissel, { useTaal } from './TaalWissel'
 import InspectieFotoAi from './InspectieFotoAi'
+import BewaarKnop from './BewaarKnop'
 import { useVerseUrls } from '@/lib/verse-urls'
 import type {
   Inspectie,
@@ -739,6 +740,20 @@ function FotoBlok({
                   className="btn absolute -top-1.5 -right-1.5 h-6 w-6 rounded-full bg-white border border-ink/20 text-ink/50 hover:text-red-600 hover:border-red-300 text-xs leading-none">
                   ✕
                 </button>
+              )}
+              {/* "Bewaar op mijn telefoon" (0078) -- los van de upload hierboven,
+                  die al is voltooid. Alleen tonen zodra er iets te bewaren valt. */}
+              {f.downloadUrl && (
+                <BewaarKnop
+                  bron={f.downloadUrl}
+                  bestandsnaam={f.bestandsnaam ?? `foto-${f.id}.jpg`}
+                  mimeType={f.type ?? undefined}
+                  label={t('fotoBewaren')}
+                  bezigLabel={t('bezig')}
+                  opgeslagenLabel={t('fotoBewarenOpgeslagen')}
+                  mislukLabel={t('fotoBewarenMislukt')}
+                  compact
+                />
               )}
             </li>
           ))}

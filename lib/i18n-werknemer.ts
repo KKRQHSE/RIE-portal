@@ -140,6 +140,12 @@ export const INSP_TEKST: Woordenboek = {
   foutFotoUpload:   { nl: 'Foto uploaden mislukt.', tr: 'Fotoğraf yüklenemedi.' },
   foutFotoVerwijder: { nl: 'Foto verwijderen mislukt.', tr: 'Fotoğraf silinemedi.' },
 
+  // "Bewaar op mijn telefoon" (0078) — los van de upload naar het portaal.
+  // ⚠️ Ook machinevertaling — laten nakijken.
+  fotoBewaren:           { nl: 'Bewaar op mijn telefoon', tr: 'Telefonuma kaydet' },
+  fotoBewarenOpgeslagen: { nl: 'Opgeslagen', tr: 'Kaydedildi' },
+  fotoBewarenMislukt:    { nl: 'Bewaren mislukt. Probeer het opnieuw.', tr: 'Kaydetme başarısız oldu. Tekrar deneyin.' },
+
   // AI-foto-analyse (0050). ⚠️ Ook machinevertaling — laten nakijken, en hier met
   // extra aandacht: aiWaarschuwingBuitenEu is de tekst waarop de inspecteur zijn
   // toestemming baseert. Een slechte vertaling maakt die toestemming waardeloos.
@@ -192,9 +198,17 @@ export const MELD_TEKST: Woordenboek = {
   meerdereMogelijk: { nl: '(meerdere mogelijk)', tr: '(birden fazla seçilebilir)' },
   jeNaam:           { nl: 'Je naam', tr: 'Adın' },
   naamPlaceholder:  { nl: 'Mag je leeglaten', tr: 'Boş bırakabilirsin' },
+  // Generieke "bezig"-tekst, zelfde sleutel/patroon als TB_TEKST/INSP_TEKST —
+  // hergebruikt door de "bewaar op mijn telefoon"-knop hieronder.
+  bezig:            { nl: 'Bezig…', tr: 'İşleniyor…' },
   fotos:            { nl: 'Foto’s', tr: 'Fotoğraflar' },
   verwijderFoto:    { nl: 'Verwijder foto', tr: 'Fotoğrafı sil' },
   fotoToevoegen:    { nl: 'Foto toevoegen', tr: 'Fotoğraf ekle' },
+  // "Bewaar op mijn telefoon" (0078) — los van het versturen van de melding.
+  // ⚠️ Ook machinevertaling — laten nakijken.
+  fotoBewaren:           { nl: 'Bewaar op mijn telefoon', tr: 'Telefonuma kaydet' },
+  fotoBewarenOpgeslagen: { nl: 'Opgeslagen', tr: 'Kaydedildi' },
+  fotoBewarenMislukt:    { nl: 'Bewaren mislukt. Probeer het opnieuw.', tr: 'Kaydetme başarısız oldu. Tekrar deneyin.' },
   versturen:        { nl: 'Melding versturen', tr: 'Bildirimi gönder' },
   versturenBezig:   { nl: 'Bezig met versturen…', tr: 'Gönderiliyor…' },
   foutLocatie:      { nl: 'Vul de locatie in.', tr: 'Konumu gir.' },

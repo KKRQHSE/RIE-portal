@@ -4,6 +4,11 @@ import { stuurHerinnerMail, type HerinnerActie } from '@/lib/resend'
 
 // Nooit cachen/prerenderen.
 export const dynamic = 'force-dynamic'
+// Loopt over alle bedrijven met een actief ritme + genereert daarna
+// notificaties voor ALLE bedrijven — ruim onder de meeste functielimieten,
+// maar expliciet gezet zodat een groeiend aantal bedrijven niet stilletjes
+// afgekapt wordt.
+export const maxDuration = 60
 
 type Kandidaat = {
   persoon_id: string
@@ -13,6 +18,8 @@ type Kandidaat = {
   acties: HerinnerActie[] | null
 }
 
+type Samenvatting = { companyId: string; verstuurd: number; mislukt: number; fout?: string }
+
 // Constante-tijd-vergelijking van het gedeelde geheim (voorkomt timing-lek).
 function gelijk(a: string, b: string): boolean {
   if (a.length !== b.length) return false
@@ -21,17 +28,11 @@ function gelijk(a: string, b: string): boolean {
   return diff === 0
 }
 
-// AUTOMATISCHE wekker, aangeroepen door pg_cron (geen ingelogde gebruiker).
-// Beveiliging: header 'x-heartbeat-secret' moet exact gelijk zijn aan
-// process.env.HEARTBEAT_SECRET (server-only). Anders 401 en niets doen.
-export async function POST(request: Request) {
-  const secret = process.env.HEARTBEAT_SECRET
-  const meegegeven = request.headers.get('x-heartbeat-secret') ?? ''
-  // Geen geheim geconfigureerd, of mismatch → weigeren.
-  if (!secret || !gelijk(secret, meegegeven)) {
-    return NextResponse.json({ ok: false, fout: 'Niet geautoriseerd.' }, { status: 401 })
-  }
-
+// De eigenlijke heartbeat-uitvoering. Gedeeld door GET (Vercel Cron, zie
+// vercel.json — Vercel Cron doet ALTIJD een GET-aanroep, nooit POST) en POST
+// (handmatig/curl testen, met het eigen x-heartbeat-secret-geheim). Alleen de
+// autorisatie verschilt per aanroepweg; de uitvoering zelf is identiek.
+async function voerHeartbeatUit() {
   const service = createServiceClient()
 
   // Alle bedrijven met een actief ritme (niet 'uit').
@@ -40,7 +41,18 @@ export async function POST(request: Request) {
     .select('company_id, ritme')
     .neq('ritme', 'uit')
   if (instErr) {
-    return NextResponse.json({ ok: false, fout: 'Kon instellingen niet laden.' }, { status: 500 })
+    // Totale infra-fout, geen enkel bedrijf verwerkt — ook dit mag niet stil
+    // verdwijnen in alleen de (hier niet inzichtbare) function-logs.
+    try {
+      await service.rpc('audit_log_schrijven', {
+        p_actie: 'automatische_herinnering_mislukt',
+        p_entiteit: 'herinnering',
+        p_entiteit_id: null,
+        p_company_id: null,
+        p_detail: { fout: instErr.message },
+      })
+    } catch { /* audit-log is best-effort, mag de foutrapportage niet blokkeren */ }
+    return { ok: false as const, fout: 'Kon instellingen niet laden.' }
   }
 
   // Bedrijfsnamen in ÉÉN query vooraf i.p.v. één query per bedrijf in de lus
@@ -56,7 +68,7 @@ export async function POST(request: Request) {
     for (const c of companies ?? []) namen.set(c.id as string, c.name as string)
   }
 
-  const samenvatting: Array<{ companyId: string; verstuurd: number; mislukt: number; fout?: string }> = []
+  const samenvatting: Samenvatting[] = []
 
   for (const inst of instellingen ?? []) {
     const companyId = inst.company_id as string
@@ -120,6 +132,26 @@ export async function POST(request: Request) {
 
   console.log('[heartbeat] herinneringen verstuurd', JSON.stringify(samenvatting))
 
+  // Elk bedrijf dat vandaag verwerkt is krijgt een audit_log-regel — ook een
+  // schone nul (verstuurd:0, mislukt:0) telt, want dat bewijst dat de run
+  // heeft gedraaid. Zo is "het is drie dagen stil" straks een query
+  // (`select * from audit_log where actie='automatische_herinnering' order by
+  // wanneer desc`) i.p.v. iets dat alleen in Vercel's function-logs zichtbaar
+  // is. Best-effort: een mislukte log-regel mag de heartbeat zelf niet slopen.
+  for (const s of samenvatting) {
+    try {
+      await service.rpc('audit_log_schrijven', {
+        p_actie: 'automatische_herinnering',
+        p_entiteit: 'herinnering',
+        p_entiteit_id: null,
+        p_company_id: s.companyId,
+        p_detail: { verstuurd: s.verstuurd, mislukt: s.mislukt, fout: s.fout ?? null },
+      })
+    } catch (e) {
+      console.error('[heartbeat] audit_log_schrijven mislukt', s.companyId, e)
+    }
+  }
+
   // In-app notificaties verversen (B2): los van het e-mail-ritme hierboven --
   // dit vult de periodieke dagbundels + de vier scan-soorten voor iedereen die
   // de app niet elke dag opent (wie 'm wel opent triggert dezelfde scan al
@@ -137,5 +169,41 @@ export async function POST(request: Request) {
   }
   console.log('[heartbeat] notificaties ververst', notificatiesOk, '/', (alleBedrijven ?? []).length)
 
-  return NextResponse.json({ ok: true, bedrijven: samenvatting.length, samenvatting })
+  return {
+    ok: true as const,
+    bedrijven: samenvatting.length,
+    samenvatting,
+    notificaties: { ok: notificatiesOk, totaal: (alleBedrijven ?? []).length },
+  }
+}
+
+// AUTOMATISCH, aangeroepen door Vercel Cron (vercel.json, schedule "0 6 * * *").
+// Vercel Cron doet ALTIJD een GET-aanroep naar het geconfigureerde pad, nooit
+// POST — vandaar een apart GET-pad i.p.v. de bestaande POST hergebruiken.
+// Beveiliging volgt Vercel's eigen conventie: zodra de omgevingsvariabele
+// CRON_SECRET op het project staat, stuurt Vercel die automatisch mee als
+// 'Authorization: Bearer <CRON_SECRET>' bij de cron-aanroep. Zonder match: 401
+// en niets doen. (Los geheim van HEARTBEAT_SECRET hieronder — een gelekt
+// handmatig testgeheim mag de cron-aanroep niet kunnen namaken en andersom.)
+export async function GET(request: Request) {
+  const secret = process.env.CRON_SECRET
+  const header = request.headers.get('authorization') ?? ''
+  if (!secret || !gelijk(`Bearer ${secret}`, header)) {
+    return NextResponse.json({ ok: false, fout: 'Niet geautoriseerd.' }, { status: 401 })
+  }
+  const resultaat = await voerHeartbeatUit()
+  return NextResponse.json(resultaat, { status: resultaat.ok ? 200 : 500 })
+}
+
+// HANDMATIG/TEST — bv. een curl-aanroep buiten het dagelijkse schema om.
+// Beveiliging: header 'x-heartbeat-secret' moet exact gelijk zijn aan
+// process.env.HEARTBEAT_SECRET (server-only). Anders 401 en niets doen.
+export async function POST(request: Request) {
+  const secret = process.env.HEARTBEAT_SECRET
+  const meegegeven = request.headers.get('x-heartbeat-secret') ?? ''
+  if (!secret || !gelijk(secret, meegegeven)) {
+    return NextResponse.json({ ok: false, fout: 'Niet geautoriseerd.' }, { status: 401 })
+  }
+  const resultaat = await voerHeartbeatUit()
+  return NextResponse.json(resultaat, { status: resultaat.ok ? 200 : 500 })
 }

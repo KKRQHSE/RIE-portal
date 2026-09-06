@@ -61,6 +61,17 @@ next-env.d.ts
 !/import/build_dataset.py
 !/import/test_build_dataset_aantoonbaar.py
 
+# Expliciet, ter bevestiging (bovenop /import/* hierboven — allebei de mogelijke
+# padnamen, voor het geval de map ooit hernoemd wordt): Dutch Waste-brondata
+# 6 sept 2026, echte klantdata, nooit committen.
+/import/dutchwaste/
+/import/dutchwaste-2026/
+
+# Werkbestanden van een import-inventarisatie (gerenderde pdf-pagina's e.d. uit
+# klantbronbestanden) — nooit committen, waar ze ook staan.
+/scripts/_dw_check/
+**/_dw_check/
+
 # Lokale basislijn van de migratiecontrole (bevat bedrijfsnamen + checksums).
 /scripts/.rie_aantoonbaar_basislijn.json
 
@@ -70,6 +81,14 @@ next-env.d.ts
 # Bron-RI&E's en gegenereerde klantdata, waar dan ook (defensief).
 *.docx
 *.doc
+*.pdf
+*.xlsx
+*.xls
+*.png
+*.jpg
+*.jpeg
+!/public/logo.jpg
+!/audit/**/*.png
 /mnt/
 
 # Python cache

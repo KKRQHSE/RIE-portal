@@ -204,6 +204,9 @@ export const MELD_TEKST: Woordenboek = {
   fotos:            { nl: 'Foto’s', tr: 'Fotoğraflar' },
   verwijderFoto:    { nl: 'Verwijder foto', tr: 'Fotoğrafı sil' },
   fotoToevoegen:    { nl: 'Foto toevoegen', tr: 'Fotoğraf ekle' },
+  // Fase 2 (0078): stond hardcoded in Nederlands in de code (bleef Nederlands
+  // staan bij taal=TR) -- nu via het woordenboek, zelfde tekst als INSP_TEKST.
+  foutFotoTeGroot:  { nl: 'Foto is te groot (max 5 MB).', tr: 'Fotoğraf çok büyük (en fazla 5 MB).' },
   // "Bewaar op mijn telefoon" (0078) — los van het versturen van de melding.
   // ⚠️ Ook machinevertaling — laten nakijken.
   fotoBewaren:           { nl: 'Bewaar op mijn telefoon', tr: 'Telefonuma kaydet' },

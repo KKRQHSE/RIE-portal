@@ -68,7 +68,7 @@ export default function IncidentMeldClient({
         blob = v.blob; naam = v.naam; type = v.type
       } catch { /* origineel proberen */ }
     }
-    if (blob.size > MAX_BYTES) throw new Error(`Foto "${file.name}" is te groot (max 5 MB).`)
+    if (blob.size > MAX_BYTES) throw new Error(t('foutFotoTeGroot'))
 
     const res = await fetch('/api/incident/foto-upload', {
       method: 'POST',

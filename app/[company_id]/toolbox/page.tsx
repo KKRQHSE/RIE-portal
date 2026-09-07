@@ -29,7 +29,7 @@ export default async function ToolboxPage({
     supabase.from('bedrijf_modules').select('actief')
       .eq('company_id', company_id).eq('module', 'toolbox')
       .eq('module_status', 'actief').eq('actief', true).maybeSingle(),
-    supabase.from('companies').select('id, name, approved_at, approved_by').eq('id', company_id).single(),
+    supabase.from('companies').select('id, name, approved_at, approved_by, oefenomgeving').eq('id', company_id).single(),
     supabase.rpc('bedrijf_toolbox_overzicht', { p_company_id: company_id }),
     supabase.rpc('toolbox_sessies_overzicht', { p_company_id: company_id }),
     // Onderwerpenbibliotheek: centraal, alleen de niet-gearchiveerde bronnen.
@@ -55,8 +55,11 @@ export default async function ToolboxPage({
   // (12 maanden aan sessies) buiten beeld scrollen. Zelfde bestemming als de
   // company-naam in CompanyTopBar (homeHref daar): dashboard voor wie mag
   // beheren, anders /pva (teamleider heeft geen dashboard-toegang, dus geen
-  // "dashboard" in het label voor die rol).
-  const terugHref = magBeheren ? `/${company_id}/dashboard` : `/${company_id}/pva`
+  // "dashboard" in het label voor die rol) -- of /actielijst in een
+  // oefenomgeving, waar /pva niet bestaat (zie migratie 0078).
+  const terugHref = magBeheren
+    ? `/${company_id}/dashboard`
+    : `/${company_id}/${company.oefenomgeving ? 'actielijst' : 'pva'}`
   const terugLabel = magBeheren ? 'Terug naar dashboard' : 'Terug naar overzicht'
 
   return (

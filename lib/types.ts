@@ -778,6 +778,18 @@ export type IfGetalOverzicht = { dit_jaar: IfGetalJaar; vorig_jaar: IfGetalJaar 
 // null zolang er dat jaar geen toolbox-sessie was (geen misleidende 0%);
 // inspecties.doel_totaal is de HUIDIGE doel-instelling toegepast op elk jaar
 // (geen jaar-specifieke historische instelling -- zie rapport).
+// Roll-up per locatie (migratie 0084) -- alleen de drie echt locatie-gebonden
+// tellingen. if_getal/dekking_pct/doel_totaal/doelstelling zijn NIET per
+// locatie beschikbaar (zie migratie 0084 voor de reden) en blijven dus
+// uitsluitend organisatiebreed op MeerjarenRegel zelf staan.
+export type MeerjarenPerLocatie = {
+  locatie_id: string
+  locatie_naam: string
+  inspecties_afgerond: number
+  toolbox_sessies: number
+  incidenten: number
+}
+
 export type MeerjarenRegel = {
   jaar: number
   if_getal: IfGetalJaar
@@ -785,6 +797,7 @@ export type MeerjarenRegel = {
   toolbox: { sessies: number; dekking_pct: number | null }
   incidenten: number
   doelstelling: string | null
+  per_locatie: MeerjarenPerLocatie[]
 }
 
 // Eén regel van de RPC dashboard_admin_overzicht(): per bedrijf voor de admin-roll-up.

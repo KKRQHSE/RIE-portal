@@ -55,6 +55,7 @@ const TESTS = [
   { naam: 'notificaties_test.mjs',                  soort: 'database' },
   { naam: 'if_getal_test.mjs',                      soort: 'database' },
   { naam: 'dashboard_meerjaren_test.mjs',           soort: 'database' },
+  { naam: 'dashboard_meerjaren_locatie_test.mjs',   soort: 'database' },
   { naam: 'module_isolatie_test.mjs',               soort: 'database' },
   { naam: 'locatie_isolatie_test.mjs',              soort: 'database' },
   { naam: 'locatie_inspectie_toolbox_test.mjs',     soort: 'database' },

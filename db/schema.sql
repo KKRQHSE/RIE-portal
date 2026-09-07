@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-07T14:49:12.838Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-07T14:57:59.404Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -2766,10 +2766,6 @@ begin
     union
     select jaar from bedrijf_inspectie_doel where company_id = p_company_id
   ),
-  -- Effectief actieve personen per jaar: overlap van [datum_in_dienst, datum_uit_dienst]
-  -- met [1 jan, 31 dec] van dat jaar. Onbekende datum_in_dienst = "al vóór dit jaar";
-  -- onbekende datum_uit_dienst = "nog steeds". Zelfde aanpak als toolbox_dashboard(),
-  -- hier per willekeurig jaar i.p.v. alleen het huidige.
   headcount as (
     select j.jaar, count(*) as n
     from jaren j
@@ -2819,14 +2815,34 @@ begin
       select count(*) from incident
        where company_id = p_company_id and extract(year from datum)::int = j.jaar
     ),
-    -- Doelstelling: per jaar als vastgelegd; voor het HUIDIGE jaar valt dit terug op de
-    -- (nooit-per-jaar-opgeslagen) legacy tekst zodra er nog geen jaar-specifieke rij is --
-    -- geen historie verzonnen voor oudere jaren, alleen continuiteit voor "nu".
     'doelstelling', coalesce(
       (select tekst from bedrijf_jaardoelstelling where company_id = p_company_id and jaar = j.jaar),
       case when j.jaar = extract(year from current_date)::int
            then (select doelstelling_tekst from bedrijf_dashboard_instelling where company_id = p_company_id)
            else null end
+    ),
+    -- Nieuw (0084): roll-up per locatie, alleen de drie echt locatie-gebonden
+    -- tellingen. Lege array bij een bedrijf zonder locaties.
+    'per_locatie', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'locatie_id', l.id,
+        'locatie_naam', l.naam,
+        'inspecties_afgerond', (
+          select count(*) from inspectie i
+           where i.company_id = p_company_id and i.status = 'afgerond'
+             and extract(year from i.uitgevoerd_op)::int = j.jaar and i.locatie_id = l.id
+        ),
+        'toolbox_sessies', (
+          select count(*) from toolbox_sessie s
+           where s.company_id = p_company_id and extract(year from s.datum)::int = j.jaar and s.locatie_id = l.id
+        ),
+        'incidenten', (
+          select count(*) from incident inc
+           where inc.company_id = p_company_id and extract(year from inc.datum)::int = j.jaar and inc.locatie_id = l.id
+        )
+      ) order by l.volgorde), '[]'::jsonb)
+      from locatie l
+      where l.company_id = p_company_id and l.gearchiveerd_op is null
     )
   ) order by j.jaar desc), '[]'::jsonb)
   into v

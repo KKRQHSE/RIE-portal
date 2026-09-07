@@ -37,12 +37,23 @@ type RawData = {
   toolboxen?: WerknemerToolbox[] | null
 }
 
+// Server-component, geen taal-state (het token is nog niet gevalideerd, dus
+// er is geen bedrijf/huisstijl om een taalwissel op te baseren). Dood-lopend
+// scherm, dus statisch tweetalig i.p.v. een interactieve toggle (Kees'
+// keuze, optie A uit NACHT_2026-09-06.md). ⚠️ TR is machinevertaling, nog te
+// laten nakijken door een moedertaalspreker.
 function OngeldigeLink() {
   return (
     <main className="min-h-screen glass-bg flex items-center justify-center px-4">
-      <div className="glass-tile rounded-2xl p-8 max-w-md text-center">
-        <h1 className="text-lg font-semibold text-ink mb-2">Deze link is niet meer geldig</h1>
-        <p className="text-sm text-ink/50">De link is verlopen of ingetrokken. Vraag je KAM-coördinator om een nieuwe link.</p>
+      <div className="glass-tile rounded-2xl p-8 max-w-md text-center space-y-4">
+        <div>
+          <h1 className="text-lg font-semibold text-ink mb-2">Deze link is niet meer geldig</h1>
+          <p className="text-sm text-ink/50">De link is verlopen of ingetrokken. Vraag je KAM-coördinator om een nieuwe link.</p>
+        </div>
+        <div className="pt-4 border-t border-ink/10">
+          <p className="text-lg font-semibold text-ink mb-2">Bu bağlantının süresi doldu</p>
+          <p className="text-sm text-ink/50">Bağlantının süresi doldu veya iptal edildi. KAM koordinatöründen yeni bir bağlantı iste.</p>
+        </div>
       </div>
     </main>
   )

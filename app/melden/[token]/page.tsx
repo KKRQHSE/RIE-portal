@@ -19,14 +19,27 @@ type RawData = {
   gevolg_opties?: GevolgOptie[] | null
 }
 
+// Server-component, geen taal-state (het token is nog niet gevalideerd, dus
+// er is geen bedrijf/huisstijl om een taalwissel op te baseren). Dood-lopend
+// scherm, dus statisch tweetalig i.p.v. een interactieve toggle (Kees'
+// keuze, optie A uit NACHT_2026-09-06.md). ⚠️ TR is machinevertaling, nog te
+// laten nakijken door een moedertaalspreker.
 function OngeldigeLink() {
   return (
     <main className="min-h-screen glass-bg flex items-center justify-center px-4">
-      <div className="glass-tile rounded-2xl p-8 max-w-md text-center">
-        <h1 className="text-lg font-semibold text-ink mb-2">Deze meldlink is niet geldig</h1>
-        <p className="text-sm text-ink/50">
-          De link is ingetrokken of onjuist. Vraag je contactpersoon om de actuele meldlink of QR-code.
-        </p>
+      <div className="glass-tile rounded-2xl p-8 max-w-md text-center space-y-4">
+        <div>
+          <h1 className="text-lg font-semibold text-ink mb-2">Deze meldlink is niet geldig</h1>
+          <p className="text-sm text-ink/50">
+            De link is ingetrokken of onjuist. Vraag je contactpersoon om de actuele meldlink of QR-code.
+          </p>
+        </div>
+        <div className="pt-4 border-t border-ink/10">
+          <p className="text-lg font-semibold text-ink mb-2">Bu bildirim bağlantısı geçerli değil</p>
+          <p className="text-sm text-ink/50">
+            Bağlantı iptal edildi veya hatalı. Güncel bildirim bağlantısını veya QR kodunu iletişim kişinden iste.
+          </p>
+        </div>
       </div>
     </main>
   )

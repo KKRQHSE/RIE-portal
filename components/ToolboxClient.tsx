@@ -4,14 +4,15 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
-import type { Company, ToolboxOverzichtItem, ToolboxSessiesOverzicht, ToolboxBron, ToolboxSuggestie } from '@/lib/types'
+import type { Company, ToolboxOverzichtItem, ToolboxSessiesOverzicht, ToolboxBron, ToolboxSuggestie, BedrijfToolboxQuizVraag } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
 import ToolboxMaandoverzicht from './ToolboxMaandoverzicht'
 import ToolboxExport from './ToolboxExport'
+import ToolboxAiQuizBeheer from './ToolboxAiQuiz'
 
 type Supa = ReturnType<typeof createClient>
-type View = 'maandoverzicht' | 'toolboxen' | 'export'
+type View = 'maandoverzicht' | 'toolboxen' | 'ai-quiz' | 'export'
 
 const WAARSCHUWING =
   'Je wijkt af van de centrale toolbox op eigen initiatief. Gevolg: je krijgt centrale ' +
@@ -20,23 +21,27 @@ const WAARSCHUWING =
 
 export default function ToolboxClient({
   company, huisstijl = VEILIGE_HUISSTIJL, initialOverzicht, sessies, isAdmin = false,
-  magSessiesBeheren = false, huidigeGebruikerId = null, bronnen = [], suggesties = [], terugHref, terugLabel,
+  magSessiesBeheren = false, huidigeGebruikerId = null, bronnen = [], suggesties = [],
+  initialQuizzes = [], terugHref, terugLabel,
 }: {
   company: Company
   huisstijl?: HuisstijlView
   initialOverzicht: ToolboxOverzichtItem[]
   sessies: ToolboxSessiesOverzicht | null
-  // Koppelen/beheren en bewijs&export zijn beheerwerk: alleen voor de admin.
-  // De klant (KAM) ziet enkel het maandoverzicht.
+  // Koppelen/lokaal-aanpassen blijft beheerwerk: alleen voor de admin. De klant
+  // (KAM) ziet het maandoverzicht + (als organisator) de AI-quiz-tab.
   isAdmin?: boolean
   // Admin/KAM mag elke sessie verwijderen; teamleider alleen eigen sessies
-  // (aangemaakt_door === huidigeGebruikerId) — zie ToolboxMaandoverzicht.
+  // (aangemaakt_door === huidigeGebruikerId) — zie ToolboxMaandoverzicht. Ook
+  // de organisator-gate voor de AI-quiz-tab (KAM/admin, geen teamleider).
   magSessiesBeheren?: boolean
   huidigeGebruikerId?: string | null
   // Onderwerpenbibliotheek: leesbaar voor elke ingelogde gebruiker (0043).
   bronnen?: ToolboxBron[]
   // "Aanbevolen deze periode" (0077) — trefwoord-matching, geen AI.
   suggesties?: ToolboxSuggestie[]
+  // Al opgeslagen AI-quizvragen (0079) — alleen relevant voor de organisator.
+  initialQuizzes?: BedrijfToolboxQuizVraag[]
   // Waar "terug" naartoe gaat: dashboard voor wie mag beheren, anders /pva
   // (teamleider). De sticky CompanyTopBar biedt al een weg terug, maar kan op
   // een lang scherm buiten beeld scrollen — deze link staat altijd bovenaan
@@ -48,6 +53,8 @@ export default function ToolboxClient({
   const [view, setView] = useState<View>('maandoverzicht')
   const [overzicht, setOverzicht] = useState<ToolboxOverzichtItem[]>(initialOverzicht)
   const [fout, setFout] = useState<string | null>(null)
+  // Organisator = wie de toolbox-inhoud beheert (KAM/admin) — geen teamleider.
+  const isOrganisator = isAdmin || magSessiesBeheren
 
   function patch(id: string, u: Partial<ToolboxOverzichtItem>) {
     setOverzicht(prev => prev.map(t => (t.toolbox_id === id ? { ...t, ...u } : t)))
@@ -76,26 +83,35 @@ export default function ToolboxClient({
           <p className="text-sm text-ink/50 mt-0.5">Toolboxen</p>
         </div>
 
-        {isAdmin && (
+        {isOrganisator && (
           <div className="flex flex-wrap gap-2 mb-4">
             {tab('maandoverzicht', 'Maandoverzicht')}
-            {tab('toolboxen', 'Toolboxen')}
-            {tab('export', 'Bewijs & export')}
+            {isAdmin && tab('toolboxen', 'Toolboxen')}
+            {tab('ai-quiz', 'AI-quiz')}
+            {isAdmin && tab('export', 'Bewijs & export')}
           </div>
         )}
 
         {fout && <p className="text-sm text-red-600 mb-3">{fout}</p>}
 
-        {/* Niet-admin: altijd alleen het maandoverzicht, ongeacht de view-state. */}
-        {!isAdmin || view === 'maandoverzicht' ? (
+        {/* Teamleider (geen organisator): altijd alleen het maandoverzicht,
+            ongeacht de view-state. Toolboxen/export blijven admin-only. */}
+        {!isOrganisator || view === 'maandoverzicht' ? (
           <ToolboxMaandoverzicht companyId={company.id} initial={sessies}
             gekoppeldeToolboxen={overzicht.filter(t => t.gekoppeld)} bronnen={bronnen}
             suggesties={suggesties}
             magAlleSessiesBeheren={magSessiesBeheren} huidigeGebruikerId={huidigeGebruikerId} />
-        ) : view === 'toolboxen' ? (
+        ) : view === 'toolboxen' && isAdmin ? (
           <KoppelBeheer companyId={company.id} supabase={supabase} overzicht={overzicht} onPatch={patch} setFout={setFout} />
-        ) : (
+        ) : view === 'ai-quiz' ? (
+          <ToolboxAiQuizBeheer companyId={company.id} gekoppeldeToolboxen={overzicht.filter(t => t.gekoppeld)} initialQuizzes={initialQuizzes} />
+        ) : view === 'export' && isAdmin ? (
           <ToolboxExport companyId={company.id} />
+        ) : (
+          <ToolboxMaandoverzicht companyId={company.id} initial={sessies}
+            gekoppeldeToolboxen={overzicht.filter(t => t.gekoppeld)} bronnen={bronnen}
+            suggesties={suggesties}
+            magAlleSessiesBeheren={magSessiesBeheren} huidigeGebruikerId={huidigeGebruikerId} />
         )}
       </div>
     </main>

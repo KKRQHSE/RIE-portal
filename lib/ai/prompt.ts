@@ -8,7 +8,7 @@
 // pure functies — geen sleutel, geen endpoint, geen netwerk. Daardoor kan
 // scripts/ai_analyse_selftest.ts de échte parser testen in plaats van een
 // nagebouwde kopie. De sleutel zit één laag dieper, in lib/ai/groq.ts.
-import type { FotoAnalyseUitkomst, OnderwerpAdviesUitkomst } from './leverancier'
+import type { FotoAnalyseUitkomst, OnderwerpAdviesUitkomst, ToolboxQuizVoorstel } from './leverancier'
 
 // Bovengrens per lijst. Een inspecteur moet in één oogopslag kunnen kiezen —
 // tien aanvinkbare opties is geen keuzehulp meer. leesAntwoord kapt hier ook
@@ -139,6 +139,122 @@ export const SYSTEEM_PROMPT_ONDERWERP_ADVIES = [
   '{"advies": "1-2 zinnen duiding, geen instructie",',
   ' "bronnen_suggestie": ["bron of organisatie 1", "bron of organisatie 2"]}',
 ].join('\n')
+
+// ============================================================================
+// Toolbox-AI-quiz — de organisator (KAM/admin) laat conceptvragen genereren
+// bij een toolbox (app/api/toolbox/quiz-genereren). Elke vraag toetst
+// UITSLUITEND de meegegeven toolbox-tekst; de AI verzint geen nieuwe norm.
+// Niets wordt hier opgeslagen — dat gebeurt pas als de organisator minstens
+// AI_QUIZ_MINIMUM_OVERGENOMEN vragen aanvinkt en op Opslaan drukt (RPC
+// toolbox_quiz_opslaan, migratie 0079).
+// ============================================================================
+export const AI_MAX_QUIZ_OPTIES = 5
+
+export const SYSTEEM_PROMPT_TOOLBOX_QUIZ = [
+  'Je helpt een KAM-coördinator een korte kennischeck (quiz) samenstellen bij een',
+  'toolbox-veiligheidsonderwerp in Nederland.',
+  '',
+  'Regels, HARD:',
+  '- Je toetst UITSLUITEND de inhoud die je krijgt (de toolbox-tekst, en de genoemde bronnen',
+  '  alleen als "waar meer over te lezen is"). Je verzint GEEN nieuwe veiligheidsnorm, wet of',
+  '  getal dat niet in de toolbox-tekst staat of daar rechtstreeks uit volgt.',
+  '- Elke vraag heeft precies 1 juist antwoord en 3 of 4 opties, kort en concreet — geen',
+  '  meerkeuze met twee bijna-identieke antwoorden.',
+  '- Elke vraag krijgt een korte uitleg (1 zin) waarom dat antwoord juist is.',
+  '- Nederlands, nuchter, voor een medewerker op de werkvloer — geen jargon, geen wetsartikelen.',
+  '- Maak GEEN vraag die (bijna) letterlijk overeenkomt met een vraag uit "al gebruikte',
+  '  vragen" hieronder — kies een andere invalshoek op het onderwerp.',
+  '',
+  'Antwoord UITSLUITEND met JSON in precies deze vorm, zonder tekst eromheen:',
+  '{"vragen": [',
+  '  {"vraagtekst": "...", "opties": ["...", "...", "..."], "juist_antwoord": 0, "uitleg": "..."}',
+  ']}',
+  '"juist_antwoord" is de 0-gebaseerde index in "opties" van het juiste antwoord.',
+].join('\n')
+
+export function toolboxQuizPrompt(invoer: {
+  toolboxTitel: string
+  toolboxTekst: string
+  bronnen: { naam: string; omschrijving: string | null }[]
+  aantal: number
+  uitsluitenTeksten: string[]
+}): string {
+  const bronnenTekst = invoer.bronnen.length
+    ? invoer.bronnen.map(b => `- ${b.naam}${b.omschrijving ? `: ${b.omschrijving}` : ''}`).join('\n')
+    : '(geen specifieke bron meegegeven)'
+  const uitsluitenTekst = invoer.uitsluitenTeksten.length
+    ? invoer.uitsluitenTeksten.map(t => `- ${t}`).join('\n')
+    : '(nog geen)'
+  return [
+    `Toolbox: "${invoer.toolboxTitel}"`,
+    `Toolbox-tekst:`,
+    invoer.toolboxTekst,
+    '',
+    `Waar meer over dit onderwerp te lezen is (context, geen vindplaats voor nieuwe normen):`,
+    bronnenTekst,
+    '',
+    `Al gebruikte vragen (verzin iets anders):`,
+    uitsluitenTekst,
+    '',
+    `Genereer precies ${invoer.aantal} nieuwe, verschillende vragen.`,
+  ].join('\n')
+}
+
+function leesQuizVraag(waarde: unknown): ToolboxQuizVoorstel | null {
+  if (typeof waarde !== 'object' || waarde === null) return null
+  const obj = waarde as Record<string, unknown>
+  const vraagtekst = typeof obj.vraagtekst === 'string' ? obj.vraagtekst.trim() : ''
+  if (!vraagtekst) return null
+  const optiesRuw = Array.isArray(obj.opties) ? obj.opties : []
+  const opties = optiesRuw
+    .filter((o): o is string => typeof o === 'string')
+    .map(o => o.trim())
+    .filter(Boolean)
+    .slice(0, AI_MAX_QUIZ_OPTIES)
+  if (opties.length < 2) return null
+  const juistRuw = obj.juist_antwoord
+  const juistAntwoord = typeof juistRuw === 'number' ? Math.trunc(juistRuw) : Number.NaN
+  if (!Number.isInteger(juistAntwoord) || juistAntwoord < 0 || juistAntwoord >= opties.length) return null
+  const uitleg = typeof obj.uitleg === 'string' ? obj.uitleg.trim() : ''
+  return { vraagtekst, opties, juistAntwoord, uitleg }
+}
+
+/**
+ * Leest de conceptvragen uit. Zelfde vergevingsgezinde aanpak als de rest van
+ * dit bestand: JSON-object met "vragen", of (sommige modellen doen dat) een
+ * kale array. Een vraag die niet aan de vorm voldoet (geen 2+ opties, geen
+ * geldige juist_antwoord-index) valt eruit in plaats van de hele batch te
+ * laten mislukken — de organisator ziet dan gewoon iets minder voorstellen.
+ */
+export function leesToolboxQuizVoorstellen(ruw: string, maxAantal: number): ToolboxQuizVoorstel[] {
+  const tekst = ontdoeVanRuis(ruw ?? '')
+  if (!tekst) return []
+
+  const kandidaten: string[] = [tekst]
+  const eersteObj = tekst.indexOf('{')
+  const laatsteObj = tekst.lastIndexOf('}')
+  if (eersteObj >= 0 && laatsteObj > eersteObj) kandidaten.push(tekst.slice(eersteObj, laatsteObj + 1))
+  const eersteArr = tekst.indexOf('[')
+  const laatsteArr = tekst.lastIndexOf(']')
+  if (eersteArr >= 0 && laatsteArr > eersteArr) kandidaten.push(tekst.slice(eersteArr, laatsteArr + 1))
+
+  for (const kandidaat of kandidaten) {
+    try {
+      const parsed = JSON.parse(kandidaat) as unknown
+      const lijst = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray((parsed as Record<string, unknown>)?.vragen)
+          ? (parsed as Record<string, unknown>).vragen as unknown[]
+          : null
+      if (!lijst) continue
+      const vragen = lijst.map(leesQuizVraag).filter((v): v is ToolboxQuizVoorstel => v !== null).slice(0, maxAantal)
+      if (vragen.length > 0) return vragen
+    } catch {
+      // volgende kandidaat
+    }
+  }
+  return []
+}
 
 export function onderwerpAdviesPrompt(onderwerpNaam: string, redenen: string[]): string {
   const redenTekst = redenen.length ? redenen.map(r => `- ${r}`).join('\n') : '(geen specifieke reden meegegeven)'

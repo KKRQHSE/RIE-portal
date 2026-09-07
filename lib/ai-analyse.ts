@@ -41,6 +41,25 @@ export type AiSuggestie = {
 // alleen nog niets geconfigureerd.
 export const AI_NIET_GECONFIGUREERD = 'niet_geconfigureerd'
 
+// ============================================================================
+// AI-quiz per toolbox (organisator laat 6 conceptvragen genereren, neemt er
+// minstens 3 over) — app/api/toolbox/quiz-genereren. Client-veilig: alleen
+// vorm, geen sleutel/leveranciercode.
+// ============================================================================
+export const AI_QUIZ_AANTAL_VOORSTEL = 6
+export const AI_QUIZ_MINIMUM_OVERGENOMEN = 3
+
+// Eén conceptvraag zoals de AI hem voorstelt — nog niets is opgeslagen. `id`
+// is een lokaal (client-side) sleuteltje voor de React-lijst/checkbox-state,
+// geen database-id.
+export type QuizVraagVoorstel = {
+  id: string
+  vraagtekst: string
+  opties: string[]
+  juist_antwoord: number
+  uitleg: string
+}
+
 // Bovengrens op wat we naar een externe dienst sturen. De browser verkleint een
 // foto al vóór upload (lib/afbeelding.ts); dit is de backstop aan de serverkant.
 export const AI_MAX_FOTO_BYTES = 4 * 1024 * 1024 // 4 MB

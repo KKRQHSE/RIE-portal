@@ -489,6 +489,21 @@ export type CentraleToolbox = {
 
 export type CentraleToolboxMetVragen = CentraleToolbox & { vragen: CentraleToolboxVraag[] }
 
+// Eén BEVESTIGDE quizvraag uit bedrijf_toolbox_quiz (0079) — de AI-quiz die de
+// organisator (KAM/admin) heeft opgeslagen voor deze toolbox bij dit bedrijf.
+// Los van CentraleToolboxVraag (het globale, admin-beheerde sjabloon).
+export type BedrijfToolboxQuizVraag = {
+  id: string
+  company_id: string
+  toolbox_id: string
+  vraagtekst: string
+  opties: string[]
+  juist_antwoord: number
+  uitleg: string | null
+  volgorde: number
+  aangemaakt_op: string
+}
+
 // Onderwerpenbibliotheek: beheerde links naar externe toolbox-bronnen (0043).
 // Centraal, geen company_id — elke ingelogde gebruiker leest, alleen admin schrijft.
 export type ToolboxBron = {

@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-07T12:15:46.472Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-07T12:36:51.200Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -187,6 +187,19 @@ CREATE TABLE public.bedrijf_toolbox_instelling (
   company_id uuid NOT NULL,
   sessie_doel_per_jaar integer DEFAULT 12 NOT NULL,
   updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE public.bedrijf_toolbox_quiz (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  toolbox_id uuid NOT NULL,
+  vraagtekst text NOT NULL,
+  opties jsonb NOT NULL,
+  juist_antwoord integer NOT NULL,
+  uitleg text,
+  volgorde integer DEFAULT 0 NOT NULL,
+  aangemaakt_door uuid,
+  aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL
 );
 
 CREATE TABLE public.bedrijf_vraag_afwijking (
@@ -756,6 +769,7 @@ ALTER TABLE public.bedrijf_rubriek ADD CONSTRAINT bedrijf_rubriek_pkey PRIMARY K
 ALTER TABLE public.bedrijf_toolbox ADD CONSTRAINT bedrijf_toolbox_pkey PRIMARY KEY (company_id, toolbox_id);
 ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT bedrijf_toolbox_afwijking_pkey PRIMARY KEY (company_id, toolbox_id);
 ALTER TABLE public.bedrijf_toolbox_instelling ADD CONSTRAINT bedrijf_toolbox_instelling_pkey PRIMARY KEY (company_id);
+ALTER TABLE public.bedrijf_toolbox_quiz ADD CONSTRAINT bedrijf_toolbox_quiz_pkey PRIMARY KEY (id);
 ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT bedrijf_vraag_afwijking_pkey PRIMARY KEY (company_id, vraag_id);
 ALTER TABLE public.bewijs ADD CONSTRAINT bewijs_pkey PRIMARY KEY (id);
 ALTER TABLE public.centrale_audit_vca_paragraaf ADD CONSTRAINT centrale_audit_vca_paragraaf_pkey PRIMARY KEY (code);
@@ -880,6 +894,9 @@ ALTER TABLE public.bedrijf_toolbox ADD CONSTRAINT bedrijf_toolbox_toolbox_id_fke
 ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT bedrijf_toolbox_afwijking_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_toolbox_afwijking ADD CONSTRAINT bedrijf_toolbox_afwijking_toolbox_id_fkey FOREIGN KEY (toolbox_id) REFERENCES centrale_toolbox(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_toolbox_instelling ADD CONSTRAINT bedrijf_toolbox_instelling_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_toolbox_quiz ADD CONSTRAINT bedrijf_toolbox_quiz_aangemaakt_door_fkey FOREIGN KEY (aangemaakt_door) REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE public.bedrijf_toolbox_quiz ADD CONSTRAINT bedrijf_toolbox_quiz_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.bedrijf_toolbox_quiz ADD CONSTRAINT bedrijf_toolbox_quiz_toolbox_id_fkey FOREIGN KEY (toolbox_id) REFERENCES centrale_toolbox(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT bedrijf_vraag_afwijking_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT bedrijf_vraag_afwijking_vraag_id_fkey FOREIGN KEY (vraag_id) REFERENCES centrale_vraag(id) ON DELETE CASCADE;
 ALTER TABLE public.bewijs ADD CONSTRAINT bewijs_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
@@ -971,6 +988,7 @@ CREATE INDEX bedrijf_inspectie_doel_company_idx ON public.bedrijf_inspectie_doel
 CREATE INDEX bedrijf_rubriek_company_idx ON public.bedrijf_rubriek USING btree (company_id);
 CREATE INDEX bedrijf_toolbox_afwijking_company_idx ON public.bedrijf_toolbox_afwijking USING btree (company_id);
 CREATE INDEX bedrijf_toolbox_company_idx ON public.bedrijf_toolbox USING btree (company_id);
+CREATE INDEX bedrijf_toolbox_quiz_bedrijf_idx ON public.bedrijf_toolbox_quiz USING btree (company_id, toolbox_id, volgorde);
 CREATE INDEX bedrijf_vraag_afwijking_company_idx ON public.bedrijf_vraag_afwijking USING btree (company_id);
 CREATE INDEX bevinding_inspectie_idx ON public.inspectie_bevinding USING btree (inspectie_id);
 CREATE INDEX bewijs_company_idx ON public.bewijs USING btree (company_id);
@@ -1046,6 +1064,7 @@ ALTER TABLE public.bedrijf_rubriek ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_toolbox ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_toolbox_afwijking ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_toolbox_instelling ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bedrijf_toolbox_quiz ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bedrijf_vraag_afwijking ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bewijs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.centrale_audit_vca_paragraaf ENABLE ROW LEVEL SECURITY;
@@ -1127,6 +1146,8 @@ CREATE POLICY bedrijf_toolbox_afwijking_sel ON public.bedrijf_toolbox_afwijking 
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bedrijf_toolbox_instelling_sel ON public.bedrijf_toolbox_instelling AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_werken(company_id));
+CREATE POLICY bedrijf_toolbox_quiz_sel ON public.bedrijf_toolbox_quiz AS PERMISSIVE FOR SELECT TO public
+  USING ((mag_bedrijf_werken(company_id) OR is_admin()));
 CREATE POLICY bedrijf_vraag_afwijking_sel ON public.bedrijf_vraag_afwijking AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_beheren(company_id));
 CREATE POLICY bewijs_select ON public.bewijs AS PERMISSIVE FOR SELECT TO public
@@ -6387,6 +6408,62 @@ begin
   delete from bedrijf_toolbox where company_id = p_company_id and toolbox_id = p_toolbox_id;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.toolbox_quiz_opslaan(p_company_id uuid, p_toolbox_id uuid, p_vragen jsonb)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_item   jsonb;
+  v_opties jsonb;
+  v_idx    integer := 0;
+begin
+  if not mag_bedrijf_beheren(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+  if not exists (
+    select 1 from bedrijf_toolbox where company_id = p_company_id and toolbox_id = p_toolbox_id
+  ) then
+    raise exception 'Deze toolbox is niet aan dit bedrijf gekoppeld';
+  end if;
+  if jsonb_typeof(p_vragen) is distinct from 'array' or jsonb_array_length(p_vragen) < 3 then
+    raise exception 'Minimaal 3 vragen vereist';
+  end if;
+  if jsonb_array_length(p_vragen) > 20 then
+    raise exception 'Te veel vragen in één keer';
+  end if;
+
+  for v_item in select * from jsonb_array_elements(p_vragen) loop
+    if nullif(btrim(v_item ->> 'vraagtekst'), '') is null then
+      raise exception 'Vraagtekst ontbreekt';
+    end if;
+    v_opties := v_item -> 'opties';
+    if jsonb_typeof(v_opties) is distinct from 'array' or jsonb_array_length(v_opties) < 2 then
+      raise exception 'Elke vraag heeft minstens 2 opties nodig';
+    end if;
+    if (v_item ->> 'juist_antwoord')::int < 0 or (v_item ->> 'juist_antwoord')::int >= jsonb_array_length(v_opties) then
+      raise exception 'Ongeldig juist-antwoord-index';
+    end if;
+  end loop;
+
+  delete from bedrijf_toolbox_quiz where company_id = p_company_id and toolbox_id = p_toolbox_id;
+
+  for v_item in select * from jsonb_array_elements(p_vragen) loop
+    insert into bedrijf_toolbox_quiz (company_id, toolbox_id, vraagtekst, opties, juist_antwoord, uitleg, volgorde, aangemaakt_door)
+    values (
+      p_company_id, p_toolbox_id,
+      left(btrim(v_item ->> 'vraagtekst'), 500),
+      v_item -> 'opties',
+      (v_item ->> 'juist_antwoord')::int,
+      nullif(left(coalesce(v_item ->> 'uitleg', ''), 1000), ''),
+      v_idx,
+      auth.uid()
+    );
+    v_idx := v_idx + 1;
+  end loop;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.toolbox_sessie_aanwezigheid_zetten(p_sessie_id uuid, p_persoon_id uuid, p_aanwezig boolean)
  RETURNS void
  LANGUAGE plpgsql
@@ -7387,6 +7464,9 @@ GRANT EXECUTE ON FUNCTION public.toolbox_lokaal_aanpassen(p_company_id uuid, p_t
 REVOKE EXECUTE ON FUNCTION public.toolbox_ontkoppelen(p_company_id uuid, p_toolbox_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.toolbox_ontkoppelen(p_company_id uuid, p_toolbox_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_ontkoppelen(p_company_id uuid, p_toolbox_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.toolbox_quiz_opslaan(p_company_id uuid, p_toolbox_id uuid, p_vragen jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.toolbox_quiz_opslaan(p_company_id uuid, p_toolbox_id uuid, p_vragen jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.toolbox_quiz_opslaan(p_company_id uuid, p_toolbox_id uuid, p_vragen jsonb) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.toolbox_sessie_aanwezigheid_zetten(p_sessie_id uuid, p_persoon_id uuid, p_aanwezig boolean) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_aanwezigheid_zetten(p_sessie_id uuid, p_persoon_id uuid, p_aanwezig boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_aanwezigheid_zetten(p_sessie_id uuid, p_persoon_id uuid, p_aanwezig boolean) TO service_role;

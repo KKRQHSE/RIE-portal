@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import ToolboxClient from '@/components/ToolboxClient'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
-import type { ToolboxOverzichtItem, ToolboxSessiesOverzicht, ToolboxBron, ToolboxSuggestie } from '@/lib/types'
+import type { ToolboxOverzichtItem, ToolboxSessiesOverzicht, ToolboxBron, ToolboxSuggestie, BedrijfToolboxQuizVraag } from '@/lib/types'
 
 export default async function ToolboxPage({
   params,
@@ -23,6 +23,7 @@ export default async function ToolboxPage({
     { data: sessies },
     { data: bronnen },
     { data: suggesties },
+    { data: quizzes },
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
@@ -40,6 +41,11 @@ export default async function ToolboxPage({
     // incident, alleen een voorstel — de RPC beslist niets, de pagina toont
     // het bovenaan het maandoverzicht.
     supabase.rpc('toolbox_suggesties', { p_company_id: company_id }),
+    // Al opgeslagen AI-quizvragen per toolbox (0079) — alleen relevant voor de
+    // organisator-tab, RLS geeft toch alleen iets terug bij mag_bedrijf_werken.
+    supabase.from('bedrijf_toolbox_quiz')
+      .select('id, company_id, toolbox_id, vraagtekst, opties, juist_antwoord, uitleg, volgorde, aangemaakt_op')
+      .eq('company_id', company_id),
     haalHuisstijl(company_id),
   ])
 
@@ -73,6 +79,7 @@ export default async function ToolboxPage({
       huidigeGebruikerId={user.id}
       bronnen={(bronnen ?? []) as ToolboxBron[]}
       suggesties={(suggesties ?? []) as ToolboxSuggestie[]}
+      initialQuizzes={(quizzes ?? []) as BedrijfToolboxQuizVraag[]}
       terugHref={terugHref}
       terugLabel={terugLabel}
     />

@@ -63,6 +63,27 @@ export type OnderwerpAdviesUitkomst = {
   bronnenSuggestie: string[]
 }
 
+// Toolbox-AI-quiz: de organisator (KAM/admin) laat op basis van de toolbox-
+// inhoud + relevante bronnen uit de onderwerpenbibliotheek conceptvragen
+// genereren. Puur veiligheidsonderwerp uit standaardbronnen — geen
+// persoonsgegevens. `uitsluitenTeksten` voorkomt dat "opnieuw genereren voor
+// de rest" dezelfde vraag als een al bevestigde of al eerder afgewezen vraag
+// teruggeeft.
+export type ToolboxQuizInvoer = {
+  toolboxTitel: string
+  toolboxTekst: string
+  bronnen: { naam: string; omschrijving: string | null }[]
+  aantal: number
+  uitsluitenTeksten: string[]
+}
+
+export type ToolboxQuizVoorstel = {
+  vraagtekst: string
+  opties: string[]
+  juistAntwoord: number
+  uitleg: string
+}
+
 export type Leverancier = {
   naam: string           // technische naam, komt zo in de database
   weergavenaam: string   // wat de inspecteur op het scherm ziet
@@ -73,6 +94,7 @@ export type Leverancier = {
   sleutelAanwezig: boolean
   analyseerFoto(invoer: FotoAnalyseInvoer): Promise<FotoAnalyseUitkomst>
   adviseerOnderwerp(invoer: OnderwerpAdviesInvoer): Promise<OnderwerpAdviesUitkomst>
+  genereerToolboxQuiz(invoer: ToolboxQuizInvoer): Promise<ToolboxQuizVoorstel[]>
 }
 
 // De beschikbare adapters. Eén regel per leverancier.

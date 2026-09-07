@@ -14,17 +14,24 @@ import {
   AiStoring,
   type FotoAnalyseInvoer, type FotoAnalyseUitkomst,
   type OnderwerpAdviesInvoer, type OnderwerpAdviesUitkomst,
+  type ToolboxQuizInvoer, type ToolboxQuizVoorstel,
   type Leverancier,
 } from './leverancier'
 import { GROQ_ENDPOINT, GROQ_STANDAARD_MODEL, bouwGroqBody, bouwGroqTekstBody } from './groq-bericht'
 import {
   SYSTEEM_PROMPT, gebruikersPrompt, leesAntwoord,
   SYSTEEM_PROMPT_ONDERWERP_ADVIES, onderwerpAdviesPrompt, leesOnderwerpAdvies,
+  SYSTEEM_PROMPT_TOOLBOX_QUIZ, toolboxQuizPrompt, leesToolboxQuizVoorstellen,
 } from './prompt'
 
 // Een trage AI mag een inspecteur niet laten hangen. Ruim onder de maxDuration
 // van de route, zodat we zelf nog een nette melding kunnen teruggeven.
 const TIJDSLIMIET_MS = 45_000
+
+// De toolbox-quiz vraagt tot 6 volledige vragen (vraagtekst+opties+uitleg) in
+// één antwoord — ruim meer ruimte nodig dan de korte duiding van
+// onderwerp-advies.
+const GROQ_QUIZ_MAX_TOKENS = 2000
 
 export function maakGroqLeverancier(): Leverancier {
   const sleutel = (process.env.GROQ_API_KEY || '').trim()
@@ -76,6 +83,26 @@ export function maakGroqLeverancier(): Leverancier {
         throw new AiStoring('De AI gaf geen bruikbaar antwoord.', 'leeg antwoord na parsen (onderwerp-advies)')
       }
       return uitkomst
+    },
+
+    async genereerToolboxQuiz(invoer: ToolboxQuizInvoer): Promise<ToolboxQuizVoorstel[]> {
+      if (!sleutel) {
+        throw new AiStoring('AI-quiz is nog niet geconfigureerd.', 'GROQ_API_KEY ontbreekt')
+      }
+
+      const body = bouwGroqTekstBody({
+        model,
+        systeemPrompt: SYSTEEM_PROMPT_TOOLBOX_QUIZ,
+        gebruikersTekst: toolboxQuizPrompt(invoer),
+        maxTokens: GROQ_QUIZ_MAX_TOKENS,
+      })
+      const inhoud = await groqChatVoltooiing(sleutel, body)
+
+      const vragen = leesToolboxQuizVoorstellen(inhoud, invoer.aantal)
+      if (vragen.length === 0) {
+        throw new AiStoring('De AI gaf geen bruikbare quizvragen terug.', 'leeg antwoord na parsen (toolbox-quiz)')
+      }
+      return vragen
     },
   }
 }

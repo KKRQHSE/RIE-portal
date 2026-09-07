@@ -47,15 +47,19 @@ export function bouwGroqBody(opties: {
 // Tekst-only variant (0077, toolbox-onderwerp-advies) — geen afbeelding, dus
 // geen image_url-content nodig. Kortere max_completion_tokens: het antwoord is
 // een duiding van 1-2 zinnen plus een korte bronnenlijst, geen vrije analyse.
+// maxTokens instelbaar: de toolbox-AI-quiz (0079) vraagt tot 6 volledige
+// vragen met opties+uitleg per keer en heeft dus veel meer ruimte nodig dan
+// de standaard 400 — zie GROQ_QUIZ_MAX_TOKENS in lib/ai/groq.ts.
 export function bouwGroqTekstBody(opties: {
   model: string
   systeemPrompt: string
   gebruikersTekst: string
+  maxTokens?: number
 }) {
   return {
     model: opties.model,
     temperature: 0.2,
-    max_completion_tokens: 400,
+    max_completion_tokens: opties.maxTokens ?? 400,
     messages: [
       { role: 'system', content: opties.systeemPrompt },
       { role: 'user', content: opties.gebruikersTekst },

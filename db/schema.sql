@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-07T14:00:50.504Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-07T14:45:13.857Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -4485,6 +4485,8 @@ begin
         'aangemaakt_op',      i.aangemaakt_op,
         'conclusie',          i.conclusie,
         'project_locatie',    i.project_locatie,
+        'locatie_id',         i.locatie_id,
+        'locatie_naam',       loc.naam,
         'sjabloon_naam_snap', i.sjabloon_naam_snap,
         'controlesoort_snap', i.controlesoort_snap,
         'uitvoerder_naam', coalesce(
@@ -4501,6 +4503,7 @@ begin
         'aantal_acties',       (select count(*) from inspectie_bevinding b where b.inspectie_id = i.id and b.actie_id is not null)
       ) as row
     from inspectie i
+    left join locatie loc on loc.id = i.locatie_id
     where i.company_id = p_company_id
   ) s;
 
@@ -4669,6 +4672,41 @@ AS $function$
     (select status in ('afgerond', 'geannuleerd') from inspectie where id = p_inspectie_id),
     false)
 $function$;
+CREATE OR REPLACE FUNCTION public.inspectie_locatie_zetten(p_inspectie_id uuid, p_locatie_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_company        uuid;
+  v_status         text;
+  v_locatie_company uuid;
+begin
+  select company_id, status into v_company, v_status from inspectie where id = p_inspectie_id;
+  if v_company is null then
+    raise exception 'Inspectie niet gevonden';
+  end if;
+  if not mag_bedrijf_werken(v_company) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+  if v_status not in ('concept', 'ingediend') then
+    raise exception 'Inspectie is afgerond of geannuleerd en kan niet meer worden gewijzigd';
+  end if;
+
+  if p_locatie_id is not null then
+    select company_id into v_locatie_company from locatie where id = p_locatie_id;
+    if v_locatie_company is null then
+      raise exception 'Locatie niet gevonden';
+    end if;
+    if v_locatie_company <> v_company then
+      raise exception 'Locatie hoort bij een ander bedrijf';
+    end if;
+  end if;
+
+  update inspectie set locatie_id = p_locatie_id where id = p_inspectie_id;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.inspectie_project_opslaan(p_inspectie_id uuid, p_project_locatie text)
  RETURNS void
  LANGUAGE plpgsql
@@ -4725,6 +4763,7 @@ begin
     'aangemaakt_op',  i.aangemaakt_op,
     'conclusie',      i.conclusie,
     'project_locatie', i.project_locatie,
+    'locatie_naam',   loc.naam,
     'uitvoerder_naam', (
       select u.naam
         from inspectie_historie h
@@ -4794,6 +4833,7 @@ begin
   ) into v
   from inspectie i
   join companies c on c.id = i.company_id
+  left join locatie loc on loc.id = i.locatie_id
   where i.id = p_inspectie_id;
 
   return v;
@@ -6134,6 +6174,7 @@ declare
   v_totaal  integer; v_score integer; v_pct integer; v_gehaald boolean;
   v_quiz_snap jsonb; v_resultaat jsonb;
   v_id uuid;
+  v_gebruik_bedrijfsquiz boolean;
 begin
   select * into v_link from public.deellinks where token = p_token;
   if v_link.id is null or v_link.ingetrokken then raise exception 'Ongeldige of ingetrokken link'; end if;
@@ -6174,11 +6215,23 @@ begin
   v_tekst := case when v_t.afw_modus='lokaal' then v_t.lokale_tekst else v_t.tekst end;
   v_video := case when v_t.afw_modus='lokaal' and v_t.lokale_video_url is not null then v_t.lokale_video_url else v_t.video_url end;
 
+  -- Eigen AI-quiz (bedrijf_toolbox_quiz) heeft voorrang boven het globale
+  -- sjabloon zodra dit bedrijf er één heeft opgeslagen voor deze toolbox.
+  select exists (
+    select 1 from public.bedrijf_toolbox_quiz
+    where company_id = v_company and toolbox_id = p_toolbox_id
+  ) into v_gebruik_bedrijfsquiz;
+
   with q as (
     select (row_number() over (order by volgorde, id))::int - 1 as idx,
            vraagtekst, opties, juist_antwoord, uitleg
+    from public.bedrijf_toolbox_quiz
+    where company_id = v_company and toolbox_id = p_toolbox_id and v_gebruik_bedrijfsquiz
+    union all
+    select (row_number() over (order by volgorde, id))::int - 1 as idx,
+           vraagtekst, opties, juist_antwoord, uitleg
     from public.centrale_toolbox_vraag
-    where toolbox_id = p_toolbox_id and gearchiveerd_op is null
+    where toolbox_id = p_toolbox_id and gearchiveerd_op is null and not v_gebruik_bedrijfsquiz
   )
   select count(*)::int,
          count(*) filter (where (p_quiz_antwoorden ->> idx)::int = juist_antwoord)::int,
@@ -6614,13 +6667,15 @@ begin
     set sessie_doel_per_jaar = excluded.sessie_doel_per_jaar, updated_at = now();
 end;
 $function$;
-CREATE OR REPLACE FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_sessie_id uuid, p_datum date, p_onderwerp text, p_notitie text, p_toolbox_id uuid DEFAULT NULL::uuid)
+CREATE OR REPLACE FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_sessie_id uuid, p_datum date, p_onderwerp text, p_notitie text, p_toolbox_id uuid DEFAULT NULL::uuid, p_locatie_id uuid DEFAULT NULL::uuid)
  RETURNS uuid
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare v_id uuid;
+declare
+  v_id uuid;
+  v_locatie_company uuid;
 begin
   if not mag_bedrijf_werken(p_company_id) then raise exception 'Geen toegang tot dit bedrijf'; end if;
   if coalesce(btrim(p_onderwerp),'') = '' then raise exception 'Onderwerp is verplicht'; end if;
@@ -6628,10 +6683,19 @@ begin
   if p_toolbox_id is not null and not exists (select 1 from centrale_toolbox where id = p_toolbox_id) then
     raise exception 'Gekozen toolbox bestaat niet';
   end if;
+  if p_locatie_id is not null then
+    select company_id into v_locatie_company from locatie where id = p_locatie_id;
+    if v_locatie_company is null then
+      raise exception 'Locatie niet gevonden';
+    end if;
+    if v_locatie_company <> p_company_id then
+      raise exception 'Locatie hoort bij een ander bedrijf';
+    end if;
+  end if;
 
   if p_sessie_id is null then
-    insert into toolbox_sessie (company_id, datum, onderwerp, notitie, toolbox_id, aangemaakt_door)
-    values (p_company_id, p_datum, btrim(p_onderwerp), nullif(btrim(coalesce(p_notitie,'')),''), p_toolbox_id, auth.uid())
+    insert into toolbox_sessie (company_id, datum, onderwerp, notitie, toolbox_id, aangemaakt_door, locatie_id)
+    values (p_company_id, p_datum, btrim(p_onderwerp), nullif(btrim(coalesce(p_notitie,'')),''), p_toolbox_id, auth.uid(), p_locatie_id)
     returning id into v_id;
     return v_id;
   end if;
@@ -6639,6 +6703,7 @@ begin
   update toolbox_sessie set
     datum = p_datum, onderwerp = btrim(p_onderwerp),
     notitie = nullif(btrim(coalesce(p_notitie,'')),''), toolbox_id = p_toolbox_id,
+    locatie_id = p_locatie_id,
     updated_at = now()
   where id = p_sessie_id and company_id = p_company_id;
   if not found then raise exception 'Sessie niet gevonden'; end if;
@@ -6684,6 +6749,8 @@ begin
         'onderwerp', s.onderwerp,
         'notitie',   s.notitie,
         'toolbox_id', s.toolbox_id,
+        'locatie_id', s.locatie_id,
+        'locatie_naam', loc.naam,
         'aangemaakt_door', s.aangemaakt_door,
         'opkomst', (select count(*) from toolbox_deelname d where d.sessie_id = s.id),
         'aanwezigen', (
@@ -6691,7 +6758,9 @@ begin
           from toolbox_deelname d where d.sessie_id = s.id and d.persoon_id is not null
         )
       ) order by s.datum desc, s.created_at desc), '[]'::jsonb)
-      from toolbox_sessie s where s.company_id = p_company_id
+      from toolbox_sessie s
+      left join locatie loc on loc.id = s.locatie_id
+      where s.company_id = p_company_id
     ),
     'personen', (
       select coalesce(jsonb_agg(jsonb_build_object(
@@ -7398,6 +7467,9 @@ GRANT EXECUTE ON FUNCTION public.inspectie_historie_append_only() TO service_rol
 REVOKE EXECUTE ON FUNCTION public.inspectie_is_bevroren(p_inspectie_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_is_bevroren(p_inspectie_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_is_bevroren(p_inspectie_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.inspectie_locatie_zetten(p_inspectie_id uuid, p_locatie_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.inspectie_locatie_zetten(p_inspectie_id uuid, p_locatie_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inspectie_locatie_zetten(p_inspectie_id uuid, p_locatie_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.inspectie_project_opslaan(p_inspectie_id uuid, p_project_locatie text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.inspectie_project_opslaan(p_inspectie_id uuid, p_project_locatie text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.inspectie_project_opslaan(p_inspectie_id uuid, p_project_locatie text) TO service_role;
@@ -7578,9 +7650,9 @@ GRANT EXECUTE ON FUNCTION public.toolbox_sessie_aanwezigheid_zetten(p_sessie_id 
 REVOKE EXECUTE ON FUNCTION public.toolbox_sessie_doel_zetten(p_company_id uuid, p_doel integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_doel_zetten(p_company_id uuid, p_doel integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_doel_zetten(p_company_id uuid, p_doel integer) TO service_role;
-REVOKE EXECUTE ON FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_sessie_id uuid, p_datum date, p_onderwerp text, p_notitie text, p_toolbox_id uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_sessie_id uuid, p_datum date, p_onderwerp text, p_notitie text, p_toolbox_id uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_sessie_id uuid, p_datum date, p_onderwerp text, p_notitie text, p_toolbox_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_sessie_id uuid, p_datum date, p_onderwerp text, p_notitie text, p_toolbox_id uuid, p_locatie_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_sessie_id uuid, p_datum date, p_onderwerp text, p_notitie text, p_toolbox_id uuid, p_locatie_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.toolbox_sessie_opslaan(p_company_id uuid, p_sessie_id uuid, p_datum date, p_onderwerp text, p_notitie text, p_toolbox_id uuid, p_locatie_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.toolbox_sessie_verwijderen(p_sessie_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_verwijderen(p_sessie_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessie_verwijderen(p_sessie_id uuid) TO service_role;

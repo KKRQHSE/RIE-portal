@@ -175,6 +175,10 @@ export type Vraag = {
   // Optioneel getypeerd omdat oudere RI&E-inhoud de velden niet heeft.
   aantoonbaar?: string | null
   aantoonbaar_toelichting?: string | null
+  // Optionele locatie-koppeling (migratie 0080). NULL = organisatiebreed,
+  // altijd zichtbaar. Optioneel getypeerd omdat oudere RI&E-inhoud de kolom
+  // niet had vóór deze migratie.
+  locatie_id?: string | null
 }
 
 export type Foto = {

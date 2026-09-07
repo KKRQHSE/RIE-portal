@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useSyncExternalStore } from 'react'
-import type { Company, Module, Vraag, Foto, DashboardOverzicht } from '@/lib/types'
+import type { Company, Module, Vraag, Foto, Locatie, DashboardOverzicht } from '@/lib/types'
 import { isNietAantoonbaar, type RieFilter } from '@/lib/rie-aantoonbaar'
+import { filterVragenOpLocatie } from '@/lib/rie-locatie-filter'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import type { PvaRieVoortgang } from './DashboardClient'
 import LogoutButton from './LogoutButton'
@@ -23,15 +24,29 @@ type Props = {
   modules: Module[]
   vragen: Vraag[]
   fotos: Foto[]
+  locaties?: Locatie[]
   rie?: DashboardOverzicht['rie']
   pvaRie?: PvaRieVoortgang | null
   huisstijl?: HuisstijlView
 }
 
+// 'alle' = geen locatiefilter (huidig gedrag, ook het enige mogelijke pad bij
+// een bedrijf zonder locaties). Anders: toon organisatiebrede vragen +
+// vragen van precies deze locatie.
+type LocatieFilter = 'alle' | string
+
 export default function RieClient({
-  company, modules, vragen, fotos, rie = null, pvaRie = null, huisstijl = VEILIGE_HUISSTIJL,
+  company, modules, vragen, fotos, locaties = [], rie = null, pvaRie = null, huisstijl = VEILIGE_HUISSTIJL,
 }: Props) {
   const [filter, setFilter] = useState<RieFilter>('Alle')
+  const [locatieFilter, setLocatieFilter] = useState<LocatieFilter>('alle')
+
+  // Organisatiebrede vragen (locatie_id null) blijven altijd zichtbaar; bij
+  // een gekozen locatie komen alleen de vragen van díe locatie erbij. Bij
+  // 'alle' (default, en het enige pad zonder locaties) verandert er niets
+  // t.o.v. het gedrag van vóór migratie 0080.
+  const locatieNaam = Object.fromEntries(locaties.map(l => [l.id, l.naam]))
+  const vragenZichtbaar = filterVragenOpLocatie(vragen, locatieFilter)
 
   // Lees de URL-hash client-side uit zonder hydration-mismatch of setState in
   // een effect: server-snapshot is leeg, na hydratie volgt de echte hash.
@@ -43,8 +58,8 @@ export default function RieClient({
   const m = hash.match(/^#vraag-(.+)$/)
   const highlightVraag = m ? decodeURIComponent(m[1]) : null
 
-  const neeCount = vragen.filter(v => v.antwoord === 'Nee').length
-  const nietAantoonbaarCount = vragen.filter(isNietAantoonbaar).length
+  const neeCount = vragenZichtbaar.filter(v => v.antwoord === 'Nee').length
+  const nietAantoonbaarCount = vragenZichtbaar.filter(isNietAantoonbaar).length
 
   // Eén knopstijl voor de drie filterstanden; alleen de actieve is gevuld.
   const knop = (actief: boolean) =>
@@ -97,14 +112,30 @@ export default function RieClient({
           </button>
         </div>
 
+        {/* Locatiefilter — alleen zichtbaar bij een bedrijf met locaties.
+            Organisatiebrede vragen blijven bij elke keuze zichtbaar. */}
+        {locaties.length > 0 && (
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
+            <button onClick={() => setLocatieFilter('alle')} className={knop(locatieFilter === 'alle')}>
+              Alle locaties
+            </button>
+            {locaties.map(l => (
+              <button key={l.id} onClick={() => setLocatieFilter(l.id)} className={knop(locatieFilter === l.id)}>
+                {l.naam}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="space-y-3">
           {modules.map(mod => (
             <ModuleCard
               key={mod.id}
               companyId={company.id}
               module={mod}
-              vragen={vragen.filter(v => v.module_id === mod.id)}
+              vragen={vragenZichtbaar.filter(v => v.module_id === mod.id)}
               fotos={fotos}
+              locatieNaam={locatieNaam}
               filter={filter}
               highlightVraag={highlightVraag}
             />

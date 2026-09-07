@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import type { Module, Vraag, Foto } from '@/lib/types'
+import type { LocatieNaamMap } from './LocatieBadge'
+import LocatieBadge from './LocatieBadge'
 import { isNietAantoonbaar, type RieFilter } from '@/lib/rie-aantoonbaar'
 
 const ANTWOORD_STYLE: Record<string, string> = {
@@ -29,11 +31,12 @@ type Props = {
   module: Module
   vragen: Vraag[]
   fotos: Foto[]
+  locatieNaam?: LocatieNaamMap
   filter: RieFilter
   highlightVraag: string | null
 }
 
-export default function ModuleCard({ companyId, module, vragen, fotos, filter, highlightVraag }: Props) {
+export default function ModuleCard({ companyId, module, vragen, fotos, locatieNaam = {}, filter, highlightVraag }: Props) {
   // Bevat deze module de aangewezen vraag? Zo ja: standaard open zodat het
   // anker-element bestaat en de scroll/highlight kan plaatsvinden.
   const hasTarget = highlightVraag != null && vragen.some(v => v.nr === highlightVraag)
@@ -117,6 +120,7 @@ export default function ModuleCard({ companyId, module, vragen, fotos, filter, h
                         {isNietAantoonbaar(v) && (
                           <span className={AANTOONBAAR_BADGE}>niet aantoonbaar</span>
                         )}
+                        <LocatieBadge locatieId={v.locatie_id} locatieNaam={locatieNaam} />
                         {v.klasse && (
                           <span className={`text-xs font-medium px-2 py-0.5 rounded ${KLASSE_STYLE[v.klasse] ?? ''}`}>
                             {v.klasse}

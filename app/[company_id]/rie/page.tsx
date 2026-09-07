@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import RieClient from '@/components/RieClient'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
-import type { DashboardOverzicht } from '@/lib/types'
+import type { DashboardOverzicht, Locatie } from '@/lib/types'
 import type { PvaRieVoortgang } from '@/components/DashboardClient'
 
 export default async function RiePage({
@@ -25,6 +25,7 @@ export default async function RiePage({
     { data: modules },
     { data: vragen },
     { data: fotos },
+    { data: locaties },
     { data: overzicht },
     { data: pvaRie },
     huisstijl,
@@ -53,6 +54,14 @@ export default async function RiePage({
       .eq('company_id', company_id)
       .is('archived_at', null)
       .order('nr', { ascending: true }),
+    // Optionele locaties, alleen relevant als filter in de inzage hieronder.
+    // Bedrijf zonder locaties: lege array, RieClient toont dan geen filterrij.
+    supabase
+      .from('locatie')
+      .select('id, company_id, naam, volgorde, gearchiveerd_op')
+      .eq('company_id', company_id)
+      .is('gearchiveerd_op', null)
+      .order('volgorde', { ascending: true }),
     supabase.rpc('dashboard_overzicht', { p_company_id: company_id }),
     supabase.rpc('dashboard_pva_rie', { p_company_id: company_id }),
     haalHuisstijl(company_id),
@@ -70,6 +79,7 @@ export default async function RiePage({
       modules={modules ?? []}
       vragen={vragen ?? []}
       fotos={fotos ?? []}
+      locaties={(locaties ?? []) as Locatie[]}
       rie={(overzicht as DashboardOverzicht | null)?.rie ?? null}
       pvaRie={(pvaRie as PvaRieVoortgang | null) ?? null}
       huisstijl={huisstijl}

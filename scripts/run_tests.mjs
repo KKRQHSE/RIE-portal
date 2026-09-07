@@ -62,6 +62,7 @@ const TESTS = [
   { naam: 'inspectie_project_persoon_test.mjs',     soort: 'database' },
   { naam: 'inspectie_foto_selftest.mjs',            soort: 'database' },
   { naam: 'qr_selftest.ts',                         soort: 'zelftest' },
+  { naam: 'rie_locatie_filter_selftest.ts',         soort: 'zelftest' },
   { naam: 'ai_analyse_selftest.ts',                 soort: 'zelftest' },
   { naam: 'auth_redirect_test.ts',                  soort: 'zelftest' },
   { naam: 'proxy_public_paths_test.mjs',            soort: 'app' },

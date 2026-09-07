@@ -3,6 +3,15 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 // Pagina's die je zonder inloggen mag zien.
 // '/a' = gast-deellinkpagina (actiehouders zonder account).
+// '/tb' = gast-toolboxpagina (werknemer volgt zijn toolbox via persoonlijke
+//   deellink, migratie 0017) — stond hier NOOIT in, sinds de feature bestaat
+//   (geverifieerd: elke versie van deze lijst in de git-historie mist 'm).
+//   Gevolg: elke sessieloze bezoeker van een geldige /tb/<token>-link werd
+//   naar /login geredirect, vóórdat de pagina zelf ooit rendert — de
+//   toolbox-gastflow was hierdoor voor een écht anonieme werknemer volledig
+//   onbereikbaar. Zelfde beveiligingsmodel als /a/'/melden hieronder: de
+//   RPC (toolbox_voor_token) valideert het token zelf, de proxy regelt alleen
+//   bereikbaarheid, geen autorisatie.
 // '/api/herinneringen/heartbeat' = automatische wekker, aangeroepen door pg_cron
 //   (heeft géén sessie). De route beschermt zichzelf met de x-heartbeat-secret-check;
 //   zonder die uitzondering zou de proxy de cron-aanroep naar /login redirecten.
@@ -17,6 +26,7 @@ const PUBLIC_PATHS = [
   '/reset-wachtwoord',
   '/set-wachtwoord',
   '/a',
+  '/tb',
   '/melden',
   '/api/herinneringen/heartbeat',
   '/api/bewijs/gast-upload',

@@ -63,6 +63,7 @@ const TESTS = [
   { naam: 'qr_selftest.ts',                         soort: 'zelftest' },
   { naam: 'ai_analyse_selftest.ts',                 soort: 'zelftest' },
   { naam: 'auth_redirect_test.ts',                  soort: 'zelftest' },
+  { naam: 'proxy_public_paths_test.mjs',            soort: 'app' },
   { naam: 'heartbeat_route_test.mjs',               soort: 'app' },
   { naam: 'inspectie_ai_route_test.ts',             soort: 'app' },
   { naam: 'inspectie_ai_robuustheid_test.ts',       soort: 'app' },

@@ -526,7 +526,10 @@ function BevindingRow({
           {heeftActie ? (
             <p className="text-xs text-ink/70">
               {t('actiePrefix')}
-              <Link href={`/${companyId}/pva`} className="text-accent hover:underline">{t('actielijst')}</Link>
+              {/* Bug: wees naar /pva (RI&E-eigen plan van aanpak) i.p.v. de
+                  CENTRALE actielijst waar acties uit inspecties/incidenten/
+                  audits samenkomen — dát is waar deze actie staat. */}
+              <Link href={`/${companyId}/actielijst`} className="text-accent hover:underline">{t('actielijst')}</Link>
               {t('actieSuffix')}
             </p>
           ) : (

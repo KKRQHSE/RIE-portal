@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import type { Company, ToolboxOverzichtItem, ToolboxSessiesOverzicht, ToolboxBron, ToolboxSuggestie } from '@/lib/types'
@@ -19,7 +20,7 @@ const WAARSCHUWING =
 
 export default function ToolboxClient({
   company, huisstijl = VEILIGE_HUISSTIJL, initialOverzicht, sessies, isAdmin = false,
-  magSessiesBeheren = false, huidigeGebruikerId = null, bronnen = [], suggesties = [],
+  magSessiesBeheren = false, huidigeGebruikerId = null, bronnen = [], suggesties = [], terugHref, terugLabel,
 }: {
   company: Company
   huisstijl?: HuisstijlView
@@ -36,6 +37,12 @@ export default function ToolboxClient({
   bronnen?: ToolboxBron[]
   // "Aanbevolen deze periode" (0077) — trefwoord-matching, geen AI.
   suggesties?: ToolboxSuggestie[]
+  // Waar "terug" naartoe gaat: dashboard voor wie mag beheren, anders /pva
+  // (teamleider). De sticky CompanyTopBar biedt al een weg terug, maar kan op
+  // een lang scherm buiten beeld scrollen — deze link staat altijd bovenaan
+  // de eigen inhoud, ongeacht scrollpositie.
+  terugHref: string
+  terugLabel: string
 }) {
   const [supabase] = useState<Supa>(() => createClient())
   const [view, setView] = useState<View>('maandoverzicht')
@@ -57,7 +64,12 @@ export default function ToolboxClient({
   return (
     <main className="min-h-screen bg-surface" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="flex justify-end mb-2"><LogoutButton /></div>
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <Link href={terugHref} className="text-sm text-ink/50 hover:text-ink inline-flex items-center gap-1 min-h-[44px]">
+            ← {terugLabel}
+          </Link>
+          <LogoutButton />
+        </div>
         <div className="mb-6">
           <HuisstijlLogo huisstijl={huisstijl} className="mb-2" />
           <h1 className="text-xl font-semibold text-ink">{company.name}</h1>

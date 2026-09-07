@@ -50,6 +50,15 @@ export default async function ToolboxPage({
   if (!moduleRij) notFound()
   if (!company) notFound()
 
+  // Bug: er stond geen expliciete terug-link in deze module zelf -- alleen de
+  // sticky CompanyTopBar bood een weg terug, en die kan op een lang scherm
+  // (12 maanden aan sessies) buiten beeld scrollen. Zelfde bestemming als de
+  // company-naam in CompanyTopBar (homeHref daar): dashboard voor wie mag
+  // beheren, anders /pva (teamleider heeft geen dashboard-toegang, dus geen
+  // "dashboard" in het label voor die rol).
+  const terugHref = magBeheren ? `/${company_id}/dashboard` : `/${company_id}/pva`
+  const terugLabel = magBeheren ? 'Terug naar dashboard' : 'Terug naar overzicht'
+
   return (
     <ToolboxClient
       company={company}
@@ -61,6 +70,8 @@ export default async function ToolboxPage({
       huidigeGebruikerId={user.id}
       bronnen={(bronnen ?? []) as ToolboxBron[]}
       suggesties={(suggesties ?? []) as ToolboxSuggestie[]}
+      terugHref={terugHref}
+      terugLabel={terugLabel}
     />
   )
 }

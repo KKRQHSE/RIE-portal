@@ -24,7 +24,7 @@ export default async function PvaPage({
       supabase.from('users').select('role, company_id, naam').eq('id', user.id).single(),
       supabase
         .from('companies')
-        .select('id, name, approved_at, approved_by')
+        .select('id, name, approved_at, approved_by, oefenomgeving')
         .eq('id', company_id)
         .single(),
       supabase.from('pva_items').select('*').eq('company_id', company_id),
@@ -35,6 +35,9 @@ export default async function PvaPage({
   if (!profile) redirect('/login')
   if (profile.role !== 'admin' && profile.company_id !== company_id) notFound()
   if (!company) notFound()
+  // Oefenomgeving heeft geen RI&E-inzage — Plan van Aanpak bestaat er niet; acties
+  // lopen daar via de centrale actielijst.
+  if (company.oefenomgeving) notFound()
 
   // Plan van Aanpak RI&E: alleen de uit de RI&E voortgekomen acties. Losse/
   // incident/audit-acties horen in de centrale actielijst, niet hier.

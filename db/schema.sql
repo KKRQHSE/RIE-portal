@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-05T21:44:16.132Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-07T12:15:46.472Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -286,7 +286,8 @@ CREATE TABLE public.companies (
   merk_id uuid,
   huisstijl_modus text DEFAULT 'default'::text NOT NULL,
   klant_logo_pad text,
-  accent_kleur_override text
+  accent_kleur_override text,
+  oefenomgeving boolean DEFAULT false NOT NULL
 );
 
 CREATE TABLE public.correctie_log (
@@ -686,6 +687,13 @@ CREATE TABLE public.toolbox_deelname (
   sessie_id uuid
 );
 
+CREATE TABLE public.toolbox_onderwerp (
+  code text NOT NULL,
+  naam text NOT NULL,
+  trefwoorden text[] DEFAULT '{}'::text[] NOT NULL,
+  volgorde integer DEFAULT 0 NOT NULL
+);
+
 CREATE TABLE public.toolbox_sessie (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
@@ -788,6 +796,7 @@ ALTER TABLE public.rate_limiet_log ADD CONSTRAINT rate_limiet_log_pkey PRIMARY K
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_pkey PRIMARY KEY (id);
 ALTER TABLE public.toolbox_bron ADD CONSTRAINT toolbox_bron_pkey PRIMARY KEY (id);
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_pkey PRIMARY KEY (id);
+ALTER TABLE public.toolbox_onderwerp ADD CONSTRAINT toolbox_onderwerp_pkey PRIMARY KEY (code);
 ALTER TABLE public.toolbox_sessie ADD CONSTRAINT toolbox_sessie_pkey PRIMARY KEY (id);
 ALTER TABLE public.users ADD CONSTRAINT users_pkey PRIMARY KEY (id);
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_pkey PRIMARY KEY (id);
@@ -1077,6 +1086,7 @@ ALTER TABLE public.rate_limiet_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rie_versies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.toolbox_bron ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.toolbox_deelname ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.toolbox_onderwerp ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.toolbox_sessie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vragen ENABLE ROW LEVEL SECURITY;
@@ -1233,6 +1243,11 @@ CREATE POLICY toolbox_bron_sel ON public.toolbox_bron AS PERMISSIVE FOR SELECT T
   USING ((auth.uid() IS NOT NULL));
 CREATE POLICY toolbox_deelname_sel ON public.toolbox_deelname AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_werken(company_id));
+CREATE POLICY toolbox_onderwerp_adm ON public.toolbox_onderwerp AS PERMISSIVE FOR ALL TO public
+  USING (is_admin())
+  WITH CHECK (is_admin());
+CREATE POLICY toolbox_onderwerp_sel ON public.toolbox_onderwerp AS PERMISSIVE FOR SELECT TO public
+  USING ((auth.uid() IS NOT NULL));
 CREATE POLICY toolbox_sessie_sel ON public.toolbox_sessie AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_werken(company_id));
 CREATE POLICY users_select ON public.users AS PERMISSIVE FOR SELECT TO public
@@ -6522,6 +6537,147 @@ begin
   return v;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.toolbox_suggesties(p_company_id uuid)
+ RETURNS TABLE(onderwerp_code text, onderwerp_naam text, redenen text[], toolbox_id uuid, toolbox_titel text, bron_id uuid, bron_naam text, bron_url text, heeft_match boolean)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  if not mag_bedrijf_werken(p_company_id) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  return query
+  with rie_hits as (
+    select distinct o.code as onderwerp_code,
+           'uit je RI&E: ' || m.titel as reden
+    from modules m
+    join vragen v on v.module_id = m.id and v.antwoord = 'Nee' and v.archived_at is null
+    cross join toolbox_onderwerp o
+    where m.company_id = p_company_id
+      and m.archived_at is null
+      and m.titel is not null
+      and exists (select 1 from unnest(o.trefwoorden) kw where m.titel ilike '%' || kw || '%')
+  ),
+  inspectie_hits as (
+    select distinct o.code as onderwerp_code,
+           'recente inspectiebevinding: ' ||
+             coalesce(nullif(b.rubriek_naam_snap, ''), left(b.punt_tekst_snap, 60)) as reden
+    from inspectie_bevinding b
+    join inspectie i on i.id = b.inspectie_id
+    cross join toolbox_onderwerp o
+    where b.company_id = p_company_id
+      and b.resultaat = 'niet_in_orde'
+      and b.afhandeling = 'geen'
+      and coalesce(i.uitgevoerd_op, i.aangemaakt_op) > now() - interval '6 months'
+      and exists (
+        select 1 from unnest(o.trefwoorden) kw
+        where coalesce(b.rubriek_naam_snap, b.punt_tekst_snap) ilike '%' || kw || '%'
+      )
+  ),
+  incident_direct as (
+    select distinct o.code as onderwerp_code, 'incident: ' || do_.omschrijving as reden
+    from incident inc
+    cross join lateral unnest(inc.directe_oorzaken) as d(oorzaak_code)
+    join incident_directe_oorzaak do_ on do_.code = d.oorzaak_code
+    cross join toolbox_onderwerp o
+    where inc.company_id = p_company_id
+      and inc.gevolgen && array['letsel','ongeval_zonder_verzuim']
+      and inc.datum > (current_date - interval '12 months')
+      and exists (select 1 from unnest(o.trefwoorden) kw where do_.omschrijving ilike '%' || kw || '%')
+  ),
+  incident_basis as (
+    select distinct o.code as onderwerp_code, 'incident: ' || bo_.omschrijving as reden
+    from incident inc
+    cross join lateral unnest(inc.basis_oorzaken) as b(oorzaak_code)
+    join incident_basis_oorzaak bo_ on bo_.code = b.oorzaak_code
+    cross join toolbox_onderwerp o
+    where inc.company_id = p_company_id
+      and inc.gevolgen && array['letsel','ongeval_zonder_verzuim']
+      and inc.datum > (current_date - interval '12 months')
+      and exists (select 1 from unnest(o.trefwoorden) kw where bo_.omschrijving ilike '%' || kw || '%')
+  ),
+  alle_hits as (
+    select * from rie_hits
+    union all select * from inspectie_hits
+    union all select * from incident_direct
+    union all select * from incident_basis
+  ),
+  -- Hooguit 4 redenen per onderwerp: genoeg om te overtuigen, geen opsomming.
+  -- LET OP: onderwerp_code/redenen zijn ook de RETURNS TABLE-kolomnamen
+  -- hieronder -- in plpgsql zijn dat dan tegelijk OUT-parameters, dus binnen
+  -- deze functie ALTIJD via een tabel-/CTE-alias verwijzen, nooit kaal, anders
+  -- "column reference is ambiguous".
+  hits_beperkt as (
+    select genummerd.onderwerp_code, genummerd.reden
+    from (
+      select distinct alle_hits.onderwerp_code, alle_hits.reden,
+             row_number() over (partition by alle_hits.onderwerp_code order by alle_hits.reden) as rn
+      from alle_hits
+    ) genummerd
+    where genummerd.rn <= 4
+  ),
+  samengevat as (
+    select hits_beperkt.onderwerp_code, array_agg(hits_beperkt.reden order by hits_beperkt.reden) as redenen
+    from hits_beperkt
+    group by hits_beperkt.onderwerp_code
+  ),
+  -- Alleen toolboxen die dit bedrijf al gekoppeld EN niet uitgezet heeft --
+  -- daar kan de uitvoerder meteen een sessie voor starten.
+  toolbox_match as (
+    select distinct on (s.onderwerp_code)
+           s.onderwerp_code, ct.id as toolbox_id,
+           coalesce(afw.lokale_titel, ct.titel) as toolbox_titel
+    from samengevat s
+    join toolbox_onderwerp o on o.code = s.onderwerp_code
+    join bedrijf_toolbox bt on bt.company_id = p_company_id
+    join centrale_toolbox ct on ct.id = bt.toolbox_id and ct.gearchiveerd_op is null
+    left join bedrijf_toolbox_afwijking afw
+      on afw.company_id = p_company_id and afw.toolbox_id = ct.id and afw.modus = 'lokaal'
+    where not exists (
+        select 1 from bedrijf_toolbox_afwijking u
+        where u.company_id = p_company_id and u.toolbox_id = ct.id and u.modus = 'uit'
+      )
+      and exists (
+        select 1 from unnest(o.trefwoorden) kw
+        where coalesce(afw.lokale_titel, ct.titel) ilike '%' || kw || '%'
+           or coalesce(afw.lokale_tekst, ct.tekst) ilike '%' || kw || '%'
+      )
+    order by s.onderwerp_code, ct.volgorde asc
+  ),
+  -- Externe bron: alleen als er nog geen eigen-toolbox-match is.
+  bron_match as (
+    select distinct on (s.onderwerp_code)
+           s.onderwerp_code, tb.id as bron_id, tb.naam as bron_naam, tb.url as bron_url
+    from samengevat s
+    join toolbox_onderwerp o on o.code = s.onderwerp_code
+    join toolbox_bron tb on tb.gearchiveerd_op is null
+    where not exists (select 1 from toolbox_match tm where tm.onderwerp_code = s.onderwerp_code)
+      and exists (
+        select 1 from unnest(o.trefwoorden) kw
+        where tb.naam ilike '%' || kw || '%' or coalesce(tb.omschrijving, '') ilike '%' || kw || '%'
+      )
+    order by s.onderwerp_code, tb.volgorde asc
+  )
+  select
+    s.onderwerp_code,
+    o.naam,
+    s.redenen,
+    tm.toolbox_id,
+    tm.toolbox_titel,
+    bm.bron_id,
+    bm.bron_naam,
+    bm.bron_url,
+    (tm.toolbox_id is not null or bm.bron_id is not null)
+  from samengevat s
+  join toolbox_onderwerp o on o.code = s.onderwerp_code
+  left join toolbox_match tm on tm.onderwerp_code = s.onderwerp_code
+  left join bron_match bm on bm.onderwerp_code = s.onderwerp_code
+  order by array_length(s.redenen, 1) desc, o.volgorde asc
+  limit 8;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.toolbox_terug_naar_centraal(p_company_id uuid, p_toolbox_id uuid)
  RETURNS void
  LANGUAGE plpgsql
@@ -7246,6 +7402,9 @@ GRANT EXECUTE ON FUNCTION public.toolbox_sessie_verwijderen(p_sessie_id uuid) TO
 REVOKE EXECUTE ON FUNCTION public.toolbox_sessies_overzicht(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessies_overzicht(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_sessies_overzicht(p_company_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.toolbox_suggesties(p_company_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.toolbox_suggesties(p_company_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.toolbox_suggesties(p_company_id uuid) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.toolbox_terug_naar_centraal(p_company_id uuid, p_toolbox_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.toolbox_terug_naar_centraal(p_company_id uuid, p_toolbox_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.toolbox_terug_naar_centraal(p_company_id uuid, p_toolbox_id uuid) TO service_role;

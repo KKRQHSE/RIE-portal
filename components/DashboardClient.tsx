@@ -25,6 +25,7 @@ type Props = {
   toonToolbox?: boolean
   toonIncidenten?: boolean
   toonAudits?: boolean
+  toonRie?: boolean
   toolbox?: ToolboxNaarRato | null
   magBewerken?: boolean
   ifDitJaar?: IfGetalJaar | null
@@ -112,6 +113,7 @@ function Ratio({ gedaan, doel, kleur }: { gedaan: number; doel: number; kleur?: 
 export default function DashboardClient({
   company, overzicht, huisstijl = VEILIGE_HUISSTIJL,
   toonInspecties = false, toonToolbox = false, toonIncidenten = false, toonAudits = false,
+  toonRie = true,
   toolbox = null, magBewerken = false, ifDitJaar = null, ifVorigJaar = null,
   pvaRie = null, auditsTotaal = 0, auditsGedaan = 0,
 }: Props) {
@@ -122,6 +124,9 @@ export default function DashboardClient({
   const cid = company.id
   const inst = instellingen
   const pr = pvaRie ?? { totaal: 0, open: 0, in_behandeling: 0, afgerond: 0, pct: 0 }
+  // Zonder RI&E-inzage (oefenomgeving) bestaat /pva niet — de algemene actie-
+  // tegels (los van de RI&E-specifieke) verwijzen dan naar de centrale actielijst.
+  const pvaHref = toonRie ? `/${cid}/pva` : `/${cid}/actielijst`
 
   return (
     <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
@@ -150,46 +155,50 @@ export default function DashboardClient({
         </div>
 
         {/* IF-getal (Incident Frequency) — prominent bovenaan. Nu berekend
-            (migratie 0073): (verzuimongevallen x 1.000.000) / gewerkte uren. */}
-        <div className="glass-tile rounded-3xl p-6 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="h-3.5 w-0.5 rounded-full bg-accent shrink-0" aria-hidden="true" />
-            <p
-              className="text-xs font-medium uppercase tracking-wide text-ink/40 cursor-help"
-              title="Incident Frequency: (aantal ongevallen met verzuim x 1.000.000) / totaal gewerkte uren. Automatisch berekend uit de incidentmodule en de ingevulde gewerkte uren bij bedrijfsvoering. Een veiligheidskengetal — lager is beter."
-            >
-              IF-getal · Incident Frequency
-            </p>
-          </div>
-          <div className="flex flex-wrap items-end gap-x-10 gap-y-4">
-            <div>
-              {ifDitJaar?.if_getal != null ? (
-                <p className="text-4xl font-semibold text-ink tabular-nums leading-none">{ifDitJaar.if_getal}</p>
-              ) : (
-                <p className="text-sm text-ink/40 italic leading-none py-1.5">nog geen urenbasis</p>
-              )}
-              <p className="text-xs text-ink/50 mt-1.5">Dit jaar</p>
+            (migratie 0073): (verzuimongevallen x 1.000.000) / gewerkte uren.
+            Draait op de incidentmodule + bedrijfsvoering; bestaat niet in een
+            oefenomgeving (toonRie). */}
+        {toonRie && (
+          <div className="glass-tile rounded-3xl p-6 mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="h-3.5 w-0.5 rounded-full bg-accent shrink-0" aria-hidden="true" />
+              <p
+                className="text-xs font-medium uppercase tracking-wide text-ink/40 cursor-help"
+                title="Incident Frequency: (aantal ongevallen met verzuim x 1.000.000) / totaal gewerkte uren. Automatisch berekend uit de incidentmodule en de ingevulde gewerkte uren bij bedrijfsvoering. Een veiligheidskengetal — lager is beter."
+              >
+                IF-getal · Incident Frequency
+              </p>
             </div>
-            <div>
-              {ifVorigJaar?.if_getal != null ? (
-                <p className="text-3xl font-semibold text-ink/50 tabular-nums leading-none">{ifVorigJaar.if_getal}</p>
-              ) : (
-                <p className="text-sm text-ink/40 italic leading-none py-1">nog geen urenbasis</p>
+            <div className="flex flex-wrap items-end gap-x-10 gap-y-4">
+              <div>
+                {ifDitJaar?.if_getal != null ? (
+                  <p className="text-4xl font-semibold text-ink tabular-nums leading-none">{ifDitJaar.if_getal}</p>
+                ) : (
+                  <p className="text-sm text-ink/40 italic leading-none py-1.5">nog geen urenbasis</p>
+                )}
+                <p className="text-xs text-ink/50 mt-1.5">Dit jaar</p>
+              </div>
+              <div>
+                {ifVorigJaar?.if_getal != null ? (
+                  <p className="text-3xl font-semibold text-ink/50 tabular-nums leading-none">{ifVorigJaar.if_getal}</p>
+                ) : (
+                  <p className="text-sm text-ink/40 italic leading-none py-1">nog geen urenbasis</p>
+                )}
+                <p className="text-xs text-ink/40 mt-1.5">Vorig jaar</p>
+              </div>
+              {(ifDitJaar?.if_getal == null || ifVorigJaar?.if_getal == null) && magBewerken && (
+                <Link href={`/${cid}/dashboard/bedrijfsvoering`} className="text-xs text-accent hover:underline mb-1">
+                  Vul de gewerkte uren in →
+                </Link>
               )}
-              <p className="text-xs text-ink/40 mt-1.5">Vorig jaar</p>
             </div>
-            {(ifDitJaar?.if_getal == null || ifVorigJaar?.if_getal == null) && magBewerken && (
-              <Link href={`/${cid}/dashboard/bedrijfsvoering`} className="text-xs text-accent hover:underline mb-1">
-                Vul de gewerkte uren in →
-              </Link>
-            )}
           </div>
-        </div>
+        )}
 
         {/* Te beoordelen — de inbox. Alleen prominent als er iets wacht. */}
         {te_beoordelen > 0 && (
           <Link
-            href={`/${cid}/pva`}
+            href={pvaHref}
             className="block bg-accent/10 ring-1 ring-accent/30 rounded-lg p-5 mb-6 hover:bg-accent/15 transition-colors"
           >
             <div className="flex items-center gap-4">
@@ -239,18 +248,21 @@ export default function DashboardClient({
         <div className="grid sm:grid-cols-2 gap-6">
 
           {/* Voortgang Plan van Aanpak RI&E — alleen de uit de RI&E voortgekomen
-              acties (los van de centrale actielijst, die alle bronnen omvat). */}
-          <Tegel titel="Voortgang Plan van Aanpak RI&E" href={`/${cid}/pva`}>
-            <div className="flex items-center gap-5">
-              <Gauge value={pr.afgerond} total={pr.totaal} />
-              <div>
-                <p className="text-sm font-medium text-ink">{pr.afgerond} van {pr.totaal} afgerond</p>
-                <p className="text-xs text-ink/40 mt-1">
-                  {pr.open} open · {pr.in_behandeling} in behandeling
-                </p>
+              acties (los van de centrale actielijst, die alle bronnen omvat).
+              Bestaat niet zonder RI&E-inzage (oefenomgeving). */}
+          {toonRie && (
+            <Tegel titel="Voortgang Plan van Aanpak RI&E" href={`/${cid}/pva`}>
+              <div className="flex items-center gap-5">
+                <Gauge value={pr.afgerond} total={pr.totaal} />
+                <div>
+                  <p className="text-sm font-medium text-ink">{pr.afgerond} van {pr.totaal} afgerond</p>
+                  <p className="text-xs text-ink/40 mt-1">
+                    {pr.open} open · {pr.in_behandeling} in behandeling
+                  </p>
+                </div>
               </div>
-            </div>
-          </Tegel>
+            </Tegel>
+          )}
 
           {/* Centrale actielijst — alle bronnen samen (los van PvA RI&E). */}
           <Tegel titel="Centrale actielijst" href={`/${cid}/actielijst`}>
@@ -265,31 +277,34 @@ export default function DashboardClient({
 
           {/* RI&E-geldigheid — zelfde ring als de statuskop bovenaan de RI&E-
               module zelf (pr.afgerond/pr.totaal, dashboard_pva_rie): één
-              consistent patroon, geen nieuwe cijfers verzonnen. */}
-          <Tegel titel="RI&E" href={`/${cid}/rie`}>
-            {rie ? (
-              <div className="flex items-center gap-3">
-                {pr.totaal > 0 && <Gauge value={pr.afgerond} total={pr.totaal} size={56} />}
-                <div className="min-w-0">
-                  <p className="text-sm text-ink">
-                    Versie {rie.versie} · <span className="capitalize">{rie.status}</span>
-                  </p>
-                  <p className="text-sm text-ink/60 mt-1">Laatste toetsing: {datumNL(rie.toets_datum)}</p>
-                  <p className={`text-sm mt-1 ${rie.verloopt_binnenkort ? 'text-amber-600 font-medium' : 'text-ink/50'}`}>
-                    {rie.geldig_tot ? `Geldig tot ${datumNL(rie.geldig_tot)}` : 'Geen einddatum vastgelegd'}
-                  </p>
-                  {rie.verloopt_binnenkort && (
-                    <p className="text-xs text-amber-600 mt-1">Verloopt binnenkort — hertoets inplannen.</p>
-                  )}
+              consistent patroon, geen nieuwe cijfers verzonnen. Bestaat niet
+              zonder RI&E-inzage (oefenomgeving). */}
+          {toonRie && (
+            <Tegel titel="RI&E" href={`/${cid}/rie`}>
+              {rie ? (
+                <div className="flex items-center gap-3">
+                  {pr.totaal > 0 && <Gauge value={pr.afgerond} total={pr.totaal} size={56} />}
+                  <div className="min-w-0">
+                    <p className="text-sm text-ink">
+                      Versie {rie.versie} · <span className="capitalize">{rie.status}</span>
+                    </p>
+                    <p className="text-sm text-ink/60 mt-1">Laatste toetsing: {datumNL(rie.toets_datum)}</p>
+                    <p className={`text-sm mt-1 ${rie.verloopt_binnenkort ? 'text-amber-600 font-medium' : 'text-ink/50'}`}>
+                      {rie.geldig_tot ? `Geldig tot ${datumNL(rie.geldig_tot)}` : 'Geen einddatum vastgelegd'}
+                    </p>
+                    {rie.verloopt_binnenkort && (
+                      <p className="text-xs text-amber-600 mt-1">Verloopt binnenkort — hertoets inplannen.</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <p className="text-sm text-ink/40">Nog geen getoetste RI&amp;E-versie vastgelegd.</p>
-            )}
-          </Tegel>
+              ) : (
+                <p className="text-sm text-ink/40">Nog geen getoetste RI&amp;E-versie vastgelegd.</p>
+              )}
+            </Tegel>
+          )}
 
           {/* Termijn-urgentie */}
-          <Tegel titel="Termijn PvA" href={`/${cid}/pva`} urgent={termijn.over > 0}>
+          <Tegel titel="Termijn PvA" href={pvaHref} urgent={termijn.over > 0}>
             <Rij>
               <Cijfer n={termijn.over} label="over de termijn"
                 kleur={termijn.over > 0 ? 'text-red-600' : 'text-ink/30'} />
@@ -300,7 +315,7 @@ export default function DashboardClient({
           </Tegel>
 
           {/* Openstaand per prioriteit */}
-          <Tegel titel="Openstaand per prioriteit" href={`/${cid}/pva`}>
+          <Tegel titel="Openstaand per prioriteit" href={pvaHref}>
             <Rij>
               <Cijfer n={prio_open.Hoog} label="Hoog"
                 kleur={prio_open.Hoog > 0 ? 'text-red-600' : 'text-ink/30'} />
@@ -414,7 +429,11 @@ export default function DashboardClient({
 
         </div>
 
-        {/* ── Sectie: Bedrijfsvoering (handmatige velden, KAM/admin bewerkt) ── */}
+        {/* ── Sectie: Bedrijfsvoering (handmatige velden, KAM/admin bewerkt) ──
+            Bestaat niet in een oefenomgeving: gaat over IF-getal/audits/
+            meerjarentrends die daar niet van toepassing zijn. */}
+        {toonRie && (
+          <>
         <div className="flex items-center justify-between mt-8 mb-3">
           <h2 className="text-xs font-medium uppercase tracking-wide text-ink/40">Bedrijfsvoering</h2>
           {magBewerken && (
@@ -515,6 +534,8 @@ export default function DashboardClient({
           </Tegel>
 
         </div>
+          </>
+        )}
 
         {/* Ruimte voor de latere planning-tijdlijn (nog niet gebouwd). */}
         <div className="mt-4 rounded-lg border border-dashed border-ink/15 p-5 text-center">

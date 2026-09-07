@@ -22,7 +22,7 @@ export default async function MeerjarenPage({
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
-    supabase.from('companies').select('id, name').eq('id', company_id).single(),
+    supabase.from('companies').select('id, name, oefenomgeving').eq('id', company_id).single(),
     supabase.rpc('dashboard_meerjaren', { p_company_id: company_id }),
     haalHuisstijl(company_id),
   ])
@@ -35,6 +35,9 @@ export default async function MeerjarenPage({
     (profile.role === 'client' && profile.company_id === company_id)
   if (!magBeheren) notFound()
   if (!company) notFound()
+  // Meerjarenoverzicht is een RI&E/PvA/incidenten/audit-trend — bestaat niet
+  // zonder die modules (oefenomgeving).
+  if (company.oefenomgeving) notFound()
   if (error) notFound()
 
   return (

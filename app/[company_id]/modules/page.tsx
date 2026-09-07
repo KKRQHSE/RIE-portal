@@ -20,7 +20,7 @@ export default async function ModulesPage({
       supabase.from('users').select('role, company_id').eq('id', user.id).single(),
       supabase
         .from('companies')
-        .select('id, name, approved_at, approved_by')
+        .select('id, name, approved_at, approved_by, oefenomgeving')
         .eq('id', company_id)
         .single(),
       // Alle modulerijen van dit bedrijf. RLS (mag_bedrijf_beheren) zorgt dat
@@ -39,6 +39,9 @@ export default async function ModulesPage({
     (profile.role === 'client' && profile.company_id === company_id)
   if (!magBeheren) notFound()
   if (!company) notFound()
+  // Oefenomgeving mag zelf geen modules (opnieuw) activeren — anders zet de
+  // oefen-KAM zelf incidenten/audit weer aan.
+  if (company.oefenomgeving) notFound()
 
   return (
     <ModuleBeheer

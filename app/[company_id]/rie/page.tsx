@@ -32,7 +32,7 @@ export default async function RiePage({
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
     supabase
       .from('companies')
-      .select('id, name, approved_at, approved_by')
+      .select('id, name, approved_at, approved_by, oefenomgeving')
       .eq('id', company_id)
       .single(),
     supabase
@@ -61,6 +61,8 @@ export default async function RiePage({
   if (!profile) redirect('/login')
   if (profile.role !== 'admin' && profile.company_id !== company_id) notFound()
   if (!company) notFound()
+  // Oefenomgeving heeft geen RI&E-inzage — die pagina bestaat er niet, ook niet via directe link.
+  if (company.oefenomgeving) notFound()
 
   return (
     <RieClient

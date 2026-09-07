@@ -26,7 +26,7 @@ export default async function BedrijfsvoeringPage({
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
-    supabase.from('companies').select('id, name').eq('id', company_id).single(),
+    supabase.from('companies').select('id, name, oefenomgeving').eq('id', company_id).single(),
     // RLS geeft alleen de eigen-bedrijf-rij; null als er nog niets is ingevuld.
     supabase.from('bedrijf_dashboard_instelling').select('*').eq('company_id', company_id).maybeSingle(),
     // Gewerkte uren (urenbasis IF-getal, migratie 0073) — ALLE jaren, niet
@@ -46,6 +46,9 @@ export default async function BedrijfsvoeringPage({
     (profile.role === 'client' && profile.company_id === company_id)
   if (!magBeheren) notFound()
   if (!company) notFound()
+  // Oefenomgeving heeft geen bedrijfsvoering (gewerkte uren/IF-getal/doelstelling
+  // horen bij incidenten/RI&E, die hier niet bestaan).
+  if (company.oefenomgeving) notFound()
 
   const uren = (urenRijen ?? []) as { jaar: number; uren: number | null }[]
 

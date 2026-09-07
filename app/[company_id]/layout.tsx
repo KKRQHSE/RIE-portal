@@ -29,12 +29,13 @@ export default async function CompanySectionLayout({
   if (magWerken) {
     const supabase = await createClient()
     const [{ data: company }, { data: modules }, huisstijl] = await Promise.all([
-      supabase.from('companies').select('name').eq('id', company_id).single(),
+      supabase.from('companies').select('name, oefenomgeving').eq('id', company_id).single(),
       supabase.from('bedrijf_modules').select('module')
         .eq('company_id', company_id).eq('module_status', 'actief').eq('actief', true),
       haalHuisstijl(company_id),
     ])
 
+    const isOefen = !!company?.oefenomgeving
     const actief = new Set((modules ?? []).map(m => m.module))
     const maak = (key: string, label: string, seg: string): NavItem =>
       ({ key, label, seg, href: `/${company_id}/${seg}` })
@@ -42,18 +43,26 @@ export default async function CompanySectionLayout({
     // Kernmodules altijd; toolbox/inspecties/incidenten alleen bij actieve module.
     // Dashboard/audits/personen/modules zijn beheerderswerk — teamleider ziet ze niet
     // (audits en bedrijfsvoering/personen blijven ook op de pagina zelf dicht).
+    // Een oefenomgeving (isOefen) heeft geen RI&E-inzage en geen bedrijfsvoering:
+    // rie/pva/personen/modules verdwijnen, en de centrale actielijst komt in de
+    // plaats van de PvA-tab als toegang tot acties.
     const items: NavItem[] = [
       ...(magBeheren ? [maak('dashboard', 'Dashboard', 'dashboard')] : []),
-      maak('rie', 'RI&E', 'rie'),
-      maak('pva', 'Plan van aanpak', 'pva'),
+      ...(!isOefen ? [maak('rie', 'RI&E', 'rie'), maak('pva', 'Plan van aanpak', 'pva')] : []),
+      ...(isOefen ? [maak('actielijst', 'Acties', 'actielijst')] : []),
       ...(actief.has('toolbox') ? [maak('toolbox', 'Toolbox', 'toolbox')] : []),
       ...(actief.has('inspectie') ? [maak('inspecties', 'Inspecties', 'inspecties')] : []),
       ...(actief.has('incidenten') ? [maak('incidenten', 'Incidenten', 'incidenten')] : []),
       ...(magBeheren && actief.has('audit') ? [maak('audits', 'Audits', 'audits')] : []),
-      ...(magBeheren ? [maak('personen', 'Personen', 'personen'), maak('modules', 'Modules', 'modules')] : []),
+      ...(magBeheren ? [maak('personen', 'Personen', 'personen')] : []),
+      ...(magBeheren && !isOefen ? [maak('modules', 'Modules', 'modules')] : []),
       ...(isTeamleider ? [maak('medewerker-toevoegen', 'Medewerker toevoegen', 'medewerker-toevoegen')] : []),
       ...(magBeheren ? [maak('goedkeuringen', 'Verzoeken', 'goedkeuringen')] : []),
     ]
+
+    const homeHref = magBeheren
+      ? `/${company_id}/dashboard`
+      : `/${company_id}/${isOefen ? 'actielijst' : 'pva'}`
 
     topBar = (
       <CompanyTopBar
@@ -61,7 +70,7 @@ export default async function CompanySectionLayout({
         companyNaam={company?.name ?? 'Bedrijf'}
         items={items}
         huisstijl={huisstijl}
-        homeHref={magBeheren ? `/${company_id}/dashboard` : `/${company_id}/pva`}
+        homeHref={homeHref}
       />
     )
   }

@@ -4,7 +4,7 @@ import PersonenClient from '@/components/PersonenClient'
 import type { MergeLogRegel } from '@/components/PersoonSamenvoegen'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
 import { selecteerPersonen, koppelKamIndienNodig } from '@/lib/personen-data'
-import type { Functiegroep } from '@/lib/types'
+import type { Functiegroep, Locatie } from '@/lib/types'
 
 export default async function PersonenPage({
   params,
@@ -27,6 +27,7 @@ export default async function PersonenPage({
     personenEerst,
     { data: deellinks },
     { data: functiegroepen },
+    { data: locaties },
     { data: mergeLog },
     huisstijl,
   ] =
@@ -49,6 +50,14 @@ export default async function PersonenPage({
       // Actieve functiegroepen van dit bedrijf (RLS schermt op company af).
       supabase
         .from('functiegroep')
+        .select('id, company_id, naam, volgorde, gearchiveerd_op')
+        .eq('company_id', company_id)
+        .is('gearchiveerd_op', null)
+        .order('volgorde', { ascending: true }),
+      // Actieve locaties van dit bedrijf (RLS schermt op company af). Optioneel
+      // attribuut, geen rechtenlaag — zie migratie 0080.
+      supabase
+        .from('locatie')
         .select('id, company_id, naam, volgorde, gearchiveerd_op')
         .eq('company_id', company_id)
         .is('gearchiveerd_op', null)
@@ -93,6 +102,7 @@ export default async function PersonenPage({
       initialPersonen={personen}
       initialDeellinks={deellinks ?? []}
       initialFunctiegroepen={(functiegroepen ?? []) as Functiegroep[]}
+      initialLocaties={(locaties ?? []) as Locatie[]}
       huisstijl={huisstijl}
       toonNaamVragen={isClient && !heeftNaam}
       isAdmin={profile.role === 'admin'}

@@ -3,12 +3,13 @@
 import { useState, useSyncExternalStore } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { voorspelEmail } from '@/lib/email'
-import type { Company, Persoon, Deellink, Functiegroep } from '@/lib/types'
+import type { Company, Persoon, Deellink, Functiegroep, Locatie } from '@/lib/types'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import LogoutButton from './LogoutButton'
 import NaamVragen from './NaamVragen'
 import HuisstijlLogo from './HuisstijlLogo'
 import FunctiegroepBeheer from './FunctiegroepBeheer'
+import LocatieBeheer from './LocatieBeheer'
 import PersoonSamenvoegen, { type MergeLogRegel } from './PersoonSamenvoegen'
 
 type Props = {
@@ -16,6 +17,7 @@ type Props = {
   initialPersonen: Persoon[]
   initialDeellinks: Deellink[]
   initialFunctiegroepen?: Functiegroep[]
+  initialLocaties?: Locatie[]
   huisstijl?: HuisstijlView
   toonNaamVragen?: boolean
   // Samenvoegen is systeembeheer: alleen de admin ziet het blok (de RPC weigert
@@ -35,9 +37,10 @@ function isActief(link: Deellink | undefined): link is Deellink {
   return true
 }
 
-export default function PersonenClient({ company, initialPersonen, initialDeellinks, initialFunctiegroepen = [], huisstijl = VEILIGE_HUISSTIJL, toonNaamVragen = false, isAdmin = false, mergeLog = [] }: Props) {
+export default function PersonenClient({ company, initialPersonen, initialDeellinks, initialFunctiegroepen = [], initialLocaties = [], huisstijl = VEILIGE_HUISSTIJL, toonNaamVragen = false, isAdmin = false, mergeLog = [] }: Props) {
   const [personen, setPersonen] = useState<Persoon[]>(initialPersonen)
   const [functiegroepen, setFunctiegroepen] = useState<Functiegroep[]>(initialFunctiegroepen)
+  const [locaties, setLocaties] = useState<Locatie[]>(initialLocaties)
   const [links, setLinks] = useState<Record<string, Deellink>>(() =>
     Object.fromEntries(initialDeellinks.map(l => [l.persoon_id, l]))
   )
@@ -284,6 +287,13 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
           companyId={company.id}
           functiegroepen={functiegroepen}
           setFunctiegroepen={setFunctiegroepen}
+        />
+
+        {/* Locaties beheren — optioneel, alleen relevant bij meerdere vestigingen */}
+        <LocatieBeheer
+          companyId={company.id}
+          locaties={locaties}
+          setLocaties={setLocaties}
         />
 
         {/* Lijst */}

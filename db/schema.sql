@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-07T12:36:51.200Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-07T14:00:50.504Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -411,7 +411,8 @@ CREATE TABLE public.incident (
   actie_ids uuid[] DEFAULT '{}'::uuid[] NOT NULL,
   toolbox_push_id uuid,
   afgehandeld_op timestamp with time zone,
-  laatst_bijgewerkt_op timestamp with time zone
+  laatst_bijgewerkt_op timestamp with time zone,
+  locatie_id uuid
 );
 
 CREATE TABLE public.incident_basis_oorzaak (
@@ -461,7 +462,8 @@ CREATE TABLE public.inspectie (
   sjabloon_naam_snap text,
   controlesoort_snap text,
   aangemaakt_op timestamp with time zone DEFAULT now() NOT NULL,
-  project_locatie text
+  project_locatie text,
+  locatie_id uuid
 );
 
 CREATE TABLE public.inspectie_ai_suggestie (
@@ -539,6 +541,15 @@ CREATE TABLE public.inspectie_sjabloon_punt (
   volgorde integer DEFAULT 0 NOT NULL,
   tekst text NOT NULL,
   verplicht boolean DEFAULT true NOT NULL
+);
+
+CREATE TABLE public.locatie (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  naam text NOT NULL,
+  volgorde integer DEFAULT 0 NOT NULL,
+  gearchiveerd_op timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 CREATE TABLE public.merken (
@@ -645,7 +656,8 @@ CREATE TABLE public.pva_items (
   rie_versie_id uuid,
   bron_type text,
   bron_id uuid,
-  termijn_datum date
+  termijn_datum date,
+  locatie_id uuid
 );
 
 CREATE TABLE public.rate_limiet_log (
@@ -716,7 +728,8 @@ CREATE TABLE public.toolbox_sessie (
   toolbox_id uuid,
   aangemaakt_door uuid,
   created_at timestamp with time zone DEFAULT now() NOT NULL,
-  updated_at timestamp with time zone DEFAULT now() NOT NULL
+  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+  locatie_id uuid
 );
 
 CREATE TABLE public.users (
@@ -746,7 +759,8 @@ CREATE TABLE public.vragen (
   updated_by text,
   rie_versie_id uuid,
   aantoonbaar text,
-  aantoonbaar_toelichting text
+  aantoonbaar_toelichting text,
+  locatie_id uuid
 );
 
 -- ============================================================
@@ -798,6 +812,7 @@ ALTER TABLE public.inspectie_foto ADD CONSTRAINT inspectie_foto_pkey PRIMARY KEY
 ALTER TABLE public.inspectie_historie ADD CONSTRAINT inspectie_historie_pkey PRIMARY KEY (id);
 ALTER TABLE public.inspectie_sjabloon ADD CONSTRAINT inspectie_sjabloon_pkey PRIMARY KEY (id);
 ALTER TABLE public.inspectie_sjabloon_punt ADD CONSTRAINT inspectie_sjabloon_punt_pkey PRIMARY KEY (id);
+ALTER TABLE public.locatie ADD CONSTRAINT locatie_pkey PRIMARY KEY (id);
 ALTER TABLE public.merken ADD CONSTRAINT merken_pkey PRIMARY KEY (id);
 ALTER TABLE public.module_historie ADD CONSTRAINT module_historie_pkey PRIMARY KEY (id);
 ALTER TABLE public.modules ADD CONSTRAINT modules_pkey PRIMARY KEY (id);
@@ -919,10 +934,12 @@ ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_company_id_fke
 ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_door_fkey FOREIGN KEY (door) REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE public.herinnering_log ADD CONSTRAINT herinnering_log_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE CASCADE;
 ALTER TABLE public.incident ADD CONSTRAINT incident_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.incident ADD CONSTRAINT incident_locatie_id_fkey FOREIGN KEY (locatie_id) REFERENCES locatie(id) ON DELETE SET NULL;
 ALTER TABLE public.incident_foto ADD CONSTRAINT incident_foto_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.incident_foto ADD CONSTRAINT incident_foto_incident_id_fkey FOREIGN KEY (incident_id) REFERENCES incident(id) ON DELETE CASCADE;
 ALTER TABLE public.incident_meldlink ADD CONSTRAINT incident_meldlink_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_locatie_id_fkey FOREIGN KEY (locatie_id) REFERENCES locatie(id) ON DELETE SET NULL;
 ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE SET NULL;
 ALTER TABLE public.inspectie ADD CONSTRAINT inspectie_sjabloon_id_fkey FOREIGN KEY (sjabloon_id) REFERENCES inspectie_sjabloon(id) ON DELETE SET NULL;
 ALTER TABLE public.inspectie_ai_suggestie ADD CONSTRAINT inspectie_ai_suggestie_aangemaakt_door_fkey FOREIGN KEY (aangemaakt_door) REFERENCES auth.users(id) ON DELETE SET NULL;
@@ -945,6 +962,7 @@ ALTER TABLE public.inspectie_sjabloon ADD CONSTRAINT inspectie_sjabloon_company_
 ALTER TABLE public.inspectie_sjabloon ADD CONSTRAINT inspectie_sjabloon_doel_functiegroep_id_fkey FOREIGN KEY (doel_functiegroep_id) REFERENCES functiegroep(id) ON DELETE SET NULL;
 ALTER TABLE public.inspectie_sjabloon_punt ADD CONSTRAINT inspectie_sjabloon_punt_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.inspectie_sjabloon_punt ADD CONSTRAINT inspectie_sjabloon_punt_sjabloon_id_fkey FOREIGN KEY (sjabloon_id) REFERENCES inspectie_sjabloon(id) ON DELETE CASCADE;
+ALTER TABLE public.locatie ADD CONSTRAINT locatie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.module_historie ADD CONSTRAINT module_historie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.modules ADD CONSTRAINT modules_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.modules ADD CONSTRAINT modules_rie_versie_id_fkey FOREIGN KEY (rie_versie_id) REFERENCES rie_versies(id);
@@ -957,6 +975,7 @@ ALTER TABLE public.personen ADD CONSTRAINT personen_user_id_fkey FOREIGN KEY (us
 ALTER TABLE public.personen ADD CONSTRAINT personen_voorgesteld_door_fkey FOREIGN KEY (voorgesteld_door) REFERENCES personen(id) ON DELETE SET NULL;
 ALTER TABLE public.persoon_merge_log ADD CONSTRAINT persoon_merge_log_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_locatie_id_fkey FOREIGN KEY (locatie_id) REFERENCES locatie(id) ON DELETE SET NULL;
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE SET NULL;
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_rie_versie_id_fkey FOREIGN KEY (rie_versie_id) REFERENCES rie_versies(id);
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id);
@@ -965,10 +984,12 @@ ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_persoon_id_f
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_sessie_id_fkey FOREIGN KEY (sessie_id) REFERENCES toolbox_sessie(id) ON DELETE CASCADE;
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_toolbox_id_fkey FOREIGN KEY (toolbox_id) REFERENCES centrale_toolbox(id) ON DELETE SET NULL;
 ALTER TABLE public.toolbox_sessie ADD CONSTRAINT toolbox_sessie_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.toolbox_sessie ADD CONSTRAINT toolbox_sessie_locatie_id_fkey FOREIGN KEY (locatie_id) REFERENCES locatie(id) ON DELETE SET NULL;
 ALTER TABLE public.toolbox_sessie ADD CONSTRAINT toolbox_sessie_toolbox_id_fkey FOREIGN KEY (toolbox_id) REFERENCES centrale_toolbox(id) ON DELETE SET NULL;
 ALTER TABLE public.users ADD CONSTRAINT users_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL;
 ALTER TABLE public.users ADD CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.vragen ADD CONSTRAINT vragen_locatie_id_fkey FOREIGN KEY (locatie_id) REFERENCES locatie(id) ON DELETE SET NULL;
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_module_id_fkey FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE CASCADE;
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_rie_versie_id_fkey FOREIGN KEY (rie_versie_id) REFERENCES rie_versies(id);
 
@@ -1014,6 +1035,7 @@ CREATE INDEX incident_company_datum_idx ON public.incident USING btree (company_
 CREATE INDEX incident_company_status_idx ON public.incident USING btree (company_id, status);
 CREATE INDEX incident_foto_company_idx ON public.incident_foto USING btree (company_id);
 CREATE INDEX incident_foto_incident_idx ON public.incident_foto USING btree (incident_id);
+CREATE INDEX incident_locatie_idx ON public.incident USING btree (locatie_id) WHERE (locatie_id IS NOT NULL);
 CREATE INDEX inspectie_ai_suggestie_bevinding_idx ON public.inspectie_ai_suggestie USING btree (bevinding_id);
 CREATE INDEX inspectie_ai_suggestie_company_idx ON public.inspectie_ai_suggestie USING btree (company_id);
 CREATE INDEX inspectie_ai_suggestie_inspectie_idx ON public.inspectie_ai_suggestie USING btree (inspectie_id);
@@ -1022,7 +1044,9 @@ CREATE INDEX inspectie_foto_bevinding_idx ON public.inspectie_foto USING btree (
 CREATE INDEX inspectie_foto_company_idx ON public.inspectie_foto USING btree (company_id);
 CREATE INDEX inspectie_foto_inspectie_idx ON public.inspectie_foto USING btree (inspectie_id);
 CREATE INDEX inspectie_historie_idx ON public.inspectie_historie USING btree (inspectie_id, wanneer DESC);
+CREATE INDEX inspectie_locatie_idx ON public.inspectie USING btree (locatie_id) WHERE (locatie_id IS NOT NULL);
 CREATE INDEX isp_punt_sjabloon_idx ON public.inspectie_sjabloon_punt USING btree (sjabloon_id, volgorde);
+CREATE INDEX locatie_company_idx ON public.locatie USING btree (company_id, volgorde);
 CREATE INDEX module_historie_company_idx ON public.module_historie USING btree (company_id, wanneer DESC);
 CREATE INDEX modules_company_idx ON public.modules USING btree (company_id);
 CREATE UNIQUE INDEX notificatie_dedup_direct ON public.notificatie USING btree (user_id, bron_tabel, bron_id) WHERE (bron_id IS NOT NULL);
@@ -1031,6 +1055,7 @@ CREATE INDEX notificatie_user_ongelezen_idx ON public.notificatie USING btree (u
 CREATE INDEX personen_company_idx ON public.personen USING btree (company_id);
 CREATE INDEX persoon_merge_log_company_idx ON public.persoon_merge_log USING btree (company_id, wanneer DESC);
 CREATE INDEX pva_items_company_idx ON public.pva_items USING btree (company_id);
+CREATE INDEX pva_items_locatie_idx ON public.pva_items USING btree (locatie_id) WHERE (locatie_id IS NOT NULL);
 CREATE INDEX pva_items_persoon_idx ON public.pva_items USING btree (persoon_id);
 CREATE INDEX rate_limiet_log_sleutel_actie_wanneer_idx ON public.rate_limiet_log USING btree (sleutel, actie, wanneer DESC);
 CREATE UNIQUE INDEX toolbox_bron_naam_uniek ON public.toolbox_bron USING btree (naam);
@@ -1041,7 +1066,9 @@ CREATE INDEX toolbox_deelname_sessie_idx ON public.toolbox_deelname USING btree 
 CREATE UNIQUE INDEX toolbox_deelname_sessie_persoon_uniek ON public.toolbox_deelname USING btree (sessie_id, persoon_id) WHERE (sessie_id IS NOT NULL);
 CREATE UNIQUE INDEX toolbox_deelname_uniek_per_jaar ON public.toolbox_deelname USING btree (company_id, persoon_id, toolbox_id, jaar_utc(afgerond_op)) WHERE (toolbox_id IS NOT NULL);
 CREATE INDEX toolbox_sessie_company_idx ON public.toolbox_sessie USING btree (company_id, datum DESC);
+CREATE INDEX toolbox_sessie_locatie_idx ON public.toolbox_sessie USING btree (locatie_id) WHERE (locatie_id IS NOT NULL);
 CREATE INDEX vragen_company_idx ON public.vragen USING btree (company_id);
+CREATE INDEX vragen_locatie_idx ON public.vragen USING btree (locatie_id) WHERE (locatie_id IS NOT NULL);
 CREATE INDEX vragen_module_idx ON public.vragen USING btree (module_id);
 
 -- ============================================================
@@ -1093,6 +1120,7 @@ ALTER TABLE public.inspectie_foto ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie_historie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie_sjabloon ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspectie_sjabloon_punt ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.locatie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.merken ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.module_historie ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.modules ENABLE ROW LEVEL SECURITY;
@@ -1230,6 +1258,8 @@ CREATE POLICY inspectie_historie_sel ON public.inspectie_historie AS PERMISSIVE 
 CREATE POLICY inspectie_sjabloon_sel ON public.inspectie_sjabloon AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_werken(company_id));
 CREATE POLICY inspectie_sjabloon_punt_sel ON public.inspectie_sjabloon_punt AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_werken(company_id));
+CREATE POLICY locatie_sel ON public.locatie AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_werken(company_id));
 CREATE POLICY merken_admin_all ON public.merken AS PERMISSIVE FOR ALL TO public
   USING (is_admin())
@@ -4982,6 +5012,75 @@ begin
   return v_persoon_id;
 end;
 $function$;
+CREATE OR REPLACE FUNCTION public.locatie_archiveren(p_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_company uuid;
+begin
+  select company_id into v_company from locatie where id = p_id;
+  if v_company is null then
+    raise exception 'Locatie niet gevonden';
+  end if;
+  if not mag_bedrijf_beheren(v_company) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  update locatie
+     set gearchiveerd_op = coalesce(gearchiveerd_op, now())
+   where id = p_id;
+end;
+$function$;
+CREATE OR REPLACE FUNCTION public.locatie_opslaan(p_id uuid, p_company_id uuid, p_naam text, p_volgorde integer DEFAULT NULL::integer)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_company uuid;
+  v_volg    integer;
+  v_id      uuid;
+begin
+  if coalesce(btrim(p_naam), '') = '' then
+    raise exception 'Naam is verplicht';
+  end if;
+
+  if p_id is null then
+    if not mag_bedrijf_beheren(p_company_id) then
+      raise exception 'Geen toegang tot dit bedrijf';
+    end if;
+
+    v_volg := coalesce(
+      p_volgorde,
+      (select coalesce(max(volgorde), 0) + 1
+         from locatie where company_id = p_company_id)
+    );
+
+    insert into locatie (company_id, naam, volgorde)
+    values (p_company_id, btrim(p_naam), v_volg)
+    returning id into v_id;
+    return v_id;
+  end if;
+
+  select company_id into v_company from locatie where id = p_id;
+  if v_company is null then
+    raise exception 'Locatie niet gevonden';
+  end if;
+  if not mag_bedrijf_beheren(v_company) then
+    raise exception 'Geen toegang tot dit bedrijf';
+  end if;
+
+  update locatie
+     set naam     = btrim(p_naam),
+         volgorde = coalesce(p_volgorde, volgorde)
+   where id = p_id;
+  return p_id;
+end;
+$function$;
 CREATE OR REPLACE FUNCTION public.mag_bedrijf_beheren(p_company_id uuid)
  RETURNS boolean
  LANGUAGE sql
@@ -7329,6 +7428,12 @@ GRANT EXECUTE ON FUNCTION public.jaardoelstelling_zetten(p_company_id uuid, p_ja
 REVOKE EXECUTE ON FUNCTION public.koppel_mij_als_persoon(p_company_id uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.koppel_mij_als_persoon(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.koppel_mij_als_persoon(p_company_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.locatie_archiveren(p_id uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.locatie_archiveren(p_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.locatie_archiveren(p_id uuid) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.locatie_opslaan(p_id uuid, p_company_id uuid, p_naam text, p_volgorde integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.locatie_opslaan(p_id uuid, p_company_id uuid, p_naam text, p_volgorde integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.locatie_opslaan(p_id uuid, p_company_id uuid, p_naam text, p_volgorde integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.mag_bedrijf_beheren(p_company_id uuid) TO anon;
 GRANT EXECUTE ON FUNCTION public.mag_bedrijf_beheren(p_company_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mag_bedrijf_beheren(p_company_id uuid) TO service_role;

@@ -213,6 +213,17 @@ export type Functiegroep = {
   gearchiveerd_op: string | null
 }
 
+// Een locatie is een optionele vestiging binnen het bedrijf (attribuut, geen
+// rechtenlaag — zie migratie 0080). Per bedrijf beheerd; soft-delete via
+// gearchiveerd_op. NULL bij een bedrijf zonder locaties.
+export type Locatie = {
+  id: string
+  company_id: string
+  naam: string
+  volgorde: number
+  gearchiveerd_op: string | null
+}
+
 export type Deellink = {
   id: string
   company_id: string

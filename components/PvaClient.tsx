@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import type { PvaItem, Company, Persoon } from '@/lib/types'
+import type { PvaItem, Company, Persoon, Locatie } from '@/lib/types'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import PvaCard from './PvaCard'
 import ModuleStatuskop from './ModuleStatuskop'
@@ -18,16 +18,19 @@ type Props = {
   magBeheren?: boolean
   magStatus?: boolean
   personen?: Persoon[]
+  // Optioneel, alleen bij een bedrijf met locaties (migratie 0080).
+  locaties?: Locatie[]
   huisstijl?: HuisstijlView
   toonNaamVragen?: boolean
   ritme?: Ritme
   toonInspecties?: boolean
 }
 
-export default function PvaClient({ company, initialItems, magBeheren = false, magStatus = false, personen = [], huisstijl = VEILIGE_HUISSTIJL, toonNaamVragen = false, ritme = 'uit' }: Props) {
+export default function PvaClient({ company, initialItems, magBeheren = false, magStatus = false, personen = [], locaties = [], huisstijl = VEILIGE_HUISSTIJL, toonNaamVragen = false, ritme = 'uit' }: Props) {
   const [items, setItems] = useState<PvaItem[]>(initialItems)
   const [filterStatus, setFilterStatus] = useState('Alle')
   const [filterPrio, setFilterPrio] = useState('Alle')
+  const [filterLocatie, setFilterLocatie] = useState('Alle')
 
   function handleUpdate(id: string, updates: Partial<PvaItem>) {
     setItems(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item))
@@ -53,7 +56,8 @@ export default function PvaClient({ company, initialItems, magBeheren = false, m
   const filtered = items.filter(item => {
     const statusOk = filterStatus === 'Alle' || item.status === filterStatus
     const prioOk = filterPrio === 'Alle' || item.prio === filterPrio
-    return statusOk && prioOk
+    const locatieOk = filterLocatie === 'Alle' || (item.locatie_id ?? '') === filterLocatie
+    return statusOk && prioOk && locatieOk
   })
 
   const afgerond = items.filter(i => i.status === 'Afgerond').length
@@ -147,6 +151,21 @@ export default function PvaClient({ company, initialItems, magBeheren = false, m
           onPrioChange={setFilterPrio}
         />
 
+        {locaties.length > 0 && (
+          <div className="flex items-center gap-2 mt-3">
+            <label htmlFor="f-locatie" className="text-xs text-ink/40">Locatie</label>
+            <select
+              id="f-locatie"
+              value={filterLocatie}
+              onChange={e => setFilterLocatie(e.target.value)}
+              className="text-sm rounded-full border border-ink/20 bg-white px-3 py-2 min-h-[44px] text-ink/70"
+            >
+              <option value="Alle">Alle locaties</option>
+              {locaties.map(l => <option key={l.id} value={l.id}>{l.naam}</option>)}
+            </select>
+          </div>
+        )}
+
         <div className="space-y-3 mt-4">
           {filtered.map(item => (
             <PvaCard
@@ -155,6 +174,7 @@ export default function PvaClient({ company, initialItems, magBeheren = false, m
               item={item}
               onUpdate={handleUpdate}
               personen={personen}
+              locaties={locaties}
               magBeheren={magBeheren}
               magStatus={magStatus}
             />

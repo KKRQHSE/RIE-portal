@@ -94,6 +94,8 @@ export const INSP_TEKST: Woordenboek = {
 
   projectLocatie:   { nl: 'Project / locatie', tr: 'Proje / konum' },
   projectLocatiePlaceholder: { nl: 'Bijv. projectnaam of adres…', tr: 'Örn. proje adı veya adres…' },
+  locatie:          { nl: 'Locatie', tr: 'Konum' },
+  locatieGeenGekozen: { nl: 'Geen locatie', tr: 'Konum yok' },
 
   // NL kent enkelvoud/meervoud, Turks gebruikt na een telwoord het enkelvoud.
   verplichtOpenEnk: { nl: '{n} verplicht punt nog zonder resultaat.', tr: '{n} zorunlu madde henüz sonuçsuz.' },

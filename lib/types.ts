@@ -26,6 +26,9 @@ export type PvaItem = {
   rie_versie_id?: string | null
   bron_type?: string | null
   bron_id?: string | null
+  // Optionele locatiekoppeling (migratie 0080). Zelfde schrijfpad als
+  // persoon_id hierboven: rechtstreeks vanuit de client (pva_update-policy).
+  locatie_id?: string | null
 }
 
 // ── Auditmodule ──────────────────────────────────────────────────────────
@@ -320,6 +323,10 @@ export type Inspectie = {
   project_locatie: string | null
   sjabloon_naam_snap: string | null
   controlesoort_snap: string | null
+  // Optionele structurele locatiekoppeling (migratie 0080), los van het vrije
+  // tekstveld project_locatie hierboven (dat blijft bestaan voor fijnmaziger
+  // detail, bijv. een specifieke ruimte binnen een locatie).
+  locatie_id?: string | null
 }
 
 export type BevindingResultaat = 'in_orde' | 'niet_in_orde' | 'nvt'
@@ -355,6 +362,10 @@ export type InspectieHistorieRegel = {
 export type BibliotheekRegel = Inspectie & {
   aangemaakt_op: string | null
   uitvoerder_naam: string | null
+  // Server-side naam bij Inspectie.locatie_id, dezelfde reden als bij
+  // InspectieRapport hierboven -- filteren gebeurt op de naam, net als bij
+  // het bestaande vrije-tekstfilter op project_locatie.
+  locatie_naam: string | null
   aantal_punten: number
   aantal_niet_in_orde: number
   aantal_acties: number
@@ -415,6 +426,10 @@ export type InspectieRapport = {
   aangemaakt_op: string | null
   conclusie: string | null
   project_locatie: string | null
+  // Optionele structurele locatie (migratie 0080/0082), server-side al naar
+  // naam vertaald -- deze standalone rapportpagina heeft verder geen toegang
+  // tot de locatielijst van het bedrijf.
+  locatie_naam: string | null
   uitvoerder_naam: string | null
   bevindingen: RapportBevinding[]
   acties: RapportActie[]
@@ -638,6 +653,10 @@ export type ToolboxSessieRegel = {
   onderwerp: string
   notitie: string | null
   toolbox_id: string | null
+  // Optionele locatiekoppeling (migratie 0080/0082), server-side al naar naam
+  // vertaald -- zelfde reden als bij inspectie_bibliotheek.
+  locatie_id: string | null
+  locatie_naam: string | null
   aangemaakt_door: string | null   // user-id — bepaalt of teamleider mag verwijderen
   opkomst: number
   aanwezigen: string[]   // persoon_ids die aanwezig waren

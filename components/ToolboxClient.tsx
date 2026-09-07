@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
-import type { Company, ToolboxOverzichtItem, ToolboxSessiesOverzicht, ToolboxBron, ToolboxSuggestie, BedrijfToolboxQuizVraag } from '@/lib/types'
+import type { Company, ToolboxOverzichtItem, ToolboxSessiesOverzicht, ToolboxBron, ToolboxSuggestie, BedrijfToolboxQuizVraag, Locatie } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
 import ToolboxMaandoverzicht from './ToolboxMaandoverzicht'
@@ -22,7 +22,7 @@ const WAARSCHUWING =
 export default function ToolboxClient({
   company, huisstijl = VEILIGE_HUISSTIJL, initialOverzicht, sessies, isAdmin = false,
   magSessiesBeheren = false, huidigeGebruikerId = null, bronnen = [], suggesties = [],
-  initialQuizzes = [], terugHref, terugLabel,
+  initialQuizzes = [], terugHref, terugLabel, locaties = [],
 }: {
   company: Company
   huisstijl?: HuisstijlView
@@ -48,6 +48,8 @@ export default function ToolboxClient({
   // de eigen inhoud, ongeacht scrollpositie.
   terugHref: string
   terugLabel: string
+  // Optioneel, alleen bij een bedrijf met locaties (migratie 0080).
+  locaties?: Locatie[]
 }) {
   const [supabase] = useState<Supa>(() => createClient())
   const [view, setView] = useState<View>('maandoverzicht')
@@ -99,7 +101,7 @@ export default function ToolboxClient({
         {!isOrganisator || view === 'maandoverzicht' ? (
           <ToolboxMaandoverzicht companyId={company.id} initial={sessies}
             gekoppeldeToolboxen={overzicht.filter(t => t.gekoppeld)} bronnen={bronnen}
-            suggesties={suggesties}
+            suggesties={suggesties} locaties={locaties}
             magAlleSessiesBeheren={magSessiesBeheren} huidigeGebruikerId={huidigeGebruikerId} />
         ) : view === 'toolboxen' && isAdmin ? (
           <KoppelBeheer companyId={company.id} supabase={supabase} overzicht={overzicht} onPatch={patch} setFout={setFout} />
@@ -110,7 +112,7 @@ export default function ToolboxClient({
         ) : (
           <ToolboxMaandoverzicht companyId={company.id} initial={sessies}
             gekoppeldeToolboxen={overzicht.filter(t => t.gekoppeld)} bronnen={bronnen}
-            suggesties={suggesties}
+            suggesties={suggesties} locaties={locaties}
             magAlleSessiesBeheren={magSessiesBeheren} huidigeGebruikerId={huidigeGebruikerId} />
         )}
       </div>

@@ -9,6 +9,7 @@ import type {
   Functiegroep,
   NormRubriek,
   DashboardOverzicht,
+  Locatie,
 } from '@/lib/types'
 
 export default async function InspectiesPage({
@@ -31,6 +32,7 @@ export default async function InspectiesPage({
     { data: sjablonen },
     { data: regels },
     { data: functiegroepen },
+    { data: locaties },
     { data: norm },
     { data: overzicht },
     huisstijl,
@@ -64,6 +66,13 @@ export default async function InspectiesPage({
     // Actieve functiegroepen voor de doel-functiegroep-keuze op een sjabloon.
     supabase
       .from('functiegroep')
+      .select('id, company_id, naam, volgorde, gearchiveerd_op')
+      .eq('company_id', company_id)
+      .is('gearchiveerd_op', null)
+      .order('volgorde', { ascending: true }),
+    // Optionele locaties (migratie 0080); leeg bij een bedrijf zonder locaties.
+    supabase
+      .from('locatie')
       .select('id, company_id, naam, volgorde, gearchiveerd_op')
       .eq('company_id', company_id)
       .is('gearchiveerd_op', null)
@@ -112,6 +121,7 @@ export default async function InspectiesPage({
       initialNorm={(norm ?? []) as NormRubriek[]}
       inspectieDoel={(overzicht as DashboardOverzicht | null)?.inspectie_doel ?? null}
       magBeheren={magBeheren}
+      locaties={(locaties ?? []) as Locatie[]}
     />
   )
 }

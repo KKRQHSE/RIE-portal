@@ -57,6 +57,7 @@ const TESTS = [
   { naam: 'dashboard_meerjaren_test.mjs',           soort: 'database' },
   { naam: 'module_isolatie_test.mjs',               soort: 'database' },
   { naam: 'locatie_isolatie_test.mjs',              soort: 'database' },
+  { naam: 'locatie_inspectie_toolbox_test.mjs',     soort: 'database' },
   { naam: 'persoon_merge_isolatie_test.mjs',        soort: 'database' },
   { naam: 'inspectie_e2e_test.mjs',                 soort: 'database' },
   { naam: 'inspectie_project_persoon_test.mjs',     soort: 'database' },

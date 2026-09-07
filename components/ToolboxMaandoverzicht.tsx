@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import ModuleStatuskop from './ModuleStatuskop'
 import ToolboxSuggesties, { type ToolboxVoorstel } from './ToolboxSuggesties'
-import type { ToolboxSessiesOverzicht, ToolboxSessieRegel, ToolboxSessiePersoon, ToolboxOverzichtItem, ToolboxBron, ToolboxSuggestie } from '@/lib/types'
+import type { ToolboxSessiesOverzicht, ToolboxSessieRegel, ToolboxSessiePersoon, ToolboxOverzichtItem, ToolboxBron, ToolboxSuggestie, Locatie } from '@/lib/types'
 
 type Supa = ReturnType<typeof createClient>
 
@@ -23,7 +23,7 @@ function maandVan(iso: string) { return parseInt(iso.slice(5, 7), 10) - 1 }
 // Antwoord op de hoofdvraag: wat is er per maand gehouden en zitten we op target?
 export default function ToolboxMaandoverzicht({
   companyId, initial, gekoppeldeToolboxen, bronnen = [], suggesties = [],
-  magAlleSessiesBeheren = true, huidigeGebruikerId = null,
+  magAlleSessiesBeheren = true, huidigeGebruikerId = null, locaties = [],
 }: {
   companyId: string
   initial: ToolboxSessiesOverzicht | null
@@ -36,6 +36,8 @@ export default function ToolboxMaandoverzicht({
   // false — dan mag alleen de sessie-EIGENAAR (aangemaakt_door) verwijderen.
   magAlleSessiesBeheren?: boolean
   huidigeGebruikerId?: string | null
+  // Optioneel, alleen bij een bedrijf met locaties (migratie 0080).
+  locaties?: Locatie[]
 }) {
   const [supabase] = useState<Supa>(() => createClient())
   const [data, setData] = useState<ToolboxSessiesOverzicht | null>(initial)
@@ -68,6 +70,10 @@ export default function ToolboxMaandoverzicht({
 
   const personen = data?.personen ?? []
   const target = data?.sessie_doel_per_jaar ?? 12
+  // '' = alle locaties (default, en het enige pad zonder locaties). Puur een
+  // weergavefilter -- het jaardoel hieronder blijft organisatiebreed, zoals
+  // het al was: er bestaat geen locatiespecifiek sessiedoel.
+  const [fLocatieId, setFLocatieId] = useState('')
 
   // Sessies van het gekozen jaar, gegroepeerd per maand.
   const perMaand = useMemo(() => {
@@ -77,6 +83,12 @@ export default function ToolboxMaandoverzicht({
     }
     return groepen
   }, [data, jaar])
+
+  // Locatiefilter voor de weergave (voortgangsring hierboven blijft ongefilterd).
+  const perMaandGefilterd = useMemo(
+    () => fLocatieId ? perMaand.map(g => g.filter(s => s.locatie_id === fLocatieId)) : perMaand,
+    [perMaand, fLocatieId],
+  )
 
   const sessiesDitJaar = perMaand.reduce((n, g) => n + g.length, 0)
   const maandenGedekt = perMaand.filter(g => g.length > 0).length
@@ -102,7 +114,7 @@ export default function ToolboxMaandoverzicht({
         {nieuwVoor === 'los' ? (
           <NieuweSessie
             companyId={companyId} supabase={supabase} gekoppeldeToolboxen={gekoppeldeToolboxen}
-            bronnen={bronnen} setFout={setFout} voorstel={voorstel}
+            bronnen={bronnen} setFout={setFout} voorstel={voorstel} locaties={locaties}
             onKlaar={async (id) => { setNieuwVoor(null); setVoorstel(null); await herlaad(); if (id) setOpenSessie(id) }}
             onAnnuleer={() => { setNieuwVoor(null); setVoorstel(null) }}
           />
@@ -114,10 +126,25 @@ export default function ToolboxMaandoverzicht({
         )}
       </div>
 
+      {/* Locatiefilter — alleen zichtbaar bij een bedrijf met locaties. */}
+      {locaties.length > 0 && (
+        <div className="flex items-center gap-2">
+          <select
+            value={fLocatieId}
+            onChange={e => setFLocatieId(e.target.value)}
+            aria-label="Filter op locatie"
+            className="text-sm border border-ink/20 rounded px-2 py-2 min-h-[44px] bg-white"
+          >
+            <option value="">Alle locaties</option>
+            {locaties.map(l => <option key={l.id} value={l.id}>{l.naam}</option>)}
+          </select>
+        </div>
+      )}
+
       {/* Per maand */}
       <div className="space-y-2">
         {MAANDEN.map((naam, i) => {
-          const sessies = perMaand[i]
+          const sessies = perMaandGefilterd[i]
           const maandKey = `${jaar}-${String(i + 1).padStart(2, '0')}`
           return (
             <div key={naam} className="glass-tile rounded-2xl">
@@ -144,7 +171,7 @@ export default function ToolboxMaandoverzicht({
                 <div className="px-5 pb-4">
                   <NieuweSessie
                     companyId={companyId} supabase={supabase} gekoppeldeToolboxen={gekoppeldeToolboxen}
-                    bronnen={bronnen} setFout={setFout} startDatum={`${maandKey}-01`}
+                    bronnen={bronnen} setFout={setFout} startDatum={`${maandKey}-01`} locaties={locaties}
                     onKlaar={async (id) => { setNieuwVoor(null); await herlaad(); if (id) setOpenSessie(id) }}
                     onAnnuleer={() => setNieuwVoor(null)}
                   />
@@ -160,6 +187,7 @@ export default function ToolboxMaandoverzicht({
                       onToggle={() => setOpenSessie(openSessie === s.sessie_id ? null : s.sessie_id)}
                       gekoppeldeToolboxen={gekoppeldeToolboxen} setFout={setFout} onGewijzigd={herlaad}
                       magVerwijderen={magAlleSessiesBeheren || s.aangemaakt_door === huidigeGebruikerId}
+                      locaties={locaties}
                     />
                   ))}
                 </ul>
@@ -250,12 +278,13 @@ function TargetKop({
 
 function SessieRij({
   sessie, supabase, companyId, personen, open, onToggle, gekoppeldeToolboxen, setFout, onGewijzigd,
-  magVerwijderen = true,
+  magVerwijderen = true, locaties = [],
 }: {
   sessie: ToolboxSessieRegel; supabase: Supa; companyId: string
   personen: ToolboxSessiePersoon[]; open: boolean; onToggle: () => void
   gekoppeldeToolboxen: ToolboxOverzichtItem[]; setFout: (v: string | null) => void; onGewijzigd: () => Promise<void>
   magVerwijderen?: boolean
+  locaties?: Locatie[]
 }) {
   const [bewerk, setBewerk] = useState(false)
   const [bevestigVerwijder, setBevestigVerwijder] = useState(false)
@@ -299,6 +328,11 @@ function SessieRij({
             {sessie.notitie ? ` · ${sessie.notitie}` : ''}
           </p>
         </button>
+        {sessie.locatie_naam && (
+          <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded bg-sky-100 text-sky-800">
+            {sessie.locatie_naam}
+          </span>
+        )}
         <button type="button" onClick={onToggle}
           className="btn shrink-0 text-xs px-3 py-1.5 rounded-full border border-ink/20 bg-white text-ink/70 hover:border-accent hover:text-accent transition-colors">
           {open ? 'Sluiten' : 'Aanwezigheid'}
@@ -310,7 +344,7 @@ function SessieRij({
           {bewerk ? (
             <NieuweSessie
               companyId={companyId} supabase={supabase} gekoppeldeToolboxen={gekoppeldeToolboxen}
-              setFout={setFout} bestaand={sessie}
+              setFout={setFout} bestaand={sessie} locaties={locaties}
               onKlaar={async () => { setBewerk(false); await onGewijzigd() }}
               onAnnuleer={() => setBewerk(false)}
             />
@@ -379,6 +413,7 @@ function SessieRij({
 
 function NieuweSessie({
   companyId, supabase, gekoppeldeToolboxen, bronnen = [], voorstel = null, setFout, onKlaar, onAnnuleer, bestaand, startDatum,
+  locaties = [],
 }: {
   companyId: string; supabase: Supa; gekoppeldeToolboxen: ToolboxOverzichtItem[]
   bronnen?: ToolboxBron[]
@@ -388,11 +423,13 @@ function NieuweSessie({
   setFout: (v: string | null) => void
   onKlaar: (nieuwId?: string) => void | Promise<void>; onAnnuleer: () => void
   bestaand?: ToolboxSessieRegel; startDatum?: string
+  locaties?: Locatie[]
 }) {
   const [datum, setDatum] = useState(bestaand?.datum ?? startDatum ?? '')
   const [onderwerp, setOnderwerp] = useState(bestaand?.onderwerp ?? voorstel?.onderwerp ?? '')
   const [notitie, setNotitie] = useState(bestaand?.notitie ?? '')
   const [toolboxId, setToolboxId] = useState<string>(bestaand?.toolbox_id ?? voorstel?.toolboxId ?? '')
+  const [locatieId, setLocatieId] = useState<string>(bestaand?.locatie_id ?? '')
   const [bezig, setBezig] = useState(false)
 
   async function opslaan() {
@@ -402,6 +439,7 @@ function NieuweSessie({
       p_company_id: companyId, p_sessie_id: bestaand?.sessie_id ?? null,
       p_datum: datum, p_onderwerp: onderwerp.trim(),
       p_notitie: notitie.trim() || null, p_toolbox_id: toolboxId || null,
+      p_locatie_id: locatieId || null,
     })
     setBezig(false)
     if (error) { setFout(error.message); return }
@@ -448,6 +486,16 @@ function NieuweSessie({
               {gekoppeldeToolboxen.map(t => (
                 <option key={t.toolbox_id} value={t.toolbox_id}>{t.geldende_titel}</option>
               ))}
+            </select>
+          </label>
+        )}
+        {locaties.length > 0 && (
+          <label className="text-xs text-ink/50 flex flex-col gap-1 flex-1 min-w-[10rem]">
+            Locatie (optioneel)
+            <select value={locatieId} onChange={e => setLocatieId(e.target.value)}
+              className="text-sm border border-ink/20 rounded px-3 py-2 min-h-[40px] bg-white">
+              <option value="">— geen —</option>
+              {locaties.map(l => <option key={l.id} value={l.id}>{l.naam}</option>)}
             </select>
           </label>
         )}

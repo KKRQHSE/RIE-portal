@@ -4,7 +4,7 @@ import ActielijstClient from '@/components/ActielijstClient'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
 import { haalPersonen } from '@/lib/personen-data'
 import { bepaalHerkomst, type IncidentRef } from '@/lib/actie-herkomst'
-import type { Persoon, PvaItem } from '@/lib/types'
+import type { Persoon, PvaItem, Locatie } from '@/lib/types'
 
 // Centrale actielijst: ÉÉN overzicht waar alle acties (RI&E, inspectie, incident,
 // los) samenkomen, elk met een klikbare herkomst naar het bronformulier. Leest
@@ -20,12 +20,19 @@ export default async function ActielijstPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: company }, { data: items }, { data: incidenten }, huisstijl] =
+  const [{ data: profile }, { data: company }, { data: items }, { data: incidenten }, { data: locaties }, huisstijl] =
     await Promise.all([
       supabase.from('users').select('role, company_id, naam').eq('id', user.id).single(),
       supabase.from('companies').select('id, name, approved_at, approved_by').eq('id', company_id).single(),
       supabase.from('pva_items').select('*').eq('company_id', company_id),
       supabase.from('incident').select('id, actie_ids, omschrijving, datum').eq('company_id', company_id),
+      // Optionele locaties (migratie 0080); leeg bij een bedrijf zonder locaties.
+      supabase
+        .from('locatie')
+        .select('id, company_id, naam, volgorde, gearchiveerd_op')
+        .eq('company_id', company_id)
+        .is('gearchiveerd_op', null)
+        .order('volgorde', { ascending: true }),
       haalHuisstijl(company_id),
     ])
 
@@ -81,6 +88,7 @@ export default async function ActielijstPage({
       companyId={company_id}
       initialRijen={rijen}
       personen={personen}
+      locaties={(locaties ?? []) as Locatie[]}
       magBeheren={magBeheren}
       huisstijl={huisstijl}
     />

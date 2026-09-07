@@ -4,7 +4,7 @@ import PvaClient from '@/components/PvaClient'
 import type { Ritme } from '@/components/HerinnerBeheer'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
 import { haalPersonen } from '@/lib/personen-data'
-import type { Persoon, PvaItem } from '@/lib/types'
+import type { Persoon, PvaItem, Locatie } from '@/lib/types'
 import { isRieActie } from '@/lib/actie-herkomst'
 
 export default async function PvaPage({
@@ -19,7 +19,7 @@ export default async function PvaPage({
   if (!user) redirect('/login')
 
   // Onafhankelijke leesacties tegelijk i.p.v. na elkaar.
-  const [{ data: profile }, { data: company }, { data: items }, huisstijl] =
+  const [{ data: profile }, { data: company }, { data: items }, { data: locaties }, huisstijl] =
     await Promise.all([
       supabase.from('users').select('role, company_id, naam').eq('id', user.id).single(),
       supabase
@@ -28,6 +28,13 @@ export default async function PvaPage({
         .eq('id', company_id)
         .single(),
       supabase.from('pva_items').select('*').eq('company_id', company_id),
+      // Optionele locaties (migratie 0080); leeg bij een bedrijf zonder locaties.
+      supabase
+        .from('locatie')
+        .select('id, company_id, naam, volgorde, gearchiveerd_op')
+        .eq('company_id', company_id)
+        .is('gearchiveerd_op', null)
+        .order('volgorde', { ascending: true }),
       haalHuisstijl(company_id),
     ])
 
@@ -93,6 +100,7 @@ export default async function PvaPage({
       magBeheren={magBeheren}
       magStatus={magStatus}
       personen={personen}
+      locaties={(locaties ?? []) as Locatie[]}
       huisstijl={huisstijl}
       toonNaamVragen={isClient && !heeftNaam}
       ritme={ritme}

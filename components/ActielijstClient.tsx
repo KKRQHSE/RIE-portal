@@ -4,12 +4,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
-import type { Company, Persoon, PvaItem } from '@/lib/types'
+import type { Company, Persoon, PvaItem, Locatie } from '@/lib/types'
 import { BRON_FILTERS, type BronSoort, type Herkomst } from '@/lib/actie-herkomst'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
 import ModuleStatuskop from './ModuleStatuskop'
 import Toast from './Toast'
+import LocatieBadge from './LocatieBadge'
 
 const STATUS_OPTS_BEWERK = ['Open', 'In behandeling', 'Afgerond']
 
@@ -20,6 +21,8 @@ type Props = {
   companyId: string
   initialRijen: ActieRij[]
   personen: Persoon[]
+  // Optioneel, alleen bij een bedrijf met locaties (migratie 0080).
+  locaties?: Locatie[]
   magBeheren: boolean
   huisstijl?: HuisstijlView
 }
@@ -58,12 +61,14 @@ function Pill({ label, active, onClick }: { label: string; active: boolean; onCl
 }
 
 export default function ActielijstClient({
-  company, companyId, initialRijen, personen, magBeheren, huisstijl = VEILIGE_HUISSTIJL,
+  company, companyId, initialRijen, personen, locaties = [], magBeheren, huisstijl = VEILIGE_HUISSTIJL,
 }: Props) {
   const [rijen, setRijen] = useState<ActieRij[]>(initialRijen)
   const [fStatus, setFStatus] = useState('Alle')
   const [fBron, setFBron] = useState<BronSoort | 'alle'>('alle')
   const [fVerantw, setFVerantw] = useState('alle') // 'alle' | persoon_id | 'niet'
+  const [fLocatie, setFLocatie] = useState('alle') // 'alle' | locatie_id
+  const locatieNaam = useMemo(() => Object.fromEntries(locaties.map(l => [l.id, l.naam])), [locaties])
 
   const [formOpen, setFormOpen] = useState(false)
   const [onderwerp, setOnderwerp] = useState('')
@@ -109,6 +114,7 @@ export default function ActielijstClient({
       if (fVerantw === 'niet') { if (n) return false }
       else if (n !== fVerantw) return false
     }
+    if (fLocatie !== 'alle' && item.locatie_id !== fLocatie) return false
     return true
   })
 
@@ -245,6 +251,20 @@ export default function ActielijstClient({
               {verantwOpties.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
+          {locaties.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <label htmlFor="f-locatie" className="text-xs text-ink/40">Locatie</label>
+              <select
+                id="f-locatie"
+                value={fLocatie}
+                onChange={e => setFLocatie(e.target.value)}
+                className="text-sm rounded-full border border-ink/20 bg-white px-3 py-2 min-h-[44px] text-ink/70"
+              >
+                <option value="alle">Alle locaties</option>
+                {locaties.map(l => <option key={l.id} value={l.id}>{l.naam}</option>)}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Losse actie toevoegen */}
@@ -379,6 +399,7 @@ export default function ActielijstClient({
                     </span>
                     <span className="truncate" title="Verantwoordelijke">👤 {houderNaam(item) ?? 'Niet toegewezen'}</span>
                     {item.termijn && <span className="truncate" title="Termijn">🗓 {item.termijn}</span>}
+                    <LocatieBadge locatieId={item.locatie_id} locatieNaam={locatieNaam} />
                   </div>
                 </div>
                 {/* Klikbare herkomst → bronformulier (of nette niet-klikbare chip). */}

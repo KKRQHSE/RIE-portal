@@ -13,6 +13,7 @@ import type {
   Functiegroep,
   NormRubriek,
   DashboardOverzicht,
+  Locatie,
 } from '@/lib/types'
 import HuisstijlLogo from './HuisstijlLogo'
 import LogoutButton from './LogoutButton'
@@ -31,6 +32,8 @@ type Props = {
   inspectieDoel?: DashboardOverzicht['inspectie_doel'] | null
   // Teamleider start/vult in/rondt af, maar beheert geen sjablonen/normkoppeling.
   magBeheren?: boolean
+  // Optioneel, alleen bij een bedrijf met locaties (migratie 0080).
+  locaties?: Locatie[]
 }
 
 type View = 'inspecties' | 'norm' | 'sjablonen'
@@ -69,6 +72,7 @@ export default function InspectieClient({
   initialNorm = [],
   inspectieDoel = null,
   magBeheren = false,
+  locaties = [],
 }: Props) {
   const supabase = createClient()
   const router = useRouter()
@@ -142,6 +146,8 @@ export default function InspectieClient({
       aangemaakt_op: new Date().toISOString(),
       conclusie: null,
       project_locatie: null,
+      locatie_id: null,
+      locatie_naam: null,
       sjabloon_naam_snap: 'Werkplekinspectie (norm)',
       controlesoort_snap: null,
       uitvoerder_naam: null,
@@ -169,6 +175,8 @@ export default function InspectieClient({
       aangemaakt_op: new Date().toISOString(),
       conclusie: null,
       project_locatie: null,
+      locatie_id: null,
+      locatie_naam: null,
       sjabloon_naam_snap: sjabloon.naam,
       controlesoort_snap: sjabloon.controlesoort,
       uitvoerder_naam: null,
@@ -243,6 +251,7 @@ export default function InspectieClient({
             inspectie={open}
             onTerug={() => setOpen(null)}
             onStatus={status => statusBijgewerkt(open.id, status)}
+            locaties={locaties}
           />
         ) : (
           <>
@@ -350,6 +359,7 @@ function Bibliotheek({
   const [fUitvoerder, setFUitvoerder] = useState(ALLE)
   const [fJaar, setFJaar] = useState(ALLE)
   const [fProject, setFProject] = useState(ALLE)
+  const [fLocatie, setFLocatie] = useState(ALLE)
 
   const bruikbaar = sjablonen.filter(s => s.punten.length > 0)
   const gekozen = bruikbaar.find(s => s.id === keuze)
@@ -375,6 +385,12 @@ function Bibliotheek({
     () => Array.from(new Set(regels.map(r => r.project_locatie).filter((v): v is string => !!v))).sort(),
     [regels],
   )
+  // Locatienamen komen server-side mee via inspectie_bibliotheek (migratie 0082),
+  // zelfde vorm als het bestaande project_locatie-filter hierboven.
+  const locatieNamen = useMemo(
+    () => Array.from(new Set(regels.map(r => r.locatie_naam).filter((v): v is string => !!v))).sort(),
+    [regels],
+  )
 
   const zichtbaar = useMemo(
     () => regels.filter(r =>
@@ -382,12 +398,13 @@ function Bibliotheek({
       (fSjabloon === ALLE || r.sjabloon_naam_snap === fSjabloon) &&
       (fUitvoerder === ALLE || r.uitvoerder_naam === fUitvoerder) &&
       (fJaar === ALLE || jaarVan(r) === fJaar) &&
-      (fProject === ALLE || r.project_locatie === fProject)
+      (fProject === ALLE || r.project_locatie === fProject) &&
+      (fLocatie === ALLE || r.locatie_naam === fLocatie)
     ),
-    [regels, fStatus, fSjabloon, fUitvoerder, fJaar, fProject],
+    [regels, fStatus, fSjabloon, fUitvoerder, fJaar, fProject, fLocatie],
   )
 
-  const heeftFilters = fStatus !== ALLE || fSjabloon !== ALLE || fUitvoerder !== ALLE || fJaar !== ALLE || fProject !== ALLE
+  const heeftFilters = fStatus !== ALLE || fSjabloon !== ALLE || fUitvoerder !== ALLE || fJaar !== ALLE || fProject !== ALLE || fLocatie !== ALLE
 
   const filterSelect = 'text-sm border border-ink/20 rounded px-2 py-2 min-h-[44px] bg-white'
 
@@ -514,9 +531,15 @@ function Bibliotheek({
                 {projecten.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             )}
+            {locatieNamen.length > 1 && (
+              <select value={fLocatie} onChange={e => setFLocatie(e.target.value)} className={filterSelect} aria-label="Filter op locatie">
+                <option value={ALLE}>Alle locaties</option>
+                {locatieNamen.map(l => <option key={l} value={l}>{l}</option>)}
+              </select>
+            )}
             {heeftFilters && (
               <button
-                onClick={() => { setFStatus(ALLE); setFSjabloon(ALLE); setFUitvoerder(ALLE); setFJaar(ALLE); setFProject(ALLE) }}
+                onClick={() => { setFStatus(ALLE); setFSjabloon(ALLE); setFUitvoerder(ALLE); setFJaar(ALLE); setFProject(ALLE); setFLocatie(ALLE) }}
                 className="btn text-sm px-3 py-2 min-h-[44px] inline-flex items-center text-ink/50 hover:text-ink"
               >
                 Filters wissen
@@ -558,9 +581,14 @@ function BibliotheekRij({ regel, onOpen }: { regel: BibliotheekRegel; onOpen: ()
             {regel.project_locatie ? ` · ${regel.project_locatie}` : ''}
           </p>
         </div>
-        <span className={`text-xs font-medium px-3 py-1 rounded-full shrink-0 ${STATUS_STIJL[regel.status] ?? 'bg-gray-100 text-gray-600'}`}>
-          {STATUS_LABEL[regel.status] ?? regel.status}
-        </span>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className={`text-xs font-medium px-3 py-1 rounded-full ${STATUS_STIJL[regel.status] ?? 'bg-gray-100 text-gray-600'}`}>
+            {STATUS_LABEL[regel.status] ?? regel.status}
+          </span>
+          {regel.locatie_naam && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded bg-sky-100 text-sky-800">{regel.locatie_naam}</span>
+          )}
+        </div>
       </div>
 
       {/* Cijfers: aantal punten, niet in orde, eruit voortgekomen acties. */}

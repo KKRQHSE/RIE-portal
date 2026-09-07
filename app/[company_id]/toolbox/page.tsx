@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import ToolboxClient from '@/components/ToolboxClient'
 import { haalHuisstijl } from '@/lib/huisstijl-data'
-import type { ToolboxOverzichtItem, ToolboxSessiesOverzicht, ToolboxBron, ToolboxSuggestie, BedrijfToolboxQuizVraag } from '@/lib/types'
+import type { ToolboxOverzichtItem, ToolboxSessiesOverzicht, ToolboxBron, ToolboxSuggestie, BedrijfToolboxQuizVraag, Locatie } from '@/lib/types'
 
 export default async function ToolboxPage({
   params,
@@ -24,6 +24,7 @@ export default async function ToolboxPage({
     { data: bronnen },
     { data: suggesties },
     { data: quizzes },
+    { data: locaties },
     huisstijl,
   ] = await Promise.all([
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
@@ -46,6 +47,13 @@ export default async function ToolboxPage({
     supabase.from('bedrijf_toolbox_quiz')
       .select('id, company_id, toolbox_id, vraagtekst, opties, juist_antwoord, uitleg, volgorde, aangemaakt_op')
       .eq('company_id', company_id),
+    // Optionele locaties (migratie 0080); leeg bij een bedrijf zonder locaties.
+    supabase
+      .from('locatie')
+      .select('id, company_id, naam, volgorde, gearchiveerd_op')
+      .eq('company_id', company_id)
+      .is('gearchiveerd_op', null)
+      .order('volgorde', { ascending: true }),
     haalHuisstijl(company_id),
   ])
 
@@ -82,6 +90,7 @@ export default async function ToolboxPage({
       initialQuizzes={(quizzes ?? []) as BedrijfToolboxQuizVraag[]}
       terugHref={terugHref}
       terugLabel={terugLabel}
+      locaties={(locaties ?? []) as Locatie[]}
     />
   )
 }

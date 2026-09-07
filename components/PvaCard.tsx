@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import type { PvaItem, Persoon, HistorieRegel } from '@/lib/types'
+import type { PvaItem, Persoon, HistorieRegel, Locatie } from '@/lib/types'
+import LocatieBadge from './LocatieBadge'
 import BewijsBlok from './BewijsBlok'
 import Doorgeven from './Doorgeven'
 
@@ -48,6 +49,8 @@ type Props = {
   item: PvaItem
   onUpdate: (id: string, updates: Partial<PvaItem>) => void
   personen?: Persoon[]
+  // Optioneel, alleen bij een bedrijf met locaties (migratie 0080).
+  locaties?: Locatie[]
   magBeheren?: boolean
   // Teamleider: status + opmerking zetten via de smalle RPC, geschiedenis
   // inzien — geen concept-workflow, geen verantwoordelijke wijzigen, geen
@@ -62,6 +65,7 @@ export default function PvaCard({
   item,
   onUpdate,
   personen = [],
+  locaties = [],
   magBeheren = false,
   magStatus = false,
 }: Props) {
@@ -85,8 +89,9 @@ export default function PvaCard({
   // ref bevat vraagnummers gescheiden door "/", bv "F1-1 / F1-2".
   const refNums = (item.ref ?? '').split('/').map(s => s.trim()).filter(Boolean)
 
-  // persoon_id en opm zijn geen status/concept en mogen nog direct opgeslagen worden.
+  // persoon_id, locatie_id en opm zijn geen status/concept en mogen nog direct opgeslagen worden.
   const [persoonId, setPersoonId] = useState<string | null>(item.persoon_id)
+  const [locatieId, setLocatieId] = useState<string | null>(item.locatie_id ?? null)
   const [opm, setOpm] = useState(item.opm ?? '')
   const [saved, setSaved] = useState(false)
 
@@ -102,6 +107,7 @@ export default function PvaCard({
   const [histBezig, setHistBezig] = useState(false)
 
   const houderNaam = personen.find(p => p.id === persoonId)?.naam ?? null
+  const locatieNaam = Object.fromEntries(locaties.map(l => [l.id, l.naam]))
 
   async function save(updates: Partial<PvaItem>) {
     const supabase = createClient()
@@ -118,6 +124,13 @@ export default function PvaCard({
     setPersoonId(id)
     onUpdate(item.id, { persoon_id: id })
     save({ persoon_id: id })
+  }
+
+  function changeLocatie(val: string) {
+    const id = val === '' ? null : val
+    setLocatieId(id)
+    onUpdate(item.id, { locatie_id: id })
+    save({ locatie_id: id })
   }
 
   function blurOpm() {
@@ -227,6 +240,7 @@ export default function PvaCard({
             <span className="truncate">{houderNaam ? `👤 ${houderNaam}` : 'Niet toegewezen'}</span>
             {item.termijn && <span className="truncate">🗓 {item.termijn}</span>}
             {heeftConcept && <span className="text-accent font-medium">Voorstel: {item.concept_status}</span>}
+            <LocatieBadge locatieId={item.locatie_id} locatieNaam={locatieNaam} />
           </div>
         </div>
         <span className="text-ink/30 text-xs mt-1 shrink-0">{open ? '▲' : '▼'}</span>
@@ -315,6 +329,25 @@ export default function PvaCard({
                 {item.termijn || (item.termijn_datum ? formatDatum(item.termijn_datum) : '—')}
               </p>
             </div>
+            {locaties.length > 0 && (
+              <div>
+                <p className={veldLabel}>Locatie</p>
+                {magBeheren ? (
+                  <select
+                    value={locatieId ?? ''}
+                    onChange={e => changeLocatie(e.target.value)}
+                    className="w-full text-sm border border-ink/20 rounded px-3 py-2 min-h-[40px] bg-white"
+                  >
+                    <option value="">Geen</option>
+                    {locaties.map(l => (
+                      <option key={l.id} value={l.id}>{l.naam}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-sm text-ink/70">{locatieNaam[locatieId ?? ''] ?? '—'}</p>
+                )}
+              </div>
+            )}
           </div>
           {saved && <p className="text-xs text-green-600 font-medium">✓ Opgeslagen</p>}
 

@@ -17,6 +17,7 @@ import type {
   InspectieBevinding,
   InspectieHistorieRegel,
   BevindingResultaat,
+  Locatie,
 } from '@/lib/types'
 
 // Vertaalhulp: dezelfde vorm als in de toolbox- en meldflow.
@@ -47,9 +48,11 @@ type Props = {
   onTerug: () => void
   // Meld een statuswijziging (bv. afgerond) terug aan het overzicht.
   onStatus: (status: Inspectie['status']) => void
+  // Optioneel, alleen bij een bedrijf met locaties (migratie 0080/0082).
+  locaties?: Locatie[]
 }
 
-export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onStatus }: Props) {
+export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onStatus, locaties = [] }: Props) {
   const supabase = createClient()
   const [taal, setTaal] = useTaal()
   const t = maakVertaler(taal)
@@ -59,6 +62,7 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
   const [historie, setHistorie] = useState<InspectieHistorieRegel[]>([])
   const [conclusie, setConclusie] = useState(inspectie.conclusie ?? '')
   const [project, setProject] = useState(inspectie.project_locatie ?? '')
+  const [locatieId, setLocatieId] = useState(inspectie.locatie_id ?? '')
   const [laden, setLaden] = useState(true)
   const [fout, setFout] = useState<string | null>(null)
   const [afrondBezig, setAfrondBezig] = useState(false)
@@ -189,6 +193,15 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
     })
   }
 
+  async function bewaarLocatie(nieuw: string) {
+    setLocatieId(nieuw)
+    if (readOnly) return
+    await supabase.rpc('inspectie_locatie_zetten', {
+      p_inspectie_id: inspectie.id,
+      p_locatie_id: nieuw || null,
+    })
+  }
+
   return (
     <div className="space-y-4">
       {/* Terug + taalschakelaar op één regel; op smal scherm wrapt de toggle mee. */}
@@ -236,6 +249,21 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
             className="w-full text-sm border border-ink/20 rounded px-3 py-2 bg-white disabled:bg-surface/50 disabled:text-ink/60"
           />
         </div>
+
+        {locaties.length > 0 && (
+          <div className="mt-3">
+            <p className="text-xs font-medium text-ink/40 uppercase tracking-wider mb-1">{t('locatie')}</p>
+            <select
+              value={locatieId}
+              onChange={e => bewaarLocatie(e.target.value)}
+              disabled={readOnly}
+              className="w-full text-sm border border-ink/20 rounded px-3 py-2 min-h-[44px] bg-white disabled:bg-surface/50 disabled:text-ink/60"
+            >
+              <option value="">{t('locatieGeenGekozen')}</option>
+              {locaties.map(l => <option key={l.id} value={l.id}>{l.naam}</option>)}
+            </select>
+          </div>
+        )}
       </div>
 
       {laden && <p className="text-sm text-ink/40">{t('laden')}</p>}

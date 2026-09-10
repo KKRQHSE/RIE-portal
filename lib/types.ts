@@ -118,6 +118,10 @@ export type Company = {
   name: string
   approved_at: string | null
   approved_by: string | null
+  // Per-bedrijf instelbaar (migratie 0086); alleen aanwezig waar geselecteerd.
+  // undefined (niet geselecteerd) en null (geen instelling) betekenen allebei
+  // "alle talen" -- zie normaliseerBeschikbareTalen.
+  beschikbare_talen?: string[] | null
 }
 
 export type Merk = {
@@ -135,6 +139,8 @@ export type BedrijfHuisstijl = {
   huisstijl_modus: string
   klant_logo_pad: string | null
   accent_kleur_override: string | null
+  // Per-bedrijf instelbaar (migratie 0086); null = geen instelling = alle talen.
+  beschikbare_talen: string[] | null
 }
 
 export type Module = {

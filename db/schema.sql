@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-10T12:51:41.746Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-10T13:24:44.871Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -300,7 +300,8 @@ CREATE TABLE public.companies (
   huisstijl_modus text DEFAULT 'default'::text NOT NULL,
   klant_logo_pad text,
   accent_kleur_override text,
-  oefenomgeving boolean DEFAULT false NOT NULL
+  oefenomgeving boolean DEFAULT false NOT NULL,
+  beschikbare_talen text[]
 );
 
 CREATE TABLE public.correctie_log (
@@ -859,6 +860,7 @@ ALTER TABLE public.bedrijf_vraag_afwijking ADD CONSTRAINT afwijking_modus_check 
 ALTER TABLE public.centrale_toolbox ADD CONSTRAINT toolbox_slaaggrens_check CHECK (((quiz_slaaggrens >= 0) AND (quiz_slaaggrens <= 100)));
 ALTER TABLE public.centrale_toolbox ADD CONSTRAINT toolbox_toegang_check CHECK ((toegang = ANY (ARRAY['link'::text, 'login'::text])));
 ALTER TABLE public.centrale_toolbox ADD CONSTRAINT toolbox_uitleg_modus_check CHECK ((quiz_uitleg_modus = ANY (ARRAY['per_vraag'::text, 'aan_eind'::text])));
+ALTER TABLE public.companies ADD CONSTRAINT companies_beschikbare_talen_check CHECK (((beschikbare_talen IS NULL) OR (beschikbare_talen <@ ARRAY['nl'::text, 'tr'::text])));
 ALTER TABLE public.companies ADD CONSTRAINT companies_huisstijl_modus_check CHECK ((huisstijl_modus = ANY (ARRAY['default'::text, 'co_branding'::text, 'white_label'::text])));
 ALTER TABLE public.goedkeuringsverzoek ADD CONSTRAINT goedkeuringsverzoek_status_check CHECK ((status = ANY (ARRAY['open'::text, 'goedgekeurd'::text, 'afgewezen'::text])));
 ALTER TABLE public.goedkeuringsverzoek ADD CONSTRAINT goedkeuringsverzoek_type_check CHECK ((type = ANY (ARRAY['nieuw_concept'::text, 'koppel_bestaand'::text])));
@@ -3995,6 +3997,7 @@ begin
 
   return jsonb_build_object(
     'bedrijf',      (select name from public.companies where id = v_company),
+    'beschikbare_talen', (select beschikbare_talen from public.companies where id = v_company),
     'huisstijl',    public.huisstijl_van_bedrijf(v_company),
     'gevolg_opties', (
       select coalesce(jsonb_agg(jsonb_build_object(
@@ -7035,6 +7038,7 @@ begin
   return jsonb_build_object(
     'persoon',   jsonb_build_object('id', v_persoon.id, 'naam', v_persoon.naam),
     'bedrijf',   (select name from public.companies where id = v_company),
+    'beschikbare_talen', (select beschikbare_talen from public.companies where id = v_company),
     'huisstijl', public.huisstijl_van_bedrijf(v_company),
     'toolboxen', v_list
   );

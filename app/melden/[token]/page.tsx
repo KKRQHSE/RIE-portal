@@ -7,6 +7,7 @@ import {
   type HuisstijlView,
 } from '@/lib/huisstijl'
 import type { GevolgOptie } from '@/lib/incident'
+import { normaliseerBeschikbareTalen } from '@/lib/i18n-werknemer'
 
 const HUISSTIJL_BUCKET = 'merk-assets'
 
@@ -15,6 +16,7 @@ const HUISSTIJL_BUCKET = 'merk-assets'
 // huisstijl + gevolg-labels — nooit bestaande incident-data.
 type RawData = {
   bedrijf?: string | null
+  beschikbare_talen?: unknown
   huisstijl?: Record<string, unknown> | null
   gevolg_opties?: GevolgOptie[] | null
 }
@@ -58,6 +60,7 @@ export default async function IncidentMeldPage({
 
   const raw = data as RawData
   const bedrijfNaam = typeof raw.bedrijf === 'string' ? raw.bedrijf : null
+  const beschikbareTalen = normaliseerBeschikbareTalen(raw.beschikbare_talen)
   const gevolgOpties = Array.isArray(raw.gevolg_opties) ? raw.gevolg_opties : []
 
   const h = raw.huisstijl
@@ -78,6 +81,7 @@ export default async function IncidentMeldPage({
     <IncidentMeldClient
       token={token}
       bedrijfNaam={bedrijfNaam}
+      beschikbareTalen={beschikbareTalen}
       huisstijl={huisstijl}
       gevolgOpties={gevolgOpties}
     />

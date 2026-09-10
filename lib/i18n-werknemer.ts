@@ -21,6 +21,17 @@ export const TALEN: { code: Taal; label: string }[] = [
   { code: 'nl', label: 'NL' },
   { code: 'tr', label: 'TR' },
 ]
+export const ALLE_TALEN: Taal[] = TALEN.map(t => t.code)
+
+// Per-bedrijf instelbaar (migratie 0086, companies.beschikbare_talen): welke
+// van de twee talen een medewerker op de gast-schermen te zien krijgt. NULL/
+// onbekende waarde -> alle talen (huidig gedrag, geen regressie voor een
+// bedrijf zonder instelling).
+export function normaliseerBeschikbareTalen(ruw: unknown): Taal[] {
+  if (!Array.isArray(ruw)) return ALLE_TALEN
+  const geldig = ruw.filter((v): v is Taal => v === 'nl' || v === 'tr')
+  return geldig.length > 0 ? geldig : ALLE_TALEN
+}
 
 export type Woordenboek = Record<string, { nl: string; tr: string }>
 

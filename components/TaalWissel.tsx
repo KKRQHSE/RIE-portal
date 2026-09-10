@@ -1,7 +1,7 @@
 'use client'
 
 import { useSyncExternalStore, useCallback } from 'react'
-import { TALEN, type Taal } from '@/lib/i18n-werknemer'
+import { TALEN, ALLE_TALEN, type Taal } from '@/lib/i18n-werknemer'
 
 const SLEUTEL = 'rie-taal'
 
@@ -44,8 +44,14 @@ function leesClient(): Taal {
 
 const leesServer = (): Taal => 'nl'
 
-export function useTaal(): [Taal, (t: Taal) => void] {
+// `toegestaan` (optioneel, standaard alle talen): per-bedrijf instelbaar
+// (migratie 0086). Staat de opgeslagen taal er niet (meer) in -- bv. een
+// eerder bezoek aan een tweetalig bedrijf, nu op een NL-only bedrijf -- dan
+// klemt dit vast op de eerste toegestane taal i.p.v. de UI in een niet-
+// aangeboden taal te tonen.
+export function useTaal(toegestaan: Taal[] = ALLE_TALEN): [Taal, (t: Taal) => void] {
   const taal = useSyncExternalStore(abonneer, leesClient, leesServer)
+  const taalGeklemd = toegestaan.includes(taal) ? taal : (toegestaan[0] ?? 'nl')
 
   const setTaal = useCallback((t: Taal) => {
     taalInGeheugen = t
@@ -54,7 +60,7 @@ export function useTaal(): [Taal, (t: Taal) => void] {
     window.dispatchEvent(new Event(TAAL_EVENT))
   }, [])
 
-  return [taal, setTaal]
+  return [taalGeklemd, setTaal]
 }
 
 // Inline SVG-vlaggen — bewust géén emoji-vlaggen (die renderen niet op alle
@@ -91,10 +97,22 @@ const VLAGGEN: Record<Taal, { naam: string; Vlag: () => React.JSX.Element }> = {
 
 // Vlaggen-taalschakelaar. Alleen op de werknemer-facing schermen. De actieve taal
 // is vol/scherp met ring; de inactieve is gedempt (grijs + doorzichtig).
-export default function TaalWissel({ taal, onTaal }: { taal: Taal; onTaal: (t: Taal) => void }) {
+// `talen` (optioneel, standaard alle talen): per-bedrijf beschikbare talen
+// (migratie 0086). Is er maar één taal beschikbaar, dan valt er niets te
+// wisselen -- de toggle verschijnt dan helemaal niet.
+export default function TaalWissel({
+  taal, onTaal, talen = ALLE_TALEN,
+}: {
+  taal: Taal
+  onTaal: (t: Taal) => void
+  talen?: Taal[]
+}) {
+  const opties = TALEN.filter(t => talen.includes(t.code))
+  if (opties.length <= 1) return null
+
   return (
     <div className="inline-flex items-center gap-2" role="group" aria-label="Taal / Dil">
-      {TALEN.map(t => {
+      {opties.map(t => {
         const actief = taal === t.code
         const { naam, Vlag } = VLAGGEN[t.code]
         return (

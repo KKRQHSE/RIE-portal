@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { Merk, BedrijfHuisstijl } from '@/lib/types'
+import { normaliseerBeschikbareTalen } from '@/lib/i18n-werknemer'
 import { kleurUitLogo } from '@/lib/logo-kleur'
 import LogoutButton from './LogoutButton'
 
@@ -376,6 +377,11 @@ function KlantForm({
   const [modus, setModus] = useState(bedrijf.huisstijl_modus ?? 'default')
   const [klantLogoPad, setKlantLogoPad] = useState<string | null>(bedrijf.klant_logo_pad)
   const [accentOverride, setAccentOverride] = useState(bedrijf.accent_kleur_override ?? '')
+  // NL staat altijd aan; dit vinkje bepaalt alleen of TR ernaast verschijnt op
+  // de werknemer-facing schermen (/tb, /melden, inspectie-invulscherm).
+  const [trBeschikbaar, setTrBeschikbaar] = useState(
+    normaliseerBeschikbareTalen(bedrijf.beschikbare_talen).includes('tr'),
+  )
   const [bezig, setBezig] = useState(false)
   const [melding, setMelding] = useState<string | null>(null)
 
@@ -386,17 +392,19 @@ function KlantForm({
   async function opslaan() {
     setBezig(true)
     setMelding(null)
+    const beschikbareTalen = trBeschikbaar ? ['nl', 'tr'] : ['nl']
     const { error } = await supabase
       .from('companies')
       .update({
         merk_id: merkId || null,
         huisstijl_modus: modus,
         accent_kleur_override: accentOverride.trim() || null,
+        beschikbare_talen: beschikbareTalen,
       })
       .eq('id', bedrijf.id)
     setBezig(false)
     if (error) { setMelding(`Opslaan mislukt: ${error.message}`); return }
-    onSaved({ ...bedrijf, merk_id: merkId || null, huisstijl_modus: modus, accent_kleur_override: accentOverride.trim() || null, klant_logo_pad: klantLogoPad })
+    onSaved({ ...bedrijf, merk_id: merkId || null, huisstijl_modus: modus, accent_kleur_override: accentOverride.trim() || null, klant_logo_pad: klantLogoPad, beschikbare_talen: beschikbareTalen })
     setMelding('✓ Opgeslagen')
     setTimeout(() => setMelding(null), 2000)
   }
@@ -411,7 +419,7 @@ function KlantForm({
     setBezig(false)
     if (error) { setMelding(`Opslaan mislukt: ${error.message}`); return }
     setKlantLogoPad(pad)
-    onSaved({ ...bedrijf, merk_id: merkId || null, huisstijl_modus: modus, accent_kleur_override: accentOverride.trim() || null, klant_logo_pad: pad })
+    onSaved({ ...bedrijf, merk_id: merkId || null, huisstijl_modus: modus, accent_kleur_override: accentOverride.trim() || null, klant_logo_pad: pad, beschikbare_talen: trBeschikbaar ? ['nl', 'tr'] : ['nl'] })
     setMelding('✓ Logo geüpload')
     setTimeout(() => setMelding(null), 2000)
   }
@@ -476,6 +484,23 @@ function KlantForm({
       <div className="flex items-center gap-2">
         <span className="text-xs text-ink/50 w-28 shrink-0" />
         <KleurUitLogo logoUrl={klantLogoUrl ?? merkLogoUrl} onGebruik={setAccentOverride} />
+      </div>
+
+      {/* Taal op werknemer-schermen (/tb, /melden, inspectie-invulscherm) */}
+      <div className="flex items-start gap-2">
+        <span className="text-xs text-ink/50 w-28 shrink-0 mt-1">Talen</span>
+        <div className="flex-1 space-y-1">
+          <p className="text-sm text-ink/70">Nederlands staat altijd aan.</p>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={trBeschikbaar}
+              onChange={e => setTrBeschikbaar(e.target.checked)}
+              className="accent-accent"
+            />
+            <span>Turks (TR) ook beschikbaar op de werknemer-schermen</span>
+          </label>
+        </div>
       </div>
 
       {/* Mini-preview van de logocombinatie */}

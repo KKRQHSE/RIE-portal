@@ -252,6 +252,7 @@ export default function InspectieClient({
             onTerug={() => setOpen(null)}
             onStatus={status => statusBijgewerkt(open.id, status)}
             locaties={locaties}
+            beschikbareTalen={company.beschikbare_talen}
           />
         ) : (
           <>

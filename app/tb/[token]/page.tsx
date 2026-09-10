@@ -9,6 +9,7 @@ import {
 import type { WerknemerToolbox } from '@/lib/types'
 import { parseStorageRef } from '@/lib/video-bron'
 import { createServiceClient } from '@/lib/supabase/service'
+import { normaliseerBeschikbareTalen } from '@/lib/i18n-werknemer'
 
 const HUISSTIJL_BUCKET = 'merk-assets'
 const VIDEO_GELDIGHEID_SEC = 60 * 60 * 4   // signed video-URL: 4 uur
@@ -33,6 +34,7 @@ async function resolveVideoUrl(url: string | null): Promise<string | null> {
 type RawData = {
   persoon?: { id?: string; naam?: string | null } | null
   bedrijf?: string | null
+  beschikbare_talen?: unknown
   huisstijl?: Record<string, unknown> | null
   toolboxen?: WerknemerToolbox[] | null
 }
@@ -73,6 +75,7 @@ export default async function ToolboxGastPage({
   const raw = data as RawData
   const persoonNaam = typeof raw.persoon?.naam === 'string' ? raw.persoon.naam : null
   const bedrijfNaam = typeof raw.bedrijf === 'string' ? raw.bedrijf : null
+  const beschikbareTalen = normaliseerBeschikbareTalen(raw.beschikbare_talen)
 
   const h = raw.huisstijl
   const publiekeUrl = (pad: unknown): string | null =>
@@ -101,6 +104,7 @@ export default async function ToolboxGastPage({
       token={token}
       persoonNaam={persoonNaam}
       bedrijfNaam={bedrijfNaam}
+      beschikbareTalen={beschikbareTalen}
       huisstijl={huisstijl}
       initialToolboxen={toolboxen}
     />

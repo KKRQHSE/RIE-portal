@@ -18,7 +18,7 @@ export default async function HuisstijlAdminPage() {
       .order('naam', { ascending: true }),
     supabase
       .from('companies')
-      .select('id, name, merk_id, huisstijl_modus, klant_logo_pad, accent_kleur_override')
+      .select('id, name, merk_id, huisstijl_modus, klant_logo_pad, accent_kleur_override, beschikbare_talen')
       .order('name', { ascending: true }),
   ])
 

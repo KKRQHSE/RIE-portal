@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { INSP_TEKST, vertaal, type Taal } from '@/lib/i18n-werknemer'
+import { INSP_TEKST, vertaal, normaliseerBeschikbareTalen, type Taal } from '@/lib/i18n-werknemer'
 import { MAX_BYTES, isAfbeelding, isToegestaanType } from '@/lib/bewijs'
 import { verkleinAfbeelding } from '@/lib/afbeelding'
 import { INSPECTIE_FOTO_BUCKET, type InspectieFotoItem } from '@/lib/inspectie-foto'
@@ -50,11 +50,15 @@ type Props = {
   onStatus: (status: Inspectie['status']) => void
   // Optioneel, alleen bij een bedrijf met locaties (migratie 0080/0082).
   locaties?: Locatie[]
+  // Per-bedrijf instelbaar (migratie 0086); ongenormaliseerd (companies-kolom,
+  // dus null bij geen instelling) -- hier genormaliseerd naar alle talen.
+  beschikbareTalen?: string[] | null
 }
 
-export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onStatus, locaties = [] }: Props) {
+export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onStatus, locaties = [], beschikbareTalen }: Props) {
   const supabase = createClient()
-  const [taal, setTaal] = useTaal()
+  const talenOpties = normaliseerBeschikbareTalen(beschikbareTalen)
+  const [taal, setTaal] = useTaal(talenOpties)
   const t = maakVertaler(taal)
 
   const [status, setStatus] = useState<Inspectie['status']>(inspectie.status)
@@ -212,7 +216,7 @@ export default function InspectieUitvoeren({ companyId, inspectie, onTerug, onSt
         >
           ← {t('terugOverzicht')}
         </button>
-        <TaalWissel taal={taal} onTaal={setTaal} />
+        <TaalWissel taal={taal} onTaal={setTaal} talen={talenOpties} />
       </div>
 
       <div className="bg-white rounded-lg shadow-sm p-4">

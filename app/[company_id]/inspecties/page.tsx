@@ -49,7 +49,7 @@ export default async function InspectiesPage({
       .maybeSingle(),
     supabase
       .from('companies')
-      .select('id, name, approved_at, approved_by')
+      .select('id, name, approved_at, approved_by, beschikbare_talen')
       .eq('id', company_id)
       .single(),
     // Actieve sjablonen (niet gearchiveerd).

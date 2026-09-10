@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
 import type { WerknemerToolbox } from '@/lib/types'
 import { videoBron } from '@/lib/video-bron'
-import { TB_TEKST, vertaal } from '@/lib/i18n-werknemer'
+import { TB_TEKST, vertaal, type Taal } from '@/lib/i18n-werknemer'
 import TaalWissel, { useTaal } from './TaalWissel'
 import HuisstijlLogo from './HuisstijlLogo'
 import Handtekening from './Handtekening'
@@ -16,16 +16,19 @@ import BestandSpeler from './BestandSpeler'
 type Stap = 'inhoud' | 'quiz' | 'naam' | 'mismatch' | 'handtekening' | 'klaar' | 'al_afgerond'
 
 export default function ToolboxGastClient({
-  token, persoonNaam, bedrijfNaam, huisstijl = VEILIGE_HUISSTIJL, initialToolboxen,
+  token, persoonNaam, bedrijfNaam, beschikbareTalen, huisstijl = VEILIGE_HUISSTIJL, initialToolboxen,
 }: {
   token: string
   persoonNaam: string | null
   bedrijfNaam: string | null
+  // Per-bedrijf instelbaar (migratie 0086); optioneel zodat bestaande callers
+  // (zonder de instelling) blijven werken zoals voorheen (alle talen).
+  beschikbareTalen?: Taal[]
   huisstijl?: HuisstijlView
   initialToolboxen: WerknemerToolbox[]
 }) {
   const [supabase] = useState(() => createClient())
-  const [taal, setTaal] = useTaal()
+  const [taal, setTaal] = useTaal(beschikbareTalen)
   const t = (k: string) => vertaal(TB_TEKST, k, taal)
   const [toolboxen, setToolboxen] = useState<WerknemerToolbox[]>(initialToolboxen)
   const [open, setOpen] = useState<WerknemerToolbox | null>(null)
@@ -88,7 +91,7 @@ export default function ToolboxGastClient({
     <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-xl mx-auto px-4 py-8">
         <div className="flex justify-end mb-2">
-          <TaalWissel taal={taal} onTaal={setTaal} />
+          <TaalWissel taal={taal} onTaal={setTaal} talen={beschikbareTalen} />
         </div>
         <div className="mb-6">
           <HuisstijlLogo huisstijl={huisstijl} className="mb-2" />

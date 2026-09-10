@@ -6,7 +6,7 @@ import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/hui
 import { MAX_BYTES, isAfbeelding, isToegestaanType } from '@/lib/bewijs'
 import { verkleinAfbeelding } from '@/lib/afbeelding'
 import { INCIDENT_FOTO_BUCKET, type GevolgOptie } from '@/lib/incident'
-import { MELD_TEKST, vertaal } from '@/lib/i18n-werknemer'
+import { MELD_TEKST, vertaal, type Taal } from '@/lib/i18n-werknemer'
 import TaalWissel, { useTaal } from './TaalWissel'
 import HuisstijlLogo from './HuisstijlLogo'
 import BewaarKnop from './BewaarKnop'
@@ -22,15 +22,18 @@ function nuTijd(): string {
 }
 
 export default function IncidentMeldClient({
-  token, bedrijfNaam, huisstijl = VEILIGE_HUISSTIJL, gevolgOpties,
+  token, bedrijfNaam, beschikbareTalen, huisstijl = VEILIGE_HUISSTIJL, gevolgOpties,
 }: {
   token: string
   bedrijfNaam: string | null
+  // Per-bedrijf instelbaar (migratie 0086); optioneel zodat bestaande callers
+  // (zonder de instelling) blijven werken zoals voorheen (alle talen).
+  beschikbareTalen?: Taal[]
   huisstijl?: HuisstijlView
   gevolgOpties: GevolgOptie[]
 }) {
   const [supabase] = useState(() => createClient())
-  const [taal, setTaal] = useTaal()
+  const [taal, setTaal] = useTaal(beschikbareTalen)
   const t = (k: string) => vertaal(MELD_TEKST, k, taal)
   const [datum, setDatum] = useState(nuDatum)
   const [tijd, setTijd] = useState(nuTijd)
@@ -144,7 +147,7 @@ export default function IncidentMeldClient({
     <main className="min-h-screen glass-bg" style={huisstijlStyle(huisstijl)}>
       <div className="max-w-xl mx-auto px-4 py-8">
         <div className="flex justify-end mb-2">
-          <TaalWissel taal={taal} onTaal={setTaal} />
+          <TaalWissel taal={taal} onTaal={setTaal} talen={beschikbareTalen} />
         </div>
         <div className="mb-6">
           <HuisstijlLogo huisstijl={huisstijl} className="mb-2" />

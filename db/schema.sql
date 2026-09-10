@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-07T14:57:59.404Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-10T12:51:41.746Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -657,7 +657,8 @@ CREATE TABLE public.pva_items (
   bron_type text,
   bron_id uuid,
   termijn_datum date,
-  locatie_id uuid
+  locatie_id uuid,
+  functiegroep_id uuid
 );
 
 CREATE TABLE public.rate_limiet_log (
@@ -760,7 +761,8 @@ CREATE TABLE public.vragen (
   rie_versie_id uuid,
   aantoonbaar text,
   aantoonbaar_toelichting text,
-  locatie_id uuid
+  locatie_id uuid,
+  functiegroep_id uuid
 );
 
 -- ============================================================
@@ -975,6 +977,7 @@ ALTER TABLE public.personen ADD CONSTRAINT personen_user_id_fkey FOREIGN KEY (us
 ALTER TABLE public.personen ADD CONSTRAINT personen_voorgesteld_door_fkey FOREIGN KEY (voorgesteld_door) REFERENCES personen(id) ON DELETE SET NULL;
 ALTER TABLE public.persoon_merge_log ADD CONSTRAINT persoon_merge_log_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_functiegroep_id_fkey FOREIGN KEY (functiegroep_id) REFERENCES functiegroep(id) ON DELETE SET NULL;
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_locatie_id_fkey FOREIGN KEY (locatie_id) REFERENCES locatie(id) ON DELETE SET NULL;
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE SET NULL;
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_rie_versie_id_fkey FOREIGN KEY (rie_versie_id) REFERENCES rie_versies(id);
@@ -989,6 +992,7 @@ ALTER TABLE public.toolbox_sessie ADD CONSTRAINT toolbox_sessie_toolbox_id_fkey 
 ALTER TABLE public.users ADD CONSTRAINT users_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL;
 ALTER TABLE public.users ADD CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.vragen ADD CONSTRAINT vragen_functiegroep_id_fkey FOREIGN KEY (functiegroep_id) REFERENCES functiegroep(id) ON DELETE SET NULL;
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_locatie_id_fkey FOREIGN KEY (locatie_id) REFERENCES locatie(id) ON DELETE SET NULL;
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_module_id_fkey FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE CASCADE;
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_rie_versie_id_fkey FOREIGN KEY (rie_versie_id) REFERENCES rie_versies(id);
@@ -1055,6 +1059,7 @@ CREATE INDEX notificatie_user_ongelezen_idx ON public.notificatie USING btree (u
 CREATE INDEX personen_company_idx ON public.personen USING btree (company_id);
 CREATE INDEX persoon_merge_log_company_idx ON public.persoon_merge_log USING btree (company_id, wanneer DESC);
 CREATE INDEX pva_items_company_idx ON public.pva_items USING btree (company_id);
+CREATE INDEX pva_items_functiegroep_idx ON public.pva_items USING btree (functiegroep_id) WHERE (functiegroep_id IS NOT NULL);
 CREATE INDEX pva_items_locatie_idx ON public.pva_items USING btree (locatie_id) WHERE (locatie_id IS NOT NULL);
 CREATE INDEX pva_items_persoon_idx ON public.pva_items USING btree (persoon_id);
 CREATE INDEX rate_limiet_log_sleutel_actie_wanneer_idx ON public.rate_limiet_log USING btree (sleutel, actie, wanneer DESC);
@@ -1068,6 +1073,7 @@ CREATE UNIQUE INDEX toolbox_deelname_uniek_per_jaar ON public.toolbox_deelname U
 CREATE INDEX toolbox_sessie_company_idx ON public.toolbox_sessie USING btree (company_id, datum DESC);
 CREATE INDEX toolbox_sessie_locatie_idx ON public.toolbox_sessie USING btree (locatie_id) WHERE (locatie_id IS NOT NULL);
 CREATE INDEX vragen_company_idx ON public.vragen USING btree (company_id);
+CREATE INDEX vragen_functiegroep_idx ON public.vragen USING btree (functiegroep_id) WHERE (functiegroep_id IS NOT NULL);
 CREATE INDEX vragen_locatie_idx ON public.vragen USING btree (locatie_id) WHERE (locatie_id IS NOT NULL);
 CREATE INDEX vragen_module_idx ON public.vragen USING btree (module_id);
 

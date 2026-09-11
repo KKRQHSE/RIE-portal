@@ -36,6 +36,16 @@ inrichting van het werk rekening gehouden met de fysieke belasting van
 behandelaren die dagelijks op de hurken of gebogen werken bij jonge
 kinderen?"
 
+**Vervolg — modules weer in-/uitklapbaar (zelfde dag).** Eerdere fix
+(vragen zichtbaar maken) forceerde alle modules standaard open — met de
+echte vraagzinnen nu op hun plek is dat een muur van tekst. `ModuleCard`
+start weer dicht, blijft per module (F1, F2, F3, L1, ...) togglebaar.
+Kiest de gebruiker een locatie in de locatiefilter, dan klapt precies de
+L-module van díe locatie vanzelf open (nooit dicht forceren — hetzelfde
+patroon als het bestaande URL-anker-gedrag). Organisatiebrede en
+functiegroep-modules blijven onafhankelijk togglebaar, ongeacht de
+locatiefilter. tsc/build/testronde groen, commit `b1fc7cb`.
+
 ## SeysCentra-huisstijl + Safespot-logo (2026-09-11)
 
 **Gedaan:**

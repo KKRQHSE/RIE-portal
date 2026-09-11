@@ -2,6 +2,40 @@
 
 > Losse, overzichtelijke lijst van punten die nog aandacht nodig hebben. Voor de volledige projectstand zie `Projectstand.md`, voor het waarom van keuzes `Beslissingen.md`.
 
+## SeysCentra: echte vraagzinnen in de RI&E-inzage (2026-09-11)
+
+**Root cause gevonden (geen renderbug).** Kees meldde dat op `/rie` wél het
+antwoord en de bevinding te lezen waren, maar niet de vraag. Onderzoek via
+een echte, ingelogde browsersessie tegen productie bewees dat de vraagtekst
+wél rendert — het probleem zat in de DATA: `vragen.vraag` bevatte voor alle
+63 SeysCentra-items alleen een kort thema-label (bv. "Fysieke belasting:
+meubilair"), nooit een echte vraagzin. Nagetrokken in alle 9 SeysCentra-
+brondocumenten (`import/RIE MEERDERE LOCATIE EN NIVEAU/*.docx`, beleid +
+4 locaties + 4 functiegroepen): geen van alle heeft een vraagkolom, ze
+gebruiken een thema-tabel (Thema/Huidige situatie/Risico/Maatregel), anders
+dan de referentie-RI&E die Kees aanleverde (`import/input/20260724 RIE
+RSB.pdf`, QVOX-format met een echte "Nr. / RI&E-vraag / Antw / Bevinding"-
+kolom per item).
+
+**Fix (op Kees' expliciete instructie):** alle 63 `vragen.vraag`-velden voor
+SeysCentra herschreven naar een echte vraagzin, getransponeerd vanuit de
+vraagformulering/-stijl van het RSB/QVOX-referentierapport naar de
+SeysCentra-context (thema + bestaande bevinding als basis). **Dit is
+dummy-content** (Kees' eigen woorden: "dan is het echt dummy data, maar dat
+is prima") — de vraagformulering is nieuw geschreven, bevinding/klasse/actie
+zijn ongewijzigd. Query-check: 63/63 eindigen op "?", geen enkele verdacht
+kort, geen gedachtestreepjes.
+
+**Bij een echte (niet-demo) revisie van SeysCentra moet dit opnieuw** met
+vraagzinnen uit het daadwerkelijke assessment, niet getransponeerde
+QVOX-vragen.
+
+**Te testen:** harde refresh op `/rie` bij SeysCentra — elk item toont nu
+een volledige vraagzin boven de antwoord-badge, bv. bij F1-1: "Is bij de
+inrichting van het werk rekening gehouden met de fysieke belasting van
+behandelaren die dagelijks op de hurken of gebogen werken bij jonge
+kinderen?"
+
 ## SeysCentra-huisstijl + Safespot-logo (2026-09-11)
 
 **Gedaan:**

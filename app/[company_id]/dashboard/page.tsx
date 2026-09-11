@@ -45,7 +45,7 @@ export default async function CompanyDashboardPage({
     supabase.from('users').select('role, company_id').eq('id', user.id).single(),
     supabase
       .from('companies')
-      .select('id, name, approved_at, approved_by, oefenomgeving')
+      .select('id, name, approved_at, approved_by, oefenomgeving, toon_bedrijfsvoering')
       .eq('id', company_id)
       .single(),
     // Alle tegelcijfers in één RPC; autorisatie zit in de RPC zelf.
@@ -89,6 +89,7 @@ export default async function CompanyDashboardPage({
       toonIncidenten={!!incidentenModule}
       toonAudits={!!auditModule}
       toonRie={!company.oefenomgeving}
+      toonBedrijfsvoering={company.toon_bedrijfsvoering !== false}
       toolbox={toolboxBedrijf}
       magBewerken={magBeheren}
       ifDitJaar={(ifGetal as IfGetalOverzicht | null)?.dit_jaar ?? null}

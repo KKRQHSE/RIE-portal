@@ -9,7 +9,7 @@ import type { Persoon } from '@/lib/types'
 type ServerClient = Awaited<ReturnType<typeof createClient>>
 
 const PERSOON_COLS =
-  'id, company_id, naam, email, status, voorgesteld_door, archived_at, functiegroep_id, datum_in_dienst, datum_uit_dienst'
+  'id, company_id, naam, email, status, voorgesteld_door, archived_at, functiegroep_id, functietitel, datum_in_dienst, datum_uit_dienst'
 
 // Losse leesactie: geen enkele afhankelijkheid van het profiel, dus een pagina
 // mag hem gerust naast zijn andere queries in één Promise.all zetten.

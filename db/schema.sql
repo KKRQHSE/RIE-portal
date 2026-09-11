@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-10T13:24:44.871Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-11T08:13:57.966Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -301,7 +301,8 @@ CREATE TABLE public.companies (
   klant_logo_pad text,
   accent_kleur_override text,
   oefenomgeving boolean DEFAULT false NOT NULL,
-  beschikbare_talen text[]
+  beschikbare_talen text[],
+  toon_bedrijfsvoering boolean
 );
 
 CREATE TABLE public.correctie_log (
@@ -617,7 +618,8 @@ CREATE TABLE public.personen (
   user_id uuid,
   functiegroep_id uuid,
   datum_in_dienst date,
-  datum_uit_dienst date
+  datum_uit_dienst date,
+  functietitel text
 );
 
 CREATE TABLE public.persoon_merge_log (
@@ -669,6 +671,25 @@ CREATE TABLE public.rate_limiet_log (
   wanneer timestamp with time zone DEFAULT now() NOT NULL
 );
 
+CREATE TABLE public.rie_toetsverslag (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  rie_versie_id uuid NOT NULL,
+  company_id uuid NOT NULL,
+  managementsamenvatting text,
+  toetsbrief text,
+  conclusie_volledigheid text,
+  conclusie_brongebruik text,
+  conclusie_verplichte_aspecten text,
+  conclusie_wettelijk_kader text,
+  conclusie_actualiteit text,
+  conclusie_betrouwbaarheid text,
+  conclusie_plan_van_aanpak text,
+  conclusie_systeem_scopetoets text,
+  eindoordeel text,
+  bron_bestand text,
+  created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE public.rie_versies (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
@@ -678,7 +699,10 @@ CREATE TABLE public.rie_versies (
   geldig_tot timestamp with time zone,
   vrijgegeven_door text,
   opmerking text,
-  created_at timestamp with time zone DEFAULT now() NOT NULL
+  created_at timestamp with time zone DEFAULT now() NOT NULL,
+  toetser_naam text,
+  toetser_certificaatnummer text,
+  toetser_namens text
 );
 
 CREATE TABLE public.toolbox_bron (
@@ -825,6 +849,7 @@ ALTER TABLE public.personen ADD CONSTRAINT personen_pkey PRIMARY KEY (id);
 ALTER TABLE public.persoon_merge_log ADD CONSTRAINT persoon_merge_log_pkey PRIMARY KEY (id);
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_pkey PRIMARY KEY (id);
 ALTER TABLE public.rate_limiet_log ADD CONSTRAINT rate_limiet_log_pkey PRIMARY KEY (id);
+ALTER TABLE public.rie_toetsverslag ADD CONSTRAINT rie_toetsverslag_pkey PRIMARY KEY (id);
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_pkey PRIMARY KEY (id);
 ALTER TABLE public.toolbox_bron ADD CONSTRAINT toolbox_bron_pkey PRIMARY KEY (id);
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_pkey PRIMARY KEY (id);
@@ -839,6 +864,7 @@ ALTER TABLE public.incident_meldlink ADD CONSTRAINT incident_meldlink_token_key 
 ALTER TABLE public.modules ADD CONSTRAINT modules_company_id_code_key UNIQUE (company_id, code);
 ALTER TABLE public.personen ADD CONSTRAINT personen_company_id_email_key UNIQUE (company_id, email);
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_company_id_nr_key UNIQUE (company_id, nr);
+ALTER TABLE public.rie_toetsverslag ADD CONSTRAINT rie_toetsverslag_rie_versie_id_key UNIQUE (rie_versie_id);
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_company_id_versie_key UNIQUE (company_id, versie);
 ALTER TABLE public.vragen ADD CONSTRAINT vragen_company_id_nr_key UNIQUE (company_id, nr);
 ALTER TABLE public.audit ADD CONSTRAINT audit_sjabloon_check CHECK ((sjabloon = ANY (ARRAY['vca'::text, 'iso'::text])));
@@ -983,6 +1009,8 @@ ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_functiegroep_id_fkey FOREI
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_locatie_id_fkey FOREIGN KEY (locatie_id) REFERENCES locatie(id) ON DELETE SET NULL;
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE SET NULL;
 ALTER TABLE public.pva_items ADD CONSTRAINT pva_items_rie_versie_id_fkey FOREIGN KEY (rie_versie_id) REFERENCES rie_versies(id);
+ALTER TABLE public.rie_toetsverslag ADD CONSTRAINT rie_toetsverslag_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE public.rie_toetsverslag ADD CONSTRAINT rie_toetsverslag_rie_versie_id_fkey FOREIGN KEY (rie_versie_id) REFERENCES rie_versies(id) ON DELETE CASCADE;
 ALTER TABLE public.rie_versies ADD CONSTRAINT rie_versies_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id);
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE public.toolbox_deelname ADD CONSTRAINT toolbox_deelname_persoon_id_fkey FOREIGN KEY (persoon_id) REFERENCES personen(id) ON DELETE SET NULL;
@@ -1065,6 +1093,7 @@ CREATE INDEX pva_items_functiegroep_idx ON public.pva_items USING btree (functie
 CREATE INDEX pva_items_locatie_idx ON public.pva_items USING btree (locatie_id) WHERE (locatie_id IS NOT NULL);
 CREATE INDEX pva_items_persoon_idx ON public.pva_items USING btree (persoon_id);
 CREATE INDEX rate_limiet_log_sleutel_actie_wanneer_idx ON public.rate_limiet_log USING btree (sleutel, actie, wanneer DESC);
+CREATE INDEX rie_toetsverslag_company_idx ON public.rie_toetsverslag USING btree (company_id);
 CREATE UNIQUE INDEX toolbox_bron_naam_uniek ON public.toolbox_bron USING btree (naam);
 CREATE INDEX toolbox_bron_volgorde_idx ON public.toolbox_bron USING btree (volgorde);
 CREATE INDEX toolbox_deelname_afgerond_idx ON public.toolbox_deelname USING btree (company_id, afgerond_op);
@@ -1138,6 +1167,7 @@ ALTER TABLE public.personen ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.persoon_merge_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pva_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rate_limiet_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.rie_toetsverslag ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rie_versies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.toolbox_bron ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.toolbox_deelname ENABLE ROW LEVEL SECURITY;
@@ -1293,6 +1323,8 @@ CREATE POLICY pva_select ON public.pva_items AS PERMISSIVE FOR SELECT TO public
   USING (((company_id = my_company_id()) OR is_admin()));
 CREATE POLICY pva_update ON public.pva_items AS PERMISSIVE FOR UPDATE TO public
   USING (mag_bedrijf_beheren(company_id));
+CREATE POLICY rie_toetsverslag_sel ON public.rie_toetsverslag AS PERMISSIVE FOR SELECT TO public
+  USING (mag_bedrijf_werken(company_id));
 CREATE POLICY rie_versies_sel ON public.rie_versies AS PERMISSIVE FOR SELECT TO public
   USING (mag_bedrijf_werken(company_id));
 CREATE POLICY toolbox_bron_adm ON public.toolbox_bron AS PERMISSIVE FOR ALL TO public

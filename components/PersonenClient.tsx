@@ -313,6 +313,9 @@ export default function PersonenClient({ company, initialPersonen, initialDeelli
                         {p.status}
                       </span>
                     </div>
+                    {p.functietitel && (
+                      <p className="text-sm text-ink/70 mt-0.5">{p.functietitel}</p>
+                    )}
                     <p className="text-sm text-ink/50 mt-0.5 truncate">{p.email || '— geen e-mail —'}</p>
                   </div>
                   <span className={`shrink-0 text-xs px-2 py-1 rounded ${actief ? 'bg-green-50 text-green-700' : 'bg-surface text-ink/40'}`}>

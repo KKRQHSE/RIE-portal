@@ -26,6 +26,7 @@ type Props = {
   toonIncidenten?: boolean
   toonAudits?: boolean
   toonRie?: boolean
+  toonBedrijfsvoering?: boolean
   toolbox?: ToolboxNaarRato | null
   magBewerken?: boolean
   ifDitJaar?: IfGetalJaar | null
@@ -113,7 +114,7 @@ function Ratio({ gedaan, doel, kleur }: { gedaan: number; doel: number; kleur?: 
 export default function DashboardClient({
   company, overzicht, huisstijl = VEILIGE_HUISSTIJL,
   toonInspecties = false, toonToolbox = false, toonIncidenten = false, toonAudits = false,
-  toonRie = true,
+  toonRie = true, toonBedrijfsvoering = true,
   toolbox = null, magBewerken = false, ifDitJaar = null, ifVorigJaar = null,
   pvaRie = null, auditsTotaal = 0, auditsGedaan = 0,
 }: Props) {
@@ -158,7 +159,7 @@ export default function DashboardClient({
             (migratie 0073): (verzuimongevallen x 1.000.000) / gewerkte uren.
             Draait op de incidentmodule + bedrijfsvoering; bestaat niet in een
             oefenomgeving (toonRie). */}
-        {toonRie && (
+        {toonRie && toonBedrijfsvoering && (
           <div className="glass-tile rounded-3xl p-6 mb-6">
             <div className="flex items-center gap-2 mb-4">
               <span className="h-3.5 w-0.5 rounded-full bg-accent shrink-0" aria-hidden="true" />
@@ -430,9 +431,9 @@ export default function DashboardClient({
         </div>
 
         {/* ── Sectie: Bedrijfsvoering (handmatige velden, KAM/admin bewerkt) ──
-            Bestaat niet in een oefenomgeving: gaat over IF-getal/audits/
-            meerjarentrends die daar niet van toepassing zijn. */}
-        {toonRie && (
+            Bestaat niet in een oefenomgeving (toonRie) en niet bij een bedrijf
+            dat alleen de RI&E gebruikt (toonBedrijfsvoering, migratie 0087). */}
+        {toonRie && toonBedrijfsvoering && (
           <>
         <div className="flex items-center justify-between mt-8 mb-3">
           <h2 className="text-xs font-medium uppercase tracking-wide text-ink/40">Bedrijfsvoering</h2>

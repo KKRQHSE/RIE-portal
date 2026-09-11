@@ -122,6 +122,9 @@ export type Company = {
   // undefined (niet geselecteerd) en null (geen instelling) betekenen allebei
   // "alle talen" -- zie normaliseerBeschikbareTalen.
   beschikbare_talen?: string[] | null
+  // Migratie 0087. undefined/null/true = Bedrijfsvoering-sectie + IF-getal tonen
+  // (huidig gedrag); alleen expliciet false verbergt ze.
+  toon_bedrijfsvoering?: boolean | null
 }
 
 export type Merk = {
@@ -150,6 +153,34 @@ export type Module = {
   titel: string | null
   intro: string | null
   volgorde: number | null
+}
+
+// Migratie 0087: het korte GETOETST-kenmerk van de laatste rie_versie.
+export type RieToetsing = {
+  id: string
+  versie: number
+  toetser_naam: string | null
+  toetser_certificaatnummer: string | null
+  toetser_namens: string | null
+}
+
+// Migratie 0087: de leesbare kerninhoud van een toetsverslag, 1:1 op een
+// rie_versie. Alle velden nullable -- een net aangemaakte rij mag leeg zijn
+// zolang de inhoud nog niet is ingevuld.
+export type RieToetsverslag = {
+  id: string
+  rie_versie_id: string
+  managementsamenvatting: string | null
+  toetsbrief: string | null
+  conclusie_volledigheid: string | null
+  conclusie_brongebruik: string | null
+  conclusie_verplichte_aspecten: string | null
+  conclusie_wettelijk_kader: string | null
+  conclusie_actualiteit: string | null
+  conclusie_betrouwbaarheid: string | null
+  conclusie_plan_van_aanpak: string | null
+  conclusie_systeem_scopetoets: string | null
+  eindoordeel: string | null
 }
 
 // ---- Module-zelfbeheer per bedrijf ----
@@ -211,6 +242,8 @@ export type Persoon = {
   archived_at: string | null
   // Rol binnen het bedrijf (los van het systeemrecht mag_bedrijf_beheren).
   functiegroep_id: string | null
+  // Migratie 0087: specifieke functietitel, los van de grovere functiegroep.
+  functietitel?: string | null
   // Dienstverband (voor naar-rato in het toolbox-dashboard); nullable.
   datum_in_dienst: string | null
   datum_uit_dienst: string | null

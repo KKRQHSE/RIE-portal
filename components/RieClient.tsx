@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useSyncExternalStore } from 'react'
-import type { Company, Module, Vraag, Foto, Locatie, DashboardOverzicht } from '@/lib/types'
+import Link from 'next/link'
+import type { Company, Module, Vraag, Foto, Locatie, DashboardOverzicht, RieToetsing } from '@/lib/types'
 import { isNietAantoonbaar, type RieFilter } from '@/lib/rie-aantoonbaar'
 import { filterVragenOpLocatie } from '@/lib/rie-locatie-filter'
 import { huisstijlStyle, VEILIGE_HUISSTIJL, type HuisstijlView } from '@/lib/huisstijl'
@@ -27,6 +28,9 @@ type Props = {
   locaties?: Locatie[]
   rie?: DashboardOverzicht['rie']
   pvaRie?: PvaRieVoortgang | null
+  // GETOETST-kenmerk + of er een leesbaar toetsverslag bij hoort (migratie 0087).
+  toetsing?: RieToetsing | null
+  heeftToetsverslag?: boolean
   huisstijl?: HuisstijlView
 }
 
@@ -36,7 +40,8 @@ type Props = {
 type LocatieFilter = 'alle' | string
 
 export default function RieClient({
-  company, modules, vragen, fotos, locaties = [], rie = null, pvaRie = null, huisstijl = VEILIGE_HUISSTIJL,
+  company, modules, vragen, fotos, locaties = [], rie = null, pvaRie = null,
+  toetsing = null, heeftToetsverslag = false, huisstijl = VEILIGE_HUISSTIJL,
 }: Props) {
   const [filter, setFilter] = useState<RieFilter>('Alle')
   const [locatieFilter, setLocatieFilter] = useState<LocatieFilter>('alle')
@@ -94,7 +99,28 @@ export default function RieClient({
             ...(pvaRie ? [{ label: 'openstaande acties', waarde: pvaRie.open }] : []),
           ]}
           actie={{ label: 'Naar plan van aanpak', href: `/${company.id}/pva` }}
-        />
+        >
+          {toetsing?.toetser_naam && (
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-sm text-ink/70">
+                <span className="inline-block bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded-full mr-2 align-middle">
+                  Getoetst
+                </span>
+                RI&amp;E getoetst op {formatDatum(rie?.toets_datum ?? null)} door {toetsing.toetser_naam}, gecertificeerd
+                kerndeskundige/HVK{toetsing.toetser_certificaatnummer ? ` (certificaatnummer ${toetsing.toetser_certificaatnummer})` : ''}
+                {toetsing.toetser_namens ? `, namens ${toetsing.toetser_namens}.` : '.'}
+              </p>
+              {heeftToetsverslag && (
+                <Link
+                  href={`/${company.id}/rie/toetsverslag`}
+                  className="text-sm text-accent hover:underline shrink-0"
+                >
+                  Bekijk toetsverslag →
+                </Link>
+              )}
+            </div>
+          )}
+        </ModuleStatuskop>
 
         <div className="flex items-center gap-3 mb-4 flex-wrap">
           <button onClick={() => setFilter('Alle')} className={knop(filter === 'Alle')}>

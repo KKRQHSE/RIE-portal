@@ -87,7 +87,7 @@ export default function RieClient({
         </div>
 
         <ModuleStatuskop
-          titel={rie ? `RI&E versie ${rie.versie} — ${rie.status}` : 'RI&E'}
+          titel={rie ? `RI&E versie ${rie.versie} · ${rie.status}` : 'RI&E'}
           ondertitel={
             rie?.toets_datum
               ? `Laatste toetsing: ${formatDatum(rie.toets_datum)}`

@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-11T08:13:57.966Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-11T08:43:26.812Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit

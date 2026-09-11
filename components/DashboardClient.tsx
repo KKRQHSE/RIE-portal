@@ -209,7 +209,7 @@ export default function DashboardClient({
                   {te_beoordelen === 1 ? 'Actie wacht' : 'Acties wachten'} op jouw beoordeling
                 </p>
                 <p className="text-xs text-ink/50 mt-0.5">
-                  Een actiehouder diende een voorstel in — beoordeel het in het Plan van Aanpak →
+                  Een actiehouder diende een voorstel in: beoordeel het in het Plan van Aanpak →
                 </p>
               </div>
             </div>
@@ -294,7 +294,7 @@ export default function DashboardClient({
                       {rie.geldig_tot ? `Geldig tot ${datumNL(rie.geldig_tot)}` : 'Geen einddatum vastgelegd'}
                     </p>
                     {rie.verloopt_binnenkort && (
-                      <p className="text-xs text-amber-600 mt-1">Verloopt binnenkort — hertoets inplannen.</p>
+                      <p className="text-xs text-amber-600 mt-1">Verloopt binnenkort: hertoets inplannen.</p>
                     )}
                   </div>
                 </div>
@@ -540,7 +540,7 @@ export default function DashboardClient({
 
         {/* Ruimte voor de latere planning-tijdlijn (nog niet gebouwd). */}
         <div className="mt-4 rounded-lg border border-dashed border-ink/15 p-5 text-center">
-          <p className="text-xs text-ink/30">Planning-tijdlijn — volgt later</p>
+          <p className="text-xs text-ink/30">Planning-tijdlijn: volgt later</p>
         </div>
 
       </div>

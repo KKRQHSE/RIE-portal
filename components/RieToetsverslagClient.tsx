@@ -45,7 +45,7 @@ export default function RieToetsverslagClient({ company, toetsing, toetsverslag,
           <p className="text-sm text-ink/50 mt-0.5">
             Toetsverslag RI&amp;E versie {toetsing.versie}
             {toetsing.toetser_naam && (
-              <> — getoetst door {toetsing.toetser_naam}
+              <> · getoetst door {toetsing.toetser_naam}
                 {toetsing.toetser_certificaatnummer ? ` (cert. ${toetsing.toetser_certificaatnummer})` : ''}
                 {toetsing.toetser_namens ? `, namens ${toetsing.toetser_namens}` : ''}
               </>

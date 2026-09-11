@@ -37,10 +37,10 @@ type Props = {
 }
 
 export default function ModuleCard({ companyId, module, vragen, fotos, locatieNaam = {}, filter, highlightVraag }: Props) {
-  // Bevat deze module de aangewezen vraag? Zo ja: standaard open zodat het
-  // anker-element bestaat en de scroll/highlight kan plaatsvinden.
+  // Standaard open: de RI&E-inzage moet leesbaar zijn zonder dat je eerst elke
+  // module apart moet uitklikken. Blijft togglebaar; alleen de startstand wijzigt.
   const hasTarget = highlightVraag != null && vragen.some(v => v.nr === highlightVraag)
-  const [open, setOpen] = useState(hasTarget)
+  const [open, setOpen] = useState(true)
 
   // Forceer open zodra deze module het doelwit wordt (gebruiker mag daarna nog
   // zelf in-/uitklappen). Aangepast tijdens render i.p.v. in een effect — zie

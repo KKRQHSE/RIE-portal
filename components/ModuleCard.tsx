@@ -34,21 +34,26 @@ type Props = {
   locatieNaam?: LocatieNaamMap
   filter: RieFilter
   highlightVraag: string | null
+  // True wanneer de gekozen locatiefilter bij deze module hoort (RieClient
+  // bepaalt dit): de gebruiker koos expliciet die locatie, dus toon meteen.
+  // Standaard staat elke module dicht — in-/uitvouwen per module (F1, F2,
+  // L1, ...) is de bedoeling, geen muur van uitgeklapte tekst.
+  forceOpen?: boolean
 }
 
-export default function ModuleCard({ companyId, module, vragen, fotos, locatieNaam = {}, filter, highlightVraag }: Props) {
-  // Standaard open: de RI&E-inzage moet leesbaar zijn zonder dat je eerst elke
-  // module apart moet uitklikken. Blijft togglebaar; alleen de startstand wijzigt.
+export default function ModuleCard({ companyId, module, vragen, fotos, locatieNaam = {}, filter, highlightVraag, forceOpen = false }: Props) {
   const hasTarget = highlightVraag != null && vragen.some(v => v.nr === highlightVraag)
-  const [open, setOpen] = useState(true)
+  const moetOpen = hasTarget || forceOpen
+  const [open, setOpen] = useState(moetOpen)
 
-  // Forceer open zodra deze module het doelwit wordt (gebruiker mag daarna nog
-  // zelf in-/uitklappen). Aangepast tijdens render i.p.v. in een effect — zie
-  // React-docs "adjusting state when a prop changes".
-  const [vorigHasTarget, setVorigHasTarget] = useState(hasTarget)
-  if (hasTarget !== vorigHasTarget) {
-    setVorigHasTarget(hasTarget)
-    if (hasTarget) setOpen(true)
+  // Forceer open zodra deze module het doelwit wordt (URL-anker) of de
+  // bijpassende locatie wordt gekozen (gebruiker mag daarna nog zelf in-/
+  // uitklappen — dit forceert nooit dicht). Aangepast tijdens render i.p.v.
+  // in een effect — zie React-docs "adjusting state when a prop changes".
+  const [vorigMoetOpen, setVorigMoetOpen] = useState(moetOpen)
+  if (moetOpen !== vorigMoetOpen) {
+    setVorigMoetOpen(moetOpen)
+    if (moetOpen) setOpen(true)
   }
 
   // Pas scrollen+markeren als de module daadwerkelijk open is en het anker bestaat.

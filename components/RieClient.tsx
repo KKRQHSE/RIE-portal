@@ -164,6 +164,9 @@ export default function RieClient({
               locatieNaam={locatieNaam}
               filter={filter}
               highlightVraag={highlightVraag}
+              // Expliciet een locatie gekozen? Dan klapt precies de module
+              // van díe locatie vanzelf open — de rest blijft dicht/togglebaar.
+              forceOpen={locatieFilter !== 'alle' && vragen.some(v => v.module_id === mod.id && v.locatie_id === locatieFilter)}
             />
           ))}
           {modules.length === 0 && (

@@ -4,8 +4,36 @@
 
 ## SeysCentra demo-klaar (2026-09-11)
 
-**Af (punten 1 t/m 4 van de opdracht), migratie 0087, tsc + build groen, schema
-gedumpt, volledige testronde 37/37 groen:**
+**Alle 5 punten van de opdracht af**, migratie 0087, tsc + build groen, schema
+gedumpt, volledige testronde 37/37 groen, twee commits gepusht (`5bcbd12`,
+`be9aaa9`).
+
+**Twee dingen bijgekomen na de eerste ronde (Kees testte, vond een echte bug
++ een stijlwens):**
+- **Bug: vragen niet zichtbaar.** `ModuleCard` startte standaard dichtgeklapt
+  (alleen open bij een URL-anker) — dus op `/rie` zag je alleen de
+  moduletitels, geen vraaginhoud, tot je per module klikte. Nu start elke
+  module open (blijft togglebaar). Dit gold voor alle bedrijven, niet alleen
+  SeysCentra.
+- **Gedachtestreepjes (—) eruit.** Gedaan voor: de SeysCentra-brondata
+  (9 moduletitels, 17 vraagtitels, 17 PvA-onderwerpen — allemaal "X — Y"
+  vervangen door "X: Y"), en de RI&E-schermen die ik deze sessie zelf bouwde
+  (RieClient, RieToetsverslagClient, drie plekken in DashboardClient).
+  **Bewust NIET aangepast:** de letterlijke citaten uit het toetsverslag
+  (één zin bevat "–" middenin een citaat; dat veranderen zou "letterlijk
+  overnemen" tegenspreken — zie punt 5). **Nog niet gedaan:** de rest van de
+  app (~30 andere componenten, o.a. Incidenten/Toolbox/Audits/AVG/Huisstijl)
+  gebruikt het gedachtestreepje overal als vast stijlmiddel, zowel als
+  interpunctie als als symbool voor "geen waarde" (`'—'`). Daar is bewust
+  niet aan gezeten zonder expliciete vraag — zie de vraag in de conversatie.
+
+**Punt 5 (toetsverslag) — AFGEROND.** `rie_toetsverslag` bevat nu de
+letterlijke tekst uit `20252807 Toetsrapport RIE Seyscentra.docx`:
+managementsamenvatting, toetsbrief, 8 conclusies, eindoordeel. De
+"Bekijk toetsverslag"-link verschijnt nu op `/rie` en leidt naar
+`/rie/toetsverslag`.
+
+**Punten 1 t/m 4:**
 
 1. **Dashboard opgeschoond.** SeysCentra had al géén rij in `bedrijf_modules`
    → toolbox/inspecties/incidenten/audits stonden al standaard uit (nergens
@@ -36,20 +64,21 @@ gedumpt, volledige testronde 37/37 groen:**
    afgekapt (63 vragen gecontroleerd, geen enkele verdacht kort). Geen
    codewijziging nodig, alleen geverifieerd.
 
-**Punt 5 (toetsverslag) — schema + weergave staan, INHOUD nog niet
-ingevuld: STOP-PUNT, wacht op 'ja'.** Zie het bericht in de conversatie voor
-het datamodel (`rie_versies.toetser_*` + nieuwe tabel `rie_toetsverslag`,
-migratie 0087) en waar het verschijnt (`/rie`-badge + nieuwe pagina
-`/rie/toetsverslag`, component `RieToetsverslagClient`). De GETOETST-badge
-zelf (toetsdatum, naam, certificaatnummer, namens QHSE Totaal B.V.) staat al
-in de database en is al zichtbaar op `/rie` — dat is korte, al bekende
-metadata. De volledige tekstinhoud (managementsamenvatting, toetsbrief, 8
-conclusies, eindoordeel) uit `20252807 Toetsrapport RIE Seyscentra.docx` is
-gelezen en klaarstaat, maar nog NIET in `rie_toetsverslag` gezet — vandaar
-geen "Bekijk toetsverslag"-link op `/rie` op dit moment.
+1. Dashboard opgeschoond (`companies.toon_bedrijfsvoering`, alleen SeysCentra
+   op `false`).
+2. Ivo Mutsaers + Charlotte van Herel toegevoegd (functiegroep "Facilitaire
+   taken", nieuw veld `personen.functietitel`).
+3. PvA-voortgang is DEMO-DATA (30/60 op "Afgerond", RI&E-inhoud zelf
+   ongewijzigd — bij een echte revisie moet dit eruit of vervangen worden).
+4. Vragen leesbaar — was al zo qua tekst, bug (zie boven) zat in de
+   standaard-inklapstand, niet in de tekst zelf.
 
-**Testinstructies (browser), na 'ja' en het invullen van punt 5 opnieuw
-doorlopen voor de toetsverslag-onderdelen:**
+**Openstaande vraag aan Kees:** geldt "alle gedachtestreepjes eruit" ook voor
+de rest van de app (buiten SeysCentra en de schermen van deze sessie)? Dat
+raakt tientallen bestanden en twee soorten gebruik (interpunctie én het
+`'—'`-symbool voor een lege waarde) — bewust niet zelf besloten.
+
+**Testinstructies (browser):**
 1. Log in als `kees+seyscentra@qhsetotaal.nl` (client/KAM). Dashboard toont
    geen Bedrijfsvoering-sectie, geen IF-getal-tegel, geen toolbox/inspecties/
    incidenten/audits-tegels — wel RI&E, Centrale actielijst, Termijn PvA,
@@ -60,10 +89,10 @@ doorlopen voor de toetsverslag-onderdelen:**
    lijst met hun functietitel onder de naam, functiegroep "Facilitaire taken".
 4. `/[seyscentra]/pva`: ongeveer de helft van de acties staat op afgerond,
    verspreid over organisatie/locaties/functiegroepen — geen visueel cluster.
-5. `/[seyscentra]/rie`: bovenaan de statuskop staat de groene "Getoetst"-badge
-   met datum/naam/certificaatnummer/namens. Er staat GEEN
-   "Bekijk toetsverslag"-link (nog geen inhoud) — dat is verwacht tot punt 5
-   is afgerond.
+5. `/[seyscentra]/rie`: elke module staat standaard open met de volledige
+   vraagtekst, bevinding, risicoklasse en actielink zichtbaar. Bovenaan de
+   groene "Getoetst"-badge, met een werkende "Bekijk toetsverslag"-link naar
+   de volledige tekst.
 
 ## Talen per bedrijf (2026-09-10)
 

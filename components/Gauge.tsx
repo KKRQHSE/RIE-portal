@@ -43,10 +43,12 @@ export default function Gauge({ value, total, size = 92, label, centerText }: Pr
             <stop offset="100%" stopColor="var(--color-accent, #FF5200)" stopOpacity="1" />
           </linearGradient>
         </defs>
-        {/* Track (neutraal, uit de ink-token) */}
+        {/* Track: --color-accent-2 (rustige secundaire huisstijltint) met
+            geneste fallback op de ink-token — ongezet (bij vrijwel elk
+            bedrijf) is dit pixel-identiek aan voorheen. */}
         <circle
           cx="50" cy="50" r={R} fill="none"
-          stroke="var(--color-ink, #14161B)" strokeOpacity="0.1"
+          stroke="var(--color-accent-2, var(--color-ink, #14161B))" strokeOpacity="0.1"
           strokeWidth="9" strokeLinecap="round"
           strokeDasharray={track} transform="rotate(135 50 50)"
         />

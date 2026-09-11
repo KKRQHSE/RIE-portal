@@ -11,6 +11,12 @@ export type HuisstijlView = {
   merkLogoUrl: string | null
   klantLogoUrl: string | null
   accentKleur: string
+  // Optioneel: secundaire/rustige tint (gaugetrack, knop-hover) en een
+  // sprekend "vleugje" voor spaarzame badges. null = geen instelling — de UI
+  // valt dan terug op resp. de ink-tint en de gewone accentkleur (huidig
+  // gedrag, geen bedrijf zonder deze velden ziet iets anders).
+  accentKleur2: string | null
+  accentKleurHighlight: string | null
   lettertype: Lettertype
 }
 
@@ -22,6 +28,8 @@ export const VEILIGE_HUISSTIJL: HuisstijlView = {
   merkLogoUrl: null,
   klantLogoUrl: null,
   accentKleur: '#FF5200',
+  accentKleur2: null,
+  accentKleurHighlight: null,
   lettertype: 'grotesk',
 }
 
@@ -42,10 +50,18 @@ export function normaliseerModus(v: unknown): HuisstijlModus {
 }
 
 // Zet de accentkleur (als CSS-variabele die de Tailwind accent-utilities volgen)
-// en het lettertype op de hoofdcontainer.
+// en het lettertype op de hoofdcontainer. --color-accent-2/-highlight worden
+// bewust ALLEEN gezet als er een waarde is: ontbreken ze, dan grijpt de
+// geneste var()-fallback op de gebruiksplek (Gauge, .btn-dark, NotificatieBel)
+// in — dat is exact het huidige gedrag, ongewijzigd voor elk ander bedrijf.
 export function huisstijlStyle(h: HuisstijlView): CSSProperties {
-  return {
+  const style: Record<string, string> = {
     '--color-accent': h.accentKleur || '#FF5200',
+  }
+  if (h.accentKleur2) style['--color-accent-2'] = h.accentKleur2
+  if (h.accentKleurHighlight) style['--color-accent-highlight'] = h.accentKleurHighlight
+  return {
+    ...style,
     fontFamily: FONT_FAMILIES[h.lettertype] ?? FONT_FAMILIES.grotesk,
   } as CSSProperties
 }

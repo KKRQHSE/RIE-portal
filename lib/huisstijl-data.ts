@@ -34,6 +34,8 @@ export const haalHuisstijl = cache(async (companyId: string): Promise<HuisstijlV
       merkLogoUrl: url(h.merk_logo),
       klantLogoUrl: url(h.klant_logo),
       accentKleur: typeof h.accent_kleur === 'string' && h.accent_kleur ? h.accent_kleur : '#FF5200',
+      accentKleur2: typeof h.accent_kleur_2 === 'string' && h.accent_kleur_2 ? h.accent_kleur_2 : null,
+      accentKleurHighlight: typeof h.accent_kleur_highlight === 'string' && h.accent_kleur_highlight ? h.accent_kleur_highlight : null,
       lettertype: normaliseerLettertype(h.lettertype),
     }
   } catch {

@@ -2,6 +2,57 @@
 
 > Losse, overzichtelijke lijst van punten die nog aandacht nodig hebben. Voor de volledige projectstand zie `Projectstand.md`, voor het waarom van keuzes `Beslissingen.md`.
 
+## SeysCentra-huisstijl + Safespot-logo (2026-09-11)
+
+**Gedaan:**
+- **Huisstijlmodel uitgebreid** (migratie 0088): naast de bestaande enkele
+  `accent_kleur_override` nu ook `accent_kleur_2_override` (secundaire/rustige
+  tint) en `accent_kleur_highlight_override` (spaarzaam "vleugje"), per
+  bedrijf optioneel. Onvermeld = `null` = de UI valt terug op resp. de
+  bestaande ink-tint en de gewone accentkleur — **pixel-identiek** voor elk
+  bedrijf dat de nieuwe velden niet gezet heeft (geneste CSS `var()`-
+  fallbacks in `lib/huisstijl.ts`, `components/Gauge.tsx`, `app/globals.css`
+  `.btn-dark`-hover, `components/NotificatieBel.tsx`). Dutch Waste geverifieerd
+  ongewijzigd (query na de migratie).
+- **Safespot als nieuw "merk"** (net als het bestaande "QHSE Totaal"-merk) in
+  de `merken`-tabel, met het bestaande co-branding-mechanisme (`huisstijl_modus
+  = 'co_branding'`) — geen nieuwe logica nodig, alleen data.
+- **SeysCentra** (`bd16538b-01e9-41d2-84ad-fe5690917cba`): `merk_id` → Safespot,
+  `huisstijl_modus = 'co_branding'`, eigen klantlogo geüpload,
+  accent = `#604C3F` (donkerbruin), accent-2 = `#A48A76` (taupe, gebruikt op
+  de gaugetrack en de `.btn-dark`-hoverschaduw), accent-highlight = `#931263`
+  (magenta, gebruikt op het ongelezen-belletje in `NotificatieBel`).
+- Beide logo-PNG's (`import/safespot_logo_badge.png`,
+  `import/SeysCentra_Logo-met-payoff.png`) staan op `.gitignore` (regel 91,
+  blanket `*.png`-regel) en zijn **niet** gecommit — geüpload naar de
+  `merk-assets`-Storage-bucket via een eenmalig, niet-gecommit script.
+- tsc + build groen, `anon_execute_audit_test.mjs` 20/20 (de
+  `CREATE OR REPLACE` op `huisstijl_van_bedrijf` kreeg de verplichte
+  REVOKE-regel), `db/schema.sql` opnieuw gedumpt.
+
+**Nog niet gedaan (bewust buiten scope van deze opdracht):**
+- Geen admin-UI voor de twee nieuwe kleurvelden (`accent_kleur_2_override`,
+  `accent_kleur_highlight_override`) in `/admin/huisstijl` — alleen via SQL/
+  script te zetten. `accent_kleur_override` (het bestaande enkele veld) heeft
+  wel een kleurenkiezer in de admin-UI.
+- De taupe/magenta-tokens zijn maar op twee plekken toegepast (gaugetrack +
+  knop-hoverschaduw resp. het notificatiebelletje) — niet overal waar
+  "knoppen/gauges/accenten" zou kunnen gelden, om het aantal geraakte
+  gedeelde componenten (en dus het risico voor andere bedrijven) klein te
+  houden binnen één sessie.
+
+**Te testen in de browser:**
+1. Log in bij SeysCentra → bovenbalk toont het SeysCentra-logo prominent,
+   met het Safespot-badge-logo (petrolblauw, ongewijzigd) er bescheiden naast.
+2. Knoppen/actieve navigatie/focusringen zijn donkerbruin (`#604C3F`).
+3. Een gauge (bv. RI&E-voortgang op het dashboard) heeft een taupe track
+   i.p.v. het gebruikelijke grijze.
+4. Stuur jezelf (of laat een test-notificatie ontstaan) zodat het
+   belletje-badge in de bovenbalk verschijnt — die moet magenta zijn bij
+   SeysCentra.
+5. Log in bij Dutch Waste → alles zoals voorheen (oranje/hun eigen accent,
+   geen taupe track, geen magenta badge, geen Safespot-logo).
+
 ## SeysCentra demo-klaar (2026-09-11)
 
 **Alle 5 punten van de opdracht af**, migratie 0087, tsc + build groen, schema

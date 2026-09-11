@@ -72,7 +72,12 @@ export default function NotificatieBel({ companyId }: Props) {
       >
         <span aria-hidden="true" className="text-lg leading-none">🔔</span>
         {ongelezen > 0 && (
-          <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-accent text-white text-[10px] font-medium inline-flex items-center justify-center">
+          // --color-accent-highlight (spaarzaam vleugje) met geneste fallback
+          // op de gewone accentkleur — ongezet is dit hetzelfde bolletje als
+          // voorheen (bg-accent).
+          <span
+            className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-[var(--color-accent-highlight,var(--color-accent))] text-white text-[10px] font-medium inline-flex items-center justify-center"
+          >
             {ongelezen > 9 ? '9+' : ongelezen}
           </span>
         )}

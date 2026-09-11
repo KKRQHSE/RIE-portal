@@ -1,5 +1,5 @@
 -- RI&E-portaal — schemadump (public)
--- Gegenereerd door scripts/dump_schema.mjs op 2026-09-11T08:43:26.812Z
+-- Gegenereerd door scripts/dump_schema.mjs op 2026-09-11T08:47:25.790Z
 -- Bron van waarheid voor het databaseschema. NIET handmatig bewerken;
 -- regenereer met: node scripts/dump_schema.mjs
 -- PostgreSQL: PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
@@ -302,7 +302,9 @@ CREATE TABLE public.companies (
   accent_kleur_override text,
   oefenomgeving boolean DEFAULT false NOT NULL,
   beschikbare_talen text[],
-  toon_bedrijfsvoering boolean
+  toon_bedrijfsvoering boolean,
+  accent_kleur_2_override text,
+  accent_kleur_highlight_override text
 );
 
 CREATE TABLE public.correctie_log (
@@ -3762,12 +3764,14 @@ begin
   select * into v_merk from public.merken where id = v_comp.merk_id;
 
   return jsonb_build_object(
-    'modus',         v_comp.huisstijl_modus,
-    'merk_naam',     coalesce(v_merk.naam, 'QHSE Totaal'),
-    'merk_logo',     v_merk.logo_pad,
-    'klant_logo',    v_comp.klant_logo_pad,
-    'accent_kleur',  coalesce(nullif(v_comp.accent_kleur_override, ''), v_merk.accent_kleur, '#FF5200'),
-    'lettertype',    coalesce(v_merk.lettertype, 'grotesk')
+    'modus',                 v_comp.huisstijl_modus,
+    'merk_naam',              coalesce(v_merk.naam, 'QHSE Totaal'),
+    'merk_logo',               v_merk.logo_pad,
+    'klant_logo',              v_comp.klant_logo_pad,
+    'accent_kleur',            coalesce(nullif(v_comp.accent_kleur_override, ''), v_merk.accent_kleur, '#FF5200'),
+    'accent_kleur_2',          nullif(v_comp.accent_kleur_2_override, ''),
+    'accent_kleur_highlight',  nullif(v_comp.accent_kleur_highlight_override, ''),
+    'lettertype',              coalesce(v_merk.lettertype, 'grotesk')
   );
 end;
 $function$;

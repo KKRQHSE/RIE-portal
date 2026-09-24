@@ -1,0 +1,633 @@
+[
+  {
+    "code": "F1",
+    "nr": "F1-4",
+    "vraag": "Zijn behandelaren beschermd tegen blootstelling aan biologische agentia (braaksel, lichaamsvocht) tijdens zindelijkheidstraining, met verplicht PBM-gebruik?",
+    "antwoord": "Nee",
+    "bevinding": "Behandelaren komen in contact met braaksel en andere vloeistoffen tijdens zindelijkheidstraining en eetmomenten. Protocollen bij incidenten; PBM-gebruik niet verplicht of geborgd.",
+    "klasse": "Hoog",
+    "pva": "35",
+    "locatie": null
+  },
+  {
+    "code": "F1",
+    "nr": "F1-6",
+    "vraag": "Wordt de hygiëne bij zindelijkheidsgroepen (reiniging van toiletten en vloeren) structureel gecontroleerd en bijgestuurd?",
+    "antwoord": "Nee",
+    "bevinding": "Bij zindelijkheidsgroepen worden toiletten en vloeren onvoldoende gereinigd. Vuile voeten aan het eind van de dag zijn zichtbaar. Schoonmaak vindt plaats, maar wordt niet gecontroleerd of bijgestuurd.",
+    "klasse": "Middel",
+    "pva": "37",
+    "locatie": null
+  },
+  {
+    "code": "F1",
+    "nr": "F4-5",
+    "vraag": "Is er een vaste, hygiënische werkwijze voor verschoonplekken?",
+    "antwoord": "Nee",
+    "bevinding": "Verschoonplekken worden soms geïmproviseerd. Geen standaard werkwijze.",
+    "klasse": "Middel",
+    "pva": "58",
+    "locatie": null
+  },
+  {
+    "code": "F1",
+    "nr": "O1-12",
+    "vraag": "Zijn hygiëneprotocollen en -voorzieningen (desinfectie, handschoenen, schoonmaakmiddelen) op elke locatie eenduidig geborgd?",
+    "antwoord": "Nee",
+    "bevinding": "Hygiëneprotocollen zijn aanwezig, maar uitvoering en toezicht verschillen per locatie. Desinfectiemiddel, handschoenen, schoonmaakmiddelen niet altijd op vaste plek.",
+    "klasse": "Middel",
+    "pva": "10",
+    "locatie": null
+  },
+  {
+    "code": "F1",
+    "nr": "O1-5",
+    "vraag": "Zijn persoonlijke beschermingsmiddelen op alle locaties beschikbaar en worden ze consistent gebruikt?",
+    "antwoord": "Nee",
+    "bevinding": "PBM's zijn op alle locaties aanwezig, maar gebruik en bewustwording zijn niet consistent. Instructie en documentatie verschillen per locatie.",
+    "klasse": "Middel",
+    "pva": "5",
+    "locatie": null
+  },
+  {
+    "code": "F2",
+    "nr": "F1-1",
+    "vraag": "Is bij de inrichting van het werk rekening gehouden met de fysieke belasting van behandelaren die dagelijks op de hurken of gebogen werken bij jonge kinderen?",
+    "antwoord": "Nee",
+    "bevinding": "Behandelaren werken dagelijks op de hurken of gebogen bij jonge kinderen. Beperkt gebruik van zadelkrukken.",
+    "klasse": "Hoog",
+    "pva": "32",
+    "locatie": null
+  },
+  {
+    "code": "F2",
+    "nr": "F1-2",
+    "vraag": "Is er standaard verstelbaar meubilair beschikbaar om fysieke belasting te beperken?",
+    "antwoord": "Nee",
+    "bevinding": "Verstelbaar meubilair is niet standaard aanwezig. Wisselend per locatie.",
+    "klasse": "Hoog",
+    "pva": "33",
+    "locatie": null
+  },
+  {
+    "code": "F2",
+    "nr": "F1-3",
+    "vraag": "Krijgen behandelaren specifieke instructie over ergonomisch werken?",
+    "antwoord": "Nee",
+    "bevinding": "Geen specifieke ergonomie-instructie.",
+    "klasse": "Hoog",
+    "pva": "34",
+    "locatie": null
+  },
+  {
+    "code": "F2",
+    "nr": "F2-1",
+    "vraag": "Is de thuiswerkplek van coördinatoren getoetst op inrichting en ergonomie?",
+    "antwoord": "Nee",
+    "bevinding": "Thuiswerken komt voor, maar zonder zicht op inrichting of ondersteuning. Geen standaardvoorzieningen of toetsing.",
+    "klasse": "Middel",
+    "pva": "45",
+    "locatie": null
+  },
+  {
+    "code": "F2",
+    "nr": "F3-3",
+    "vraag": "Wordt de thuiswerkplek van ondersteunende diensten getoetst op ergonomie en veiligheid?",
+    "antwoord": "Nee",
+    "bevinding": "Geen toetsing op ergonomie of veiligheid. Zelfinrichting zonder richtlijn.",
+    "klasse": "Middel",
+    "pva": "51",
+    "locatie": null
+  },
+  {
+    "code": "F2",
+    "nr": "F4-1",
+    "vraag": "Is bij het verschonen van kinderen rekening gehouden met fysieke belasting (verstelbare commode, juiste werkhoogte)?",
+    "antwoord": "Nee",
+    "bevinding": "Verschoonhandelingen vinden soms plaats op de vloer of op niet-verstelbare meubels. Geen standaard commode of vast beleid per locatie.",
+    "klasse": "Middel",
+    "pva": "54",
+    "locatie": null
+  },
+  {
+    "code": "F2",
+    "nr": "F4-3",
+    "vraag": "Krijgen persoonlijk begeleiders instructie over een gezonde werkhouding en fysieke belasting bij het werken met kinderen?",
+    "antwoord": "Nee",
+    "bevinding": "Geen standaardinstructie over gezonde werkhouding of fysieke belasting. Instructie niet structureel geregeld; geen opname in inwerkprogramma.",
+    "klasse": "Middel",
+    "pva": "56",
+    "locatie": null
+  },
+  {
+    "code": "F3",
+    "nr": "F1-8",
+    "vraag": "Is het binnenklimaat (ventilatie, temperatuur, verlichting) in de sessiekamers beoordeeld en zijn er passende maatregelen getroffen?",
+    "antwoord": "Nee",
+    "bevinding": "Sessiekamers zijn vaak klein en hebben niet altijd ramen. Ventilatie en airco ontbreken soms of zijn beperkt instelbaar. Verlichting is doorgaans fel LED-licht en niet dimbaar. Gebruik ventilatoren; geen structurele klimaatregeling.",
+    "klasse": "Hoog",
+    "pva": "39",
+    "locatie": null
+  },
+  {
+    "code": "F3",
+    "nr": "F3-1",
+    "vraag": "Is de geluidsbelasting in de kantoortuin beoordeeld en zijn akoestische maatregelen getroffen?",
+    "antwoord": "Nee",
+    "bevinding": "Kantoortuin met toegenomen bezetting, weinig rust. Geen akoestische afscherming.",
+    "klasse": "Middel",
+    "pva": "49",
+    "locatie": null
+  },
+  {
+    "code": "F3",
+    "nr": "F3-2",
+    "vraag": "Is er adequate klimaatregeling op de werkplekken van ondersteunende diensten?",
+    "antwoord": "Nee",
+    "bevinding": "Ruimtes zijn soms te koud of te warm. Gebruik van dekens of ventilator.",
+    "klasse": "Middel",
+    "pva": "50",
+    "locatie": null
+  },
+  {
+    "code": "F3",
+    "nr": "F4-6",
+    "vraag": "Is de geluidsbelasting door huilende of gillende kinderen beoordeeld en zijn passende maatregelen (zoals gehoorbescherming) beschikbaar?",
+    "antwoord": "Nee",
+    "bevinding": "Langdurig huilen en gillen van kinderen op de groep. Gebruik van oordoppen op eigen initiatief.",
+    "klasse": "Hoog",
+    "pva": "59",
+    "locatie": null
+  },
+  {
+    "code": "L1",
+    "nr": "L1-1",
+    "vraag": "Is de trap op locatie Malden structureel beveiligd tegen valgevaar, in plaats van met een tijdelijke voorziening?",
+    "antwoord": "Nee",
+    "bevinding": "Trap is tijdelijk gezekerd met een spanband. Geen structurele oplossing.",
+    "klasse": "Middel",
+    "pva": "11",
+    "locatie": "Maastricht"
+  },
+  {
+    "code": "L1",
+    "nr": "L2-1",
+    "vraag": "Zijn meterkasten op locatie Maastricht (De Horst 12) vrij van opslag, conform de brandveiligheidseisen?",
+    "antwoord": "Nee",
+    "bevinding": "Meterkasten worden gebruikt als opslag voor schoonmaakmiddelen en bezems.",
+    "klasse": "Hoog",
+    "pva": "12",
+    "locatie": "Malden"
+  },
+  {
+    "code": "L1",
+    "nr": "L2-2",
+    "vraag": "Is de elektrische bekabeling bij het tijdelijke gebouw veilig aangelegd, zonder beknelling?",
+    "antwoord": "Nee",
+    "bevinding": "Bekabeling is bekneld bij het tijdelijke gebouw.",
+    "klasse": "Middel",
+    "pva": "13",
+    "locatie": "Malden"
+  },
+  {
+    "code": "L1",
+    "nr": "L2-3",
+    "vraag": "Is er een correct bevestigde evacuatiestoel (evac-chair) aanwezig voor niet-zelfredzame cliënten?",
+    "antwoord": "Nee",
+    "bevinding": "Evac-chair ontbreekt of is niet bevestigd.",
+    "klasse": "Hoog",
+    "pva": "14",
+    "locatie": "Malden"
+  },
+  {
+    "code": "L1",
+    "nr": "L2-4",
+    "vraag": "Zijn de EHBO-koffers compleet en actueel?",
+    "antwoord": "Nee",
+    "bevinding": "EHBO-koffers zijn onvolledig of verouderd.",
+    "klasse": "Middel",
+    "pva": "15",
+    "locatie": "Malden"
+  },
+  {
+    "code": "L1",
+    "nr": "L2-5",
+    "vraag": "Is het binnenklimaat (temperatuur, ventilatie) in de behandel- en kantoorzones beoordeeld en op orde?",
+    "antwoord": "Nee",
+    "bevinding": "Klachten over temperatuurverschillen en luchtkwaliteit in behandel- en kantoorzones.",
+    "klasse": "Middel",
+    "pva": "16",
+    "locatie": "Malden"
+  },
+  {
+    "code": "L1",
+    "nr": "L2-6",
+    "vraag": "Is de akoestiek tussen behandelkamers voldoende om vertrouwelijke gesprekken af te schermen?",
+    "antwoord": "Nee",
+    "bevinding": "Kamers zijn gehorig, gesprekken dragen over.",
+    "klasse": "Middel",
+    "pva": "17",
+    "locatie": "Malden"
+  },
+  {
+    "code": "L1",
+    "nr": "L2-7",
+    "vraag": "Is de trap aan beide zijden voorzien van een leuning om valgevaar te voorkomen?",
+    "antwoord": "Nee",
+    "bevinding": "Trap mist leuning aan één zijde. Geen valpreventie langs open zijde.",
+    "klasse": "Middel",
+    "pva": "18",
+    "locatie": "Malden"
+  },
+  {
+    "code": "L1",
+    "nr": "L2-8",
+    "vraag": "Wordt ethanol veilig opgeslagen (geborgd, met voldoende ventilatie)?",
+    "antwoord": "Nee",
+    "bevinding": "Ethanol staat los opgeslagen, geen aparte ventilatie of borging.",
+    "klasse": "Middel",
+    "pva": "19",
+    "locatie": "Malden"
+  },
+  {
+    "code": "L1",
+    "nr": "L3-1",
+    "vraag": "Is er, gezien de opzet over meerdere woonhuizen, voldoende aandacht voor fysieke belasting door traplopen en tillen?",
+    "antwoord": "Nee",
+    "bevinding": "Veel traplopen en tillen vanwege opzet over meerdere woonhuizen.",
+    "klasse": "Hoog",
+    "pva": "20",
+    "locatie": "Utrecht"
+  },
+  {
+    "code": "L1",
+    "nr": "L3-2",
+    "vraag": "Is valgevaar op de trappen (traplopen met kind of materiaal) voldoende beheerst (leuningen, instructie)?",
+    "antwoord": "Nee",
+    "bevinding": "Traplopen met kind of materiaal, vaak achteruit of zonder leuning.",
+    "klasse": "Hoog",
+    "pva": "21",
+    "locatie": "Utrecht"
+  },
+  {
+    "code": "L1",
+    "nr": "L3-3",
+    "vraag": "Is het binnenklimaat in de behandelkamers op de bovenverdieping (ventilatie, temperatuur) voldoende?",
+    "antwoord": "Nee",
+    "bevinding": "Behandelkamers boven zonder airco, benauwd in zomer.",
+    "klasse": "Middel",
+    "pva": "22",
+    "locatie": "Utrecht"
+  },
+  {
+    "code": "L1",
+    "nr": "L3-4",
+    "vraag": "Is de verlichting op locatie Utrecht toereikend en zijn de armaturen compleet?",
+    "antwoord": "Nee",
+    "bevinding": "Gebrekkige verlichting, kap ontbreekt op plafondarmaturen.",
+    "klasse": "Laag",
+    "pva": "23",
+    "locatie": "Utrecht"
+  },
+  {
+    "code": "L1",
+    "nr": "L3-5",
+    "vraag": "Is de schoonmaakcapaciteit afgestemd op de complexiteit van het pand?",
+    "antwoord": "Nee",
+    "bevinding": "Schoonmaakcapaciteit is onvoldoende voor de complexiteit van het pand.",
+    "klasse": "Middel",
+    "pva": "24",
+    "locatie": "Utrecht"
+  },
+  {
+    "code": "L1",
+    "nr": "L3-6",
+    "vraag": "Worden weinig gebruikte tappunten regelmatig doorgespoeld ter voorkoming van legionella?",
+    "antwoord": "Nee",
+    "bevinding": "Meerdere tappunten worden niet regelmatig gebruikt.",
+    "klasse": "Middel",
+    "pva": "25",
+    "locatie": "Utrecht"
+  },
+  {
+    "code": "L1",
+    "nr": "L3-7",
+    "vraag": "Zijn verschoonplekken ergonomisch ingericht (standaardhoogte), in plaats van op de grond?",
+    "antwoord": "Nee",
+    "bevinding": "Kinderen worden soms op de grond verschoond.",
+    "klasse": "Middel",
+    "pva": "26",
+    "locatie": "Utrecht"
+  },
+  {
+    "code": "L1",
+    "nr": "L4-1",
+    "vraag": "Is er voldoende, dimbare of daglichtsimulerende verlichting in de ramenloze sessie- en werkruimtes?",
+    "antwoord": "Nee",
+    "bevinding": "Sessie- en werkruimtes zonder ramen, intens LED-licht.",
+    "klasse": "Hoog",
+    "pva": "27",
+    "locatie": "Zwijndrecht"
+  },
+  {
+    "code": "L1",
+    "nr": "L4-2",
+    "vraag": "Is het binnenklimaat (ventilatie) in de inpandige ruimtes zonder ramen op orde?",
+    "antwoord": "Nee",
+    "bevinding": "Inpandige ruimtes zonder ramen.",
+    "klasse": "Middel",
+    "pva": "28",
+    "locatie": "Zwijndrecht"
+  },
+  {
+    "code": "L1",
+    "nr": "L4-3",
+    "vraag": "Is er een aparte pauzeruimte, los van de werkruimtes of het bureau?",
+    "antwoord": "Nee",
+    "bevinding": "Geen aparte pauzeruimte. Pauzes in werkruimtes of aan het bureau.",
+    "klasse": "Middel",
+    "pva": "29",
+    "locatie": "Zwijndrecht"
+  },
+  {
+    "code": "L1",
+    "nr": "L4-4",
+    "vraag": "Is het meubilair afgestemd op de werkzaamheden en de beschikbare ruimte?",
+    "antwoord": "Nee",
+    "bevinding": "Meubilair is klein en niet afgestemd op werkzaamheden.",
+    "klasse": "Middel",
+    "pva": "30",
+    "locatie": "Zwijndrecht"
+  },
+  {
+    "code": "L1",
+    "nr": "O1-6",
+    "vraag": "Is de BHV-organisatie (aangewezen BHV'ers, jaarlijkse ontruimingsoefeningen, evaluatie) op orde per locatie?",
+    "antwoord": "Ja",
+    "bevinding": "BHV'ers zijn per locatie aangewezen, opgeleid en actief. Jaarlijkse oefeningen worden ingepland en uitgevoerd. Dekking is per locatie inzichtelijk. De BHV-organisatie is op hoofdlijnen goed geregeld. Verbeterpunten zitten vooral in de structurele evaluatie van oefeningen en registratie van leerpunten.",
+    "klasse": null,
+    "pva": null,
+    "locatie": null
+  },
+  {
+    "code": "L2",
+    "nr": "F2-3",
+    "vraag": "Zijn er afspraken over veilig vervoer voor coördinatoren bij slecht weer (winterbanden, thuiswerken)?",
+    "antwoord": "Nee",
+    "bevinding": "Geen vaste afspraken over vervoer, winterbanden of werken bij slecht weer. Medewerkers lossen dit individueel op.",
+    "klasse": "Middel",
+    "pva": "47",
+    "locatie": null
+  },
+  {
+    "code": "L2",
+    "nr": "L4-5",
+    "vraag": "Is er een werkende vervangende vervoersvoorziening nu de bakfiets buiten gebruik is (terugroepactie)?",
+    "antwoord": "Nee",
+    "bevinding": "Bakfiets buiten gebruik door terugroepactie Babboe.",
+    "klasse": "Laag",
+    "pva": "31",
+    "locatie": "Zwijndrecht"
+  },
+  {
+    "code": "L2",
+    "nr": "O1-10",
+    "vraag": "Is er beleid over verkeersveiligheid voor medewerkers die met eigen vervoer naar locaties of cliënten reizen?",
+    "antwoord": "Nee",
+    "bevinding": "Medewerkers reizen met eigen auto naar locaties of cliënten. Geen beleid over verkeersveiligheid.",
+    "klasse": "Middel",
+    "pva": "8",
+    "locatie": null
+  },
+  {
+    "code": "L3",
+    "nr": "F1-9",
+    "vraag": "Wordt de thuissituatie van cliënten (hygiëne, blootstelling aan rook) vooraf geïnventariseerd bij huisbezoeken?",
+    "antwoord": "Nee",
+    "bevinding": "De zindelijkheidsbehandelaars komen aan het eind van de behandeling bij de cliënten thuis. De situatie thuis is vaak niet geïnventariseerd. Geen directe maatregelen.",
+    "klasse": "Middel",
+    "pva": "40",
+    "locatie": null
+  },
+  {
+    "code": "O1",
+    "nr": "F1-13",
+    "vraag": "Is de vertrouwenspersoon actief bekendgemaakt en zichtbaar aanwezig op de werkvloer?",
+    "antwoord": "Nee",
+    "bevinding": "Medewerkers weten vaak niet wie de vertrouwenspersoon is. Er is geen actieve communicatie over deze rol. Formeel benoemd; aanwezigheid op werkvloer ontbreekt.",
+    "klasse": "Laag",
+    "pva": "44",
+    "locatie": null
+  },
+  {
+    "code": "O1",
+    "nr": "F3-5",
+    "vraag": "Is het beleid voor sociale veiligheid en de externe vertrouwenspersoon bij alle medewerkers van ondersteunende diensten bekend?",
+    "antwoord": "Nee",
+    "bevinding": "Beleid aanwezig, maar niet bij iedereen bekend. Externe vertrouwenspersoon.",
+    "klasse": "Middel",
+    "pva": "53",
+    "locatie": null
+  },
+  {
+    "code": "O1",
+    "nr": "O1-1",
+    "vraag": "Is de arbo-organisatie (preventiemedewerker, AFA's per locatie, rapportagelijnen) formeel belegd en bekend bij medewerkers?",
+    "antwoord": "Nee",
+    "bevinding": "Preventiemedewerker en AFA's per locatie benoemd. Kwartaaloverleg tussen HR-projectmedewerker en AFA's met verslaglegging.",
+    "klasse": "Middel",
+    "pva": "1",
+    "locatie": null
+  },
+  {
+    "code": "O1",
+    "nr": "O1-4",
+    "vraag": "Krijgen nieuwe medewerkers gestructureerde voorlichting en instructie, met toetsing en terugkoppeling (Arbowet art. 8)?",
+    "antwoord": "Nee",
+    "bevinding": "Nieuwe medewerkers ontvangen bij indiensttreding basisinstructie, maar geen gestructureerde toetsing of terugkoppeling. Instructie via AFA verschilt per locatie.",
+    "klasse": "Middel",
+    "pva": "4",
+    "locatie": null
+  },
+  {
+    "code": "O1",
+    "nr": "O1-7",
+    "vraag": "Worden (bijna-)incidenten en MIP's structureel gemeld, geregistreerd en opgevolgd?",
+    "antwoord": "Ja",
+    "bevinding": "MIP's worden per locatie gemeld, opgevolgd door AFA's en geregistreerd in systemen. Er is groeiende aandacht voor terugkoppeling. Lokaal wordt goed gereageerd, en er is een centrale registratie.",
+    "klasse": null,
+    "pva": null,
+    "locatie": null
+  },
+  {
+    "code": "O2",
+    "nr": "F1-5",
+    "vraag": "Worden vaccinaties (hepatitis A/B) aangeboden aan behandelaren met een verhoogd blootstellingsrisico?",
+    "antwoord": "Nee",
+    "bevinding": "Behandelaren van zindelijkheidsgroepen hebben mogelijk risico op hepatitis B, hiervoor worden vaccinaties aangeboden. Gezien de zorgvorm speelt ook het risico op hepatitis A.",
+    "klasse": "Hoog",
+    "pva": "36",
+    "locatie": null
+  },
+  {
+    "code": "O2",
+    "nr": "F1-7",
+    "vraag": "Is bekend in welke mate cliënten (kinderen) gevaccineerd zijn, met het oog op het besmettingsrisico voor behandelaren?",
+    "antwoord": "Nee",
+    "bevinding": "Behandelaars komen in contact met kinderen van wie voor hen niet altijd duidelijk is in welke mate zij gevaccineerd zijn vanuit het rijksvaccinatieprogramma. Niet altijd bekend.",
+    "klasse": "Hoog",
+    "pva": "38",
+    "locatie": null
+  },
+  {
+    "code": "O2",
+    "nr": "F4-4",
+    "vraag": "Is de vaccinatiestatus van cliënten (kinderen) bekend bij medewerkers die risico lopen op besmetting?",
+    "antwoord": "Nee",
+    "bevinding": "Vaccinatiestatus van kinderen is vaak onbekend. Niet altijd bekend.",
+    "klasse": "Hoog",
+    "pva": "57",
+    "locatie": null
+  },
+  {
+    "code": "O2",
+    "nr": "O1-9",
+    "vraag": "Is er een vaccinatiebeleid voor medewerkers die risico lopen op contact met lichaamsvocht of infectieziekten?",
+    "antwoord": "Nee",
+    "bevinding": "Geen vast vaccinatiebeleid, ook niet voor medewerkers met risico op contact met ontlasting, braaksel of infectieziekten (bijv. bij huisbezoeken).",
+    "klasse": "Middel",
+    "pva": "7",
+    "locatie": null
+  },
+  {
+    "code": "O3",
+    "nr": "O1-8",
+    "vraag": "Is er beleid voor bijzondere groepen (zwangeren, jonge medewerkers, verminderd inzetbare medewerkers)?",
+    "antwoord": "Nee",
+    "bevinding": "Geen specifiek beleid voor zwangeren, jonge medewerkers of medewerkers met verminderde inzetbaarheid.",
+    "klasse": "Middel",
+    "pva": "6",
+    "locatie": null
+  },
+  {
+    "code": "P1",
+    "nr": "F1-11",
+    "vraag": "Is de planning van behandelaren zodanig ingericht (uitlooptijd, herstelmomenten) dat de werkdruk beheersbaar blijft?",
+    "antwoord": "Nee",
+    "bevinding": "Voor een aantal behandelaars geldt dat de planning vol zit met 1-op-1-sessies zonder uitlooptijd. Herstelmomenten worden soms ingepland, maar niet consequent toegepast. Pilot met werkblokken; afhankelijk van locatie/roostering.",
+    "klasse": "Hoog",
+    "pva": "42",
+    "locatie": null
+  },
+  {
+    "code": "P1",
+    "nr": "F2-2",
+    "vraag": "Is er een formele begrenzing voor het combineren van meerdere rollen door coördinatoren op kleinere locaties?",
+    "antwoord": "Nee",
+    "bevinding": "Op kleinere locaties worden soms meerdere rollen gecombineerd. Geen formele begrenzing van rolcombinatie.",
+    "klasse": "Hoog",
+    "pva": "46",
+    "locatie": null
+  },
+  {
+    "code": "P1",
+    "nr": "F2-4",
+    "vraag": "Zijn de pauzevoorzieningen voor coördinatoren rustgevend genoeg om daadwerkelijk te herstellen?",
+    "antwoord": "Nee",
+    "bevinding": "Pauzeruimtes zijn functioneel maar weinig rustgevend. Ruimtes zijn niet uitnodigend ingericht.",
+    "klasse": "Hoog",
+    "pva": "48",
+    "locatie": null
+  },
+  {
+    "code": "P1",
+    "nr": "F3-4",
+    "vraag": "Is er formele ondersteuning beschikbaar bij piekbelasting (kwartaalcijfers, jaarafsluiting, oudergesprekken)?",
+    "antwoord": "Nee",
+    "bevinding": "Hoge pieken rond kwartaalcijfers, jaarafsluiting en oudergesprekken. Ruimte voor bespreking, geen formele opvang.",
+    "klasse": "Middel",
+    "pva": "52",
+    "locatie": null
+  },
+  {
+    "code": "P1",
+    "nr": "F4-2",
+    "vraag": "Is er een aparte, rustgevende pauzeruimte beschikbaar, los van de groepsruimte?",
+    "antwoord": "Nee",
+    "bevinding": "Pauzeruimtes zijn vaak onderdeel van de groepsruimte of liggen direct ernaast. Kleine of gedeelde ruimtes; onvoldoende afscherming.",
+    "klasse": "Middel",
+    "pva": "55",
+    "locatie": null
+  },
+  {
+    "code": "P1",
+    "nr": "F4-7",
+    "vraag": "Is er een pauzeruimte die gescheiden is van de werkplek, zodat medewerkers echt kunnen herstellen?",
+    "antwoord": "Nee",
+    "bevinding": "Pauzeruimtes zijn klein of maken deel uit van de werkomgeving. Pauzes worden genomen, maar zonder scheiding van werkplek.",
+    "klasse": "Middel",
+    "pva": "55",
+    "locatie": null
+  },
+  {
+    "code": "P1",
+    "nr": "F4-8",
+    "vraag": "Is de werkdruk bij persoonlijk begeleiders in kaart gebracht en zijn er voldoende rustmomenten om te herstellen?",
+    "antwoord": "Nee",
+    "bevinding": "De werkdag is gevuld met zorgtaken, verslaglegging en contactmomenten. Pauzes zijn aanwezig, maar vinden vaak plaats nabij de groep. Pauzetijd is gepland, maar wordt niet altijd als rustgevend ervaren.",
+    "klasse": "Hoog",
+    "pva": "60",
+    "locatie": null
+  },
+  {
+    "code": "P1",
+    "nr": "O1-3",
+    "vraag": "Is er een formele afbakening van de huishoudelijke taken die behandelaren naast hun zorgtaken uitvoeren?",
+    "antwoord": "Nee",
+    "bevinding": "Behandelaren verrichten structureel keuken- en schoonmaaktaken in dagstructuur. Er is geen formele afbakening van deze verantwoordelijkheden, hoewel die door behandelaren soms wel wordt verwacht.",
+    "klasse": "Hoog",
+    "pva": "3",
+    "locatie": null
+  },
+  {
+    "code": "P2",
+    "nr": "F1-12",
+    "vraag": "Krijgen behandelaren training of coaching in het omgaan met emotionele of verbaal agressieve ouders?",
+    "antwoord": "Nee",
+    "bevinding": "Ouders reageren soms emotioneel of verbaal agressief richting behandelaren. Er zijn protocollen, maar geen training of coaching.",
+    "klasse": "Middel",
+    "pva": "43",
+    "locatie": null
+  },
+  {
+    "code": "P2",
+    "nr": "O1-11",
+    "vraag": "Is er een toereikend protocol en zijn medewerkers voorbereid op het werken met cliënten in crisissituaties (agressie)?",
+    "antwoord": "Nee",
+    "bevinding": "Medewerkers komen in aanraking met verbale of fysieke agressie, met name in de zorgintensievere groepen. Er is een agressieprotocol beschikbaar.",
+    "klasse": "Middel",
+    "pva": "9",
+    "locatie": null
+  },
+  {
+    "code": "P3",
+    "nr": "F1-10",
+    "vraag": "Is er structurele opvang (intervisie, nazorg) voor de emotionele belasting die behandelaren ervaren bij schrijnende casuïstiek?",
+    "antwoord": "Nee",
+    "bevinding": "Behandelaren ervaren enige emotionele belasting. In enkele gevallen bij intensieve, schrijnende casuïstiek blijven verhalen soms hangen na werktijd. Teamoverleggen geven enige ruimte; geen structurele intervisie of nazorg.",
+    "klasse": "Middel",
+    "pva": "41",
+    "locatie": null
+  },
+  {
+    "code": "P3",
+    "nr": "O1-2",
+    "vraag": "Is er een centraal PSA-beleid met een vaste structuur voor signalering, melding en opvolging?",
+    "antwoord": "Nee",
+    "bevinding": "PSA-uitvraag via MTO om de 2 jaar. BOT beschikbaar via Pluryn. GIMD als externe vertrouwenspersoon. Geen centraal PSA-beleid.",
+    "klasse": "Middel",
+    "pva": "2",
+    "locatie": null
+  }
+]
+OK

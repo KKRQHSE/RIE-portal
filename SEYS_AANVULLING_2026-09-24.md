@@ -221,10 +221,62 @@ niet alleen aandachtspunten.
    van de nieuwe Numodo-vragen hoort bij een specifieke vestiging te verschijnen.
 6. Dutch Waste (of een ander bedrijf) op `/rie` en `/pva`: ongewijzigd (regressietoets).
 
+## Fase 3 — Hernummering: NUM-voorvoegsel eruit, schone doorlopende nr per module
+
+Op Kees' expliciete verzoek na het lezen van dit rapport: de `NUM-`-labels op de 105 toegevoegde
+vragen (en de oude, module-vreemde labels op de oorspronkelijke 63, bv. "F4-5" onder module F1)
+zijn vervangen door een gewone doorlopende reeks per module — `F1-1, F1-2, ..., F1-25`,
+`L1-1 ... L1-34`, enzovoort. Geen enkele andere aanduiding van herkomst meer in het nr-veld.
+
+**Migratie:** `supabase/migrations/0091_seyscentra_nr_hernummering.sql`. Raakt uitsluitend
+`vragen.nr` en `vragen.volgorde` — `vraag`/`antwoord`/`bevinding`/`klasse`/`pva`/`locatie_id`/
+`functiegroep_id`/`module_id` blijven per rij (gevolgd op `id`, niet op `nr`) letterlijk
+ongewijzigd. Volgorde per module: dezelfde weergave-volgorde die al gold (module.volgorde, dan
+vraag.volgorde, dan nr) — de oorspronkelijke SeysCentra-vragen staan dus nog steeds vóór de
+Numodo-aanvulling in elke module, alleen zonder zichtbaar onderscheid meer in het label.
+
+**Uitvoering:** eerst alle 168 `nr`'s tijdelijk op een gegarandeerd unieke waarde (`TMP-<id>`) gezet
+om de unieke `(company_id, nr)`-constraint niet te breken bij het omwisselen (nieuwe nr's als
+"F1-1" bestonden al als tijdelijk label ergens anders in dezelfde module), daarna in dezelfde
+transactie de definitieve nr+volgorde gezet. Verificatie binnen de migratie zelf (breekt af bij
+afwijking): 168 vragen vooraf, 168 erna, en een hash over alle vragen (op `id`, met opzet zonder
+`nr`/`volgorde`) identiek voor en na — bewijs dat alleen het label is veranderd, geen inhoud.
+Eerst getest met `rollback;`, daarna pas echt toegepast.
+
+**Resultaat, geverifieerd:**
+
+| Module | Reeks | Aantal |
+|---|---|---|
+| F1 | F1-1 t/m F1-25 | 25 |
+| F2 | F2-1 t/m F2-16 | 16 |
+| F3 | F3-1 t/m F3-19 | 19 |
+| L1 | L1-1 t/m L1-34 | 34 |
+| L2 | L2-1 t/m L2-11 | 11 |
+| L3 | L3-1 t/m L3-10 | 10 |
+| O1 | O1-1 t/m O1-12 | 12 |
+| O2 | O2-1 t/m O2-10 | 10 |
+| O3 | O3-1 t/m O3-8 | 8 |
+| P1 | P1-1 t/m P1-13 | 13 |
+| P2 | P2-1 t/m P2-7 | 7 |
+| P3 | P3-1 t/m P3-3 | 3 |
+
+Inhouds-hash (op `id`, exclusief `nr`/`volgorde`) vóór en na: **identiek**
+(`b38e6f056551d0d54ffead425573af88`). `npx tsc --noEmit` groen, `npm run build` groen, volledige
+testronde 37/37 groen (dezelfde run als hierboven aangevuld, opnieuw gedraaid na deze migratie).
+Dutch Waste ongewijzigd (149 vragen). Geen enkel `.tsx`/`.ts`-bestand aangepast — het nr-veld
+wordt alleen gebruikt als weergavelabel en als vrij tekstveld voor de `#vraag-<nr>`-URL-anker;
+oude gedeelde anker-links naar een specifieke vraag (bv. `#vraag-NUM-F1-1`) werken hierdoor niet
+meer, maar die zijn nooit extern gedeeld (dit is een interne demo-omgeving).
+
+**Kanttekening:** de herkomst (welke vragen oorspronkelijk van SeysCentra kwamen en welke uit de
+Numodo-aanvulling) is nu ALLEEN nog af te leiden via `vragen.created_at`/de migratiegeschiedenis
+in de database, niet meer aan het `nr`-label zelf. Dat was expliciet de bedoeling van dit verzoek.
+
 ## Bestanden van deze sessie
 
 - `supabase/migrations/0090_seyscentra_numodo_aanvulling.sql` — de migratie zelf (bevat de
   volledige, letterlijke Numodo-tekst voor de 105 toegevoegde vragen en 13 pva-acties).
+- `supabase/migrations/0091_seyscentra_nr_hernummering.sql` — de hernummering (Fase 3 hierboven).
 - `audit/2026-09-24_seys-aanvulling/` — veiligheidskopie van vóór de wijziging
   (`backup_vragen_full.json`, `backup_pva_items_full.json`, `backup_modules_full.json`,
   `seyscentra_huidig_per_module.json`).

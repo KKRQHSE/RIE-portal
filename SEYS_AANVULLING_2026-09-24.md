@@ -272,11 +272,76 @@ meer, maar die zijn nooit extern gedeeld (dit is een interne demo-omgeving).
 Numodo-aanvulling) is nu ALLEEN nog af te leiden via `vragen.created_at`/de migratiegeschiedenis
 in de database, niet meer aan het `nr`-label zelf. Dat was expliciet de bedoeling van dit verzoek.
 
+## Fase 4 — L1/L2/L3 aangevuld met de Numodo-standaardchecklist per vestiging
+
+Op Kees' verzoek: dezelfde standaard-BHV/mobiliteit/extern-werken-vragenlijst als Numodo (30
+vragen: L1 13, L2 8, L3 9), nu voor elke SeysCentra-vestiging apart ingevuld met een eigen
+antwoord — niet zomaar 4x gekopieerd. De vraagteksten zijn waar nodig aangepast aan SeysCentra's
+eigen praktijk (bv. Numodo's "logeernachten"-vragen bestaan niet bij SeysCentra en zijn NVT gezet
+i.p.v. simpelweg overgenomen; Numodo's specifieke gebouwverwijzingen als "9A"/"179" zijn nooit
+overgenomen).
+
+**Antwoordvariatie is niet willekeurig, maar gebaseerd op elke vestiging haar eigen, al bestaande
+ECHTE profiel:**
+- **Malden** — al het meest problematische pand (meterkasten-opslag, evac-chair, EHBO, elektra) →
+  krijgt ook de meeste nieuwe Nee's op BHV-specifieke punten (keuring blusmiddelen,
+  vluchtwegaanduiding, brandmeldbeheerder, hulpbehoefte-inventarisatie).
+- **Utrecht** — bekende problemen zijn vooral gebouwconditie/complexiteit (meerdere woonhuizen) →
+  nieuwe Nee's zitten in dezelfde hoek (hulpbehoefte per woonhuis, check-in/out tussen huizen).
+- **Zwijndrecht** — al een bekend vervoersprobleem (bakfiets buiten gebruik) → nieuwe Nee's op
+  vervoersgerelateerde vragen (rijinstructie, rijroutes, vervangend cliëntvervoer).
+- **Maastricht** — al grotendeels compliant (1 bestaand punt) → blijft ook op de nieuwe vragen
+  overwegend Ja, met een enkele uitzondering (AED-bekendheid, ontruimingsplattegrond).
+- Vier vragen (huisbezoek-risico-inventarisatie en het agressieprotocol voor huisbezoeken) zijn
+  bewust bij ALLE vier vestigingen Nee — dat is geen fout, het is dezelfde organisatiebrede
+  tekortkoming die al bekend was (F1-9/O1-11-thematiek), nu zichtbaar per vestiging.
+- De vraag "worden ontruimingsoefeningen periodiek geëvalueerd" (dezelfde als de eerder gemelde
+  NUM-L1-6-spanning met O1-6) is voor alle vier vestigingen bewust op **Ja** gezet — dat voorkomt
+  dat dezelfde tegenstrijdigheid er nu 4x bij komt.
+
+**Migratie:** `supabase/migrations/0092_seyscentra_locatie_flop_vragen.sql`. Zelfde bewezen
+patroon als de vorige fases: assert vooraf (168 vragen/73 pva-items), hash over de bestaande
+vragen (op `id`, dus onafhankelijk van welke nieuwe rijen erbij komen), 120 nieuwe vragen invoegen
+(nr gewoon doorlopend op de net opgeschoonde reeks: L1-35 t/m L1-86, L2-12 t/m L2-43, L3-11 t/m
+L3-46 — geen NUM-achtig voorvoegsel), 21 nieuwe pva-acties (nr 74 t/m 94, elk met de juiste
+`locatie_id`), koppeling vragen→pva, en tot slot dezelfde hash opnieuw berekend en vergeleken.
+Eerst getest met `rollback;`, pas daarna echt toegepast.
+
+**Telling voor/na:**
+
+| Metriek | Vóór | Ná |
+|---|---|---|
+| Vragen totaal | 168 | 288 (168 + 120 nieuw) |
+| PvA-acties totaal | 73 | 94 (73 + 21 nieuw) |
+| Vragen met locatie_id | 21 | 141 (21 bestaand + 120 nieuw) |
+| PvA-acties met locatie_id | 21 | 42 (21 bestaand + 21 nieuw) |
+| Hash van de 168 bestaande vragen (op id) | `b38e6f056551d0d54ffead425573af88` | `b38e6f056551d0d54ffead425573af88` — **identiek** |
+
+**Per vestiging, L-blok totaal (bestaand + nieuw samen):**
+
+| Vestiging | L1 | L2 | L3 |
+|---|---|---|---|
+| Maastricht | 14 (9 Ja / 3 Nee / 2 NVT) | 8 (3 Ja / 0 Nee / 5 NVT) | 9 (2 Ja / 2 Nee / 5 NVT) |
+| Malden | 21 (6 Ja / 13 Nee / 2 NVT) | 8 (3 Ja / 0 Nee / 5 NVT) | 9 (2 Ja / 2 Nee / 5 NVT) |
+| Utrecht | 20 (10 Ja / 8 Nee / 2 NVT) | 8 (3 Ja / 0 Nee / 5 NVT) | 9 (1 Ja / 3 Nee / 5 NVT) |
+| Zwijndrecht | 17 (10 Ja / 5 Nee / 2 NVT) | 9 (0 Ja / 4 Nee / 5 NVT) | 9 (2 Ja / 2 Nee / 5 NVT) |
+
+Regressie: tsc groen, build groen, 37/37 testscripts groen (incl. `rie_locatie_filter_selftest`,
+`locatie_isolatie_test`, `dashboard_meerjaren_locatie_test`, `anon_execute_audit_test`). Dutch
+Waste ongewijzigd (149 vragen). Geen enkel codebestand aangepast.
+
+**Te controleren in de browser:** open `/rie` bij SeysCentra, kies achtereenvolgens elke vestiging
+in de locatiefilter — L1, L2 én L3 tonen nu allemaal iets voor elke vestiging (niet meer bijna
+leeg voor L2/L3). Check specifiek Malden (veel rode Nee-badges in L1) tegenover Maastricht
+(overwegend groen). Op `/pva`: 21 nieuwe acties, elk met de juiste locatie-badge.
+
 ## Bestanden van deze sessie
 
 - `supabase/migrations/0090_seyscentra_numodo_aanvulling.sql` — de migratie zelf (bevat de
   volledige, letterlijke Numodo-tekst voor de 105 toegevoegde vragen en 13 pva-acties).
 - `supabase/migrations/0091_seyscentra_nr_hernummering.sql` — de hernummering (Fase 3 hierboven).
+- `supabase/migrations/0092_seyscentra_locatie_flop_vragen.sql` — de locatie-FLOP-aanvulling (Fase 4).
+- `audit/2026-09-24_locatie-flop-vragen/` — veiligheidskopie van vóór Fase 4.
 - `audit/2026-09-24_seys-aanvulling/` — veiligheidskopie van vóór de wijziging
   (`backup_vragen_full.json`, `backup_pva_items_full.json`, `backup_modules_full.json`,
   `seyscentra_huidig_per_module.json`).

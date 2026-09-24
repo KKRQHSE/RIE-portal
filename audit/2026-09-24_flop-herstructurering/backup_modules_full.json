@@ -1,0 +1,111 @@
+[
+  {
+    "id": "5b81c1f8-3932-41f1-a7fd-c4e51f8d73b8",
+    "company_id": "bd16538b-01e9-41d2-84ad-fe5690917cba",
+    "code": "O1",
+    "titel": "Beleid: organisatiebrede risico's",
+    "intro": "",
+    "volgorde": 1,
+    "archived_at": null,
+    "created_at": "2026-09-10T12:57:19.871Z",
+    "updated_at": "2026-09-10T12:57:19.871Z",
+    "rie_versie_id": null
+  },
+  {
+    "id": "81ea19b0-a240-4a01-bdeb-47938c94f260",
+    "company_id": "bd16538b-01e9-41d2-84ad-fe5690917cba",
+    "code": "L1",
+    "titel": "Locatie Maastricht: locatiegebonden risico's",
+    "intro": "",
+    "volgorde": 2,
+    "archived_at": null,
+    "created_at": "2026-09-10T12:57:19.871Z",
+    "updated_at": "2026-09-10T12:57:19.871Z",
+    "rie_versie_id": null
+  },
+  {
+    "id": "ee8b013d-d92d-403b-bb6e-32058fc5f224",
+    "company_id": "bd16538b-01e9-41d2-84ad-fe5690917cba",
+    "code": "L2",
+    "titel": "Locatie Malden: locatiegebonden risico's",
+    "intro": "",
+    "volgorde": 3,
+    "archived_at": null,
+    "created_at": "2026-09-10T12:57:19.871Z",
+    "updated_at": "2026-09-10T12:57:19.871Z",
+    "rie_versie_id": null
+  },
+  {
+    "id": "f4557266-c7fa-41e4-8233-68274ce17e3a",
+    "company_id": "bd16538b-01e9-41d2-84ad-fe5690917cba",
+    "code": "L3",
+    "titel": "Locatie Utrecht: locatiegebonden risico's",
+    "intro": "",
+    "volgorde": 4,
+    "archived_at": null,
+    "created_at": "2026-09-10T12:57:19.871Z",
+    "updated_at": "2026-09-10T12:57:19.871Z",
+    "rie_versie_id": null
+  },
+  {
+    "id": "0514a988-a881-47ee-b562-85e4942babd5",
+    "company_id": "bd16538b-01e9-41d2-84ad-fe5690917cba",
+    "code": "L4",
+    "titel": "Locatie Zwijndrecht: locatiegebonden risico's",
+    "intro": "",
+    "volgorde": 5,
+    "archived_at": null,
+    "created_at": "2026-09-10T12:57:19.871Z",
+    "updated_at": "2026-09-10T12:57:19.871Z",
+    "rie_versie_id": null
+  },
+  {
+    "id": "6a833803-f399-40fe-a27b-a29773ff4b53",
+    "company_id": "bd16538b-01e9-41d2-84ad-fe5690917cba",
+    "code": "F1",
+    "titel": "Functie Behandelaren: risico's",
+    "intro": "",
+    "volgorde": 6,
+    "archived_at": null,
+    "created_at": "2026-09-10T12:57:19.871Z",
+    "updated_at": "2026-09-10T12:57:19.871Z",
+    "rie_versie_id": null
+  },
+  {
+    "id": "8339c30f-7e94-4c4f-9a34-da743a2f410e",
+    "company_id": "bd16538b-01e9-41d2-84ad-fe5690917cba",
+    "code": "F2",
+    "titel": "Functie Coördinatoren: risico's",
+    "intro": "",
+    "volgorde": 7,
+    "archived_at": null,
+    "created_at": "2026-09-10T12:57:19.871Z",
+    "updated_at": "2026-09-10T12:57:19.871Z",
+    "rie_versie_id": null
+  },
+  {
+    "id": "51e8c7dd-10a6-41c6-b01c-45ffb43633fb",
+    "company_id": "bd16538b-01e9-41d2-84ad-fe5690917cba",
+    "code": "F3",
+    "titel": "Functie Ondersteunende diensten: risico's",
+    "intro": "",
+    "volgorde": 8,
+    "archived_at": null,
+    "created_at": "2026-09-10T12:57:19.871Z",
+    "updated_at": "2026-09-10T12:57:19.871Z",
+    "rie_versie_id": null
+  },
+  {
+    "id": "32907f0c-72c5-4cec-a768-91714ebea160",
+    "company_id": "bd16538b-01e9-41d2-84ad-fe5690917cba",
+    "code": "F4",
+    "titel": "Functie Persoonlijk begeleiders: risico's",
+    "intro": "",
+    "volgorde": 9,
+    "archived_at": null,
+    "created_at": "2026-09-10T12:57:19.871Z",
+    "updated_at": "2026-09-10T12:57:19.871Z",
+    "rie_versie_id": null
+  }
+]
+OK

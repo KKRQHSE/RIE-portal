@@ -1,10 +1,11 @@
-// Zelftest voor lib/rie-locatie-filter.ts (Fase 2, migratie 0080) --
+// Zelftest voor lib/rie-locatie-filter.ts --
 // draaien: node scripts/rie_locatie_filter_selftest.ts (Node 24 strip-types).
 // Geen DB nodig: bewijst puur de filterlogica die de RI&E-inzage gebruikt.
 //   - 'alle' (default, het enige pad bij een bedrijf zonder locaties) toont
 //     alles ongewijzigd.
-//   - Een gekozen locatie toont organisatiebrede vragen (locatie_id null) +
-//     precies de vragen van die locatie, en NIETS van andere locaties.
+//   - Een gekozen locatie springt naar UITSLUITEND de vragen van díe locatie --
+//     organisatiebrede vragen en vragen van andere locaties vallen allebei weg
+//     (24 sept 2026, op Kees' verzoek -- zelfde gedrag als /pva).
 
 import { filterVragenOpLocatie } from '../lib/rie-locatie-filter.ts'
 import type { Vraag } from '../lib/types.ts'
@@ -43,27 +44,26 @@ const alle = [orgbreed1, orgbreed2, malden, utrecht]
   check("'alle' toont elke vraag, ook locatie-specifieke", r.length === 4, `${r.length}/4`)
 }
 
-// --- Gekozen locatie: organisatiebreed + die locatie, niets van een andere ---
+// --- Gekozen locatie: UITSLUITEND die locatie, organisatiebreed en andere
+//     locaties vallen allebei weg ---
 {
   const r = filterVragenOpLocatie(alle, 'loc-malden')
   const nrs = r.map(v => v.nr).sort()
-  check("Locatie 'Malden' gekozen: organisatiebreed (1,2) + Malden (3), Utrecht (4) weg",
-    nrs.length === 3 && nrs.join(',') === '1,2,3', nrs.join(','))
+  check("Locatie 'Malden' gekozen: alleen Malden (3), organisatiebreed (1,2) en Utrecht (4) weg",
+    nrs.length === 1 && nrs.join(',') === '3', nrs.join(','))
 }
 {
   const r = filterVragenOpLocatie(alle, 'loc-utrecht')
   const nrs = r.map(v => v.nr).sort()
-  check("Locatie 'Utrecht' gekozen: organisatiebreed (1,2) + Utrecht (4), Malden (3) weg",
-    nrs.length === 3 && nrs.join(',') === '1,2,4', nrs.join(','))
+  check("Locatie 'Utrecht' gekozen: alleen Utrecht (4), organisatiebreed (1,2) en Malden (3) weg",
+    nrs.length === 1 && nrs.join(',') === '4', nrs.join(','))
 }
 
-// --- Onbekende/gearchiveerde locatie-id: toont alleen organisatiebrede vragen
-//     (fail-closed, geen crash, geen per-ongeluk alles tonen) ---
+// --- Onbekende/gearchiveerde locatie-id: toont niets (fail-closed, geen
+//     crash, geen per-ongeluk alles of organisatiebreed tonen) ---
 {
   const r = filterVragenOpLocatie(alle, 'loc-bestaat-niet')
-  const nrs = r.map(v => v.nr).sort()
-  check('Onbekende locatie-id: alleen organisatiebrede vragen, geen crash',
-    nrs.join(',') === '1,2', nrs.join(','))
+  check('Onbekende locatie-id: niets zichtbaar, geen crash', r.length === 0, `${r.length} vragen`)
 }
 
 // --- Lege lijst blijft leeg, ongeacht filter ---

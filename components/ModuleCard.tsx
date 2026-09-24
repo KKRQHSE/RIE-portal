@@ -74,6 +74,10 @@ export default function ModuleCard({ companyId, module, vragen, fotos, locatieNa
   const neeInModule = vragen.filter(v => v.antwoord === 'Nee').length
   const nietAantoonbaarInModule = vragen.filter(isNietAantoonbaar).length
 
+  // Geen vragen in deze module in de huidige weergave (bv. een locatiefilter die
+  // alleen die ene locatie toont, en deze module heeft daar niets van) -> geen
+  // lege, aanklikbare tegel tonen.
+  if (vragen.length === 0) return null
   if (filter !== 'Alle' && shown.length === 0) return null
 
   return (
